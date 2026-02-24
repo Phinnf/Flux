@@ -115,7 +115,6 @@ slack-clone/
   |- .env/.env.local
   |- .eslintrc.json
   |- .gitignore
-  |- .gitpod.yml
   |- .prettierrc.json
   |- .prettierrc.mjs
   |- bun.lockb
