@@ -4,7 +4,8 @@
     {
         public Guid Id { get; init; } = Guid.NewGuid();
         public string Content { get; set; } = string.Empty;
-        public DateTime SentAt { get; init; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+        public DateTime? UpdatedAt { get; set; }
 
         // Foreign Keys
         public Guid UserId { get; set; }

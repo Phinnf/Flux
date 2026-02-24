@@ -8,6 +8,8 @@
         public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
 
         // Navigation property: A channel contains many messages
+        public Guid? WorkspaceId { get; set; }
+        public Workspace? Workspace { get; set; }
         public ICollection<Message> Messages { get; set; } = new List<Message>();
     }
 }

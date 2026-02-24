@@ -12,20 +12,6 @@ namespace Flux.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "Channels",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    Name = table.Column<string>(type: "text", nullable: false),
-                    Description = table.Column<string>(type: "text", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Channels", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Users",
                 columns: table => new
                 {
@@ -37,6 +23,65 @@ namespace Flux.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Users", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Workspaces",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    Description = table.Column<string>(type: "text", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Workspaces", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Channels",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    Description = table.Column<string>(type: "text", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    WorkspaceId = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Channels", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Channels_Workspaces_WorkspaceId",
+                        column: x => x.WorkspaceId,
+                        principalTable: "Workspaces",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "UserWorkspace",
+                columns: table => new
+                {
+                    MembersId = table.Column<Guid>(type: "uuid", nullable: false),
+                    WorkspacesId = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserWorkspace", x => new { x.MembersId, x.WorkspacesId });
+                    table.ForeignKey(
+                        name: "FK_UserWorkspace_Users_MembersId",
+                        column: x => x.MembersId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_UserWorkspace_Workspaces_WorkspacesId",
+                        column: x => x.WorkspacesId,
+                        principalTable: "Workspaces",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -67,9 +112,9 @@ namespace Flux.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Channels_Name",
+                name: "IX_Channels_WorkspaceId_Name",
                 table: "Channels",
-                column: "Name",
+                columns: new[] { "WorkspaceId", "Name" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
@@ -81,6 +126,11 @@ namespace Flux.Migrations
                 name: "IX_Messages_UserId",
                 table: "Messages",
                 column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserWorkspace_WorkspacesId",
+                table: "UserWorkspace",
+                column: "WorkspacesId");
         }
 
         /// <inheritdoc />
@@ -90,10 +140,16 @@ namespace Flux.Migrations
                 name: "Messages");
 
             migrationBuilder.DropTable(
+                name: "UserWorkspace");
+
+            migrationBuilder.DropTable(
                 name: "Channels");
 
             migrationBuilder.DropTable(
                 name: "Users");
+
+            migrationBuilder.DropTable(
+                name: "Workspaces");
         }
     }
 }

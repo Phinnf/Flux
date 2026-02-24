@@ -3,6 +3,7 @@ using System;
 using Flux.Infrastructure.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Flux.Migrations
 {
     [DbContext(typeof(FluxDbContext))]
-    partial class FluxDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260224073118_UpdateMessageEntityForMessagingFeatures")]
+    partial class UpdateMessageEntityForMessagingFeatures
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

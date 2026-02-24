@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Flux.Features.Channels.GetChannels;
 
-// Response Item Model
 public record ChannelDto(Guid Id, string Name, string? Description);
 
 [ApiController]
-[Route("api/channels")]
+// UPDATE: Nested route design
+[Route("api/workspaces/{workspaceId:guid}/channels")]
 public class GetChannelsController : ControllerBase
 {
     private readonly FluxDbContext _dbContext;
@@ -19,15 +19,15 @@ public class GetChannelsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> HandleAsync(CancellationToken cancellationToken)
+    public async Task<IActionResult> HandleAsync([FromRoute] Guid workspaceId, CancellationToken cancellationToken)
     {
-        // Query the database and project the result directly into our DTO
+        // Filter channels by WorkspaceId
         var channels = await _dbContext.Channels
-            .OrderBy(c => c.Name) // Sort alphabetically
+            .Where(c => c.WorkspaceId == workspaceId)
+            .OrderBy(c => c.Name)
             .Select(c => new ChannelDto(c.Id, c.Name, c.Description))
             .ToListAsync(cancellationToken);
 
-        // Return 200 OK with the list of channels
         return Ok(channels);
     }
 }

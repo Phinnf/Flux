@@ -11,6 +11,7 @@ namespace Flux.Infrastructure.Database
         }
 
         // DbSets represent the tables in our database
+        public DbSet<Workspace> Workspaces => Set<Workspace>();
         public DbSet<User> Users => Set<User>();
         public DbSet<Channel> Channels => Set<Channel>();
         public DbSet<Message> Messages => Set<Message>();
@@ -22,23 +23,36 @@ namespace Flux.Infrastructure.Database
         {
             base.OnModelCreating(modelBuilder);
 
-            // Configure User -> Messages relationship (1-to-Many)
-            modelBuilder.Entity<Message>()
-                .HasOne(m => m.User)
-                .WithMany(u => u.Messages)
-                .HasForeignKey(m => m.UserId)
-                .OnDelete(DeleteBehavior.Restrict); // Prevent deleting user if messages exist
+            // 1. Workspace - Channel (1-to-Many)
+            modelBuilder.Entity<Channel>()
+                .HasOne(c => c.Workspace)
+                .WithMany(w => w.Channels)
+                .HasForeignKey(c => c.WorkspaceId)
+                .OnDelete(DeleteBehavior.Cascade); // Xóa Workspace thì xóa luôn các Kênh bên trong
 
-            // Configure Channel -> Messages relationship (1-to-Many)
+            // 2. Workspace - User (Many-to-Many)
+            // Entity Framework Core sẽ tự động tạo một bảng trung gian (Join Table) trong database
+            modelBuilder.Entity<Workspace>()
+                .HasMany(w => w.Members)
+                .WithMany(u => u.Workspaces);
+
+            // 3. Channel - Message (1-to-Many)
             modelBuilder.Entity<Message>()
                 .HasOne(m => m.Channel)
                 .WithMany(c => c.Messages)
                 .HasForeignKey(m => m.ChannelId)
-                .OnDelete(DeleteBehavior.Cascade); // Deleting a channel deletes its messages
+                .OnDelete(DeleteBehavior.Cascade);
 
-            // Make channel name unique
+            // 4. User - Message (1-to-Many)
+            modelBuilder.Entity<Message>()
+                .HasOne(m => m.User)
+                .WithMany(u => u.Messages)
+                .HasForeignKey(m => m.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Đảm bảo tên Channel là duy nhất TRONG CÙNG MỘT WORKSPACE
             modelBuilder.Entity<Channel>()
-                .HasIndex(c => c.Name)
+                .HasIndex(c => new { c.WorkspaceId, c.Name })
                 .IsUnique();
         }
     }

@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Flux.Migrations
 {
     [DbContext(typeof(FluxDbContext))]
-    [Migration("20260224061616_InitialCreate")]
+    [Migration("20260224071441_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -41,9 +41,12 @@ namespace Flux.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<Guid?>("WorkspaceId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("Name")
+                    b.HasIndex("WorkspaceId", "Name")
                         .IsUnique();
 
                     b.ToTable("Channels");
@@ -99,6 +102,52 @@ namespace Flux.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("Flux.Domain.Entities.Workspace", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Workspaces");
+                });
+
+            modelBuilder.Entity("UserWorkspace", b =>
+                {
+                    b.Property<Guid>("MembersId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("WorkspacesId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("MembersId", "WorkspacesId");
+
+                    b.HasIndex("WorkspacesId");
+
+                    b.ToTable("UserWorkspace");
+                });
+
+            modelBuilder.Entity("Flux.Domain.Entities.Channel", b =>
+                {
+                    b.HasOne("Flux.Domain.Entities.Workspace", "Workspace")
+                        .WithMany("Channels")
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Workspace");
+                });
+
             modelBuilder.Entity("Flux.Domain.Entities.Message", b =>
                 {
                     b.HasOne("Flux.Domain.Entities.Channel", "Channel")
@@ -118,6 +167,21 @@ namespace Flux.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("UserWorkspace", b =>
+                {
+                    b.HasOne("Flux.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("MembersId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Flux.Domain.Entities.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspacesId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Flux.Domain.Entities.Channel", b =>
                 {
                     b.Navigation("Messages");
@@ -126,6 +190,11 @@ namespace Flux.Migrations
             modelBuilder.Entity("Flux.Domain.Entities.User", b =>
                 {
                     b.Navigation("Messages");
+                });
+
+            modelBuilder.Entity("Flux.Domain.Entities.Workspace", b =>
+                {
+                    b.Navigation("Channels");
                 });
 #pragma warning restore 612, 618
         }
