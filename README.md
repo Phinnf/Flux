@@ -64,11 +64,52 @@ slack-clone/
   |- public/
   |- src/
     |-- app/
+      |--- auth/
+      |--- join/
+      |--- workspace/
+      |--- apple-icon.png
+      |--- favicon.ico
+      |--- globals.css
+      |--- icon1.png
+      |--- icon2.png
+      |--- layout.tsx
+      |--- page.tsx
     |-- components/
+      |--- ui/
+      |--- channel-hero.tsx
+      |--- conversation-hero.tsx
+      |--- convex-client-provider.tsx
+      |--- editor.tsx
+      |--- emoji-popover.tsx
+      |--- hint.tsx
+      |--- jotai-provider.tsx
+      |--- message-list.tsx
+      |--- message.tsx
+      |--- modal-provider.tsx
+      |--- reactions.tsx
+      |--- renderer.tsx
+      |--- thread-bar.tsx
+      |--- thumbnail.tsx
+      |--- toolbar.tsx
     |-- config/
+      |--- index.ts
     |-- features/
+      |--- auth/
+      |--- channels/
+      |--- conversations/
+      |--- members/
+      |--- messages/
+      |--- reactions/
+      |--- upload/
+      |--- workspaces/
     |-- hooks/
+      |--- use-channel-id.ts
+      |--- use-confirm.tsx
+      |--- use-member-id.ts
+      |--- use-panel.ts
+      |--- use-workspace-id.ts
     |-- lib/
+      |--- utils.ts
     |-- middleware.ts
   |- .env.example
   |- .env/.env.local
