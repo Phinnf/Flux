@@ -1,0 +1,17 @@
+@inherits LayoutComponentBase
+
+<FluentLayout>
+    <FluentHeader>
+        Flux Fluent UI Test
+    </FluentHeader>
+    <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Stretch" Style="height: calc(100vh - 40px);">
+        <FluentBodyContent Style="padding: 20px;">
+            @Body
+        </FluentBodyContent>
+    </FluentStack>
+</FluentLayout>
+
+<FluentToastProvider />
+<FluentDialogProvider />
+<FluentTooltipProvider />
+<FluentMenuProvider />

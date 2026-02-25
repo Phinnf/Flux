@@ -1,12 +1,19 @@
 using Flux.Infrastructure.Database;
 using Flux.Infrastructure.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.FluentUI.AspNetCore.Components;
+using Flux.Components;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
+
+// Add Blazor and Fluent UI
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents();
+builder.Services.AddFluentUIComponents();
 
 // Swagger is a great tool for testing our APIs before connecting the Blazor frontend
 builder.Services.AddEndpointsApiExplorer();
@@ -28,9 +35,13 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
+app.UseAntiforgery();
 app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<ChatHub>("/chatHub");
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode();
 
 app.Run();

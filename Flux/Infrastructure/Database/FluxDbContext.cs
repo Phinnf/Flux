@@ -5,7 +5,7 @@ namespace Flux.Infrastructure.Database
 {
     public class FluxDbContext : DbContext
     {
-        // Primary constructor feature in modern C#
+        // constructor 
         public FluxDbContext(DbContextOptions<FluxDbContext> options) : base(options)
         {
         }
@@ -16,27 +16,25 @@ namespace Flux.Infrastructure.Database
         public DbSet<Channel> Channels => Set<Channel>();
         public DbSet<Message> Messages => Set<Message>();
 
-        /// <summary>
         /// Configure database relationships and constraints here (Fluent API).
-        /// </summary>
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // 1. Workspace - Channel (1-to-Many)
+            // Workspace - Channel (1-to-Many)
             modelBuilder.Entity<Channel>()
                 .HasOne(c => c.Workspace)
                 .WithMany(w => w.Channels)
                 .HasForeignKey(c => c.WorkspaceId)
                 .OnDelete(DeleteBehavior.Cascade); // Xóa Workspace thì xóa luôn các Kênh bên trong
 
-            // 2. Workspace - User (Many-to-Many)
-            // Entity Framework Core sẽ tự động tạo một bảng trung gian (Join Table) trong database
+            // Workspace - User (Many-to-Many)
+            // (Join Table) trong database
             modelBuilder.Entity<Workspace>()
                 .HasMany(w => w.Members)
                 .WithMany(u => u.Workspaces);
 
-            // 3. Channel - Message (1-to-Many)
+            // Channel - Message (1-to-Many)
             modelBuilder.Entity<Message>()
                 .HasOne(m => m.Channel)
                 .WithMany(c => c.Messages)
