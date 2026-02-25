@@ -1,0 +1,70 @@
+:root {
+    --accent-fill-rest: #63F7B4; /* Forest Green */
+    --accent-fill-hover: #1b5e20;
+    --accent-fill-active: #4caf50;
+    --flux-primary: #7393B3; /* Yellow */
+    --flux-secondary: #63F7B4; /* Green */
+    --flux-background: #fdfdfd;
+    --flux-text: #1a1a1a;
+    / --workspace-card-height: 220px;
+}
+
+body {
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--flux-background);
+    color: var(--flux-text);
+}
+
+.workspace-grid-container {
+    flex-grow: 1;
+    padding: 40px;
+    overflow-y: auto;
+}
+
+.workspace-card {
+    height: var(--workspace-card-height);
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    position: relative;
+}
+
+.workspace-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.workspace-icon {
+    width: 64px;
+    height: 64px;
+    background-color: var(--flux-secondary);
+    color: var(--flux-primary);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 15px;
+}
+
+.workspace-delete-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.workspace-card:hover .workspace-delete-btn {
+    opacity: 1;
+}
+
+.create-workspace-card {
+    border: 2px dashed var(--neutral-stroke-rest) !important;
+    background: transparent !important;
+}
+
+.create-workspace-card:hover {
+    border-color: var(--accent-fill-rest) !important;
+}
