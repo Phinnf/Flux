@@ -11,5 +11,8 @@
         public ICollection<Message> Messages { get; set; } = new List<Message>();
         // Navigation property: A user can belong to many workspaces
         public ICollection<Workspace> Workspaces { get; set; } = new List<Workspace>();
+
+        // Navigation property: A user can belong to many channels
+        public ICollection<Channel> Channels { get; set; } = new List<Channel>();
     }
 }

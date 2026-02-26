@@ -1,71 +1,113 @@
+/* Slack Palette */
 :root {
-    --accent-fill-rest: #63F7B4; 
-    --accent-fill-hover: #1b5e20;
-    --accent-fill-active: #4caf50;
-
-    --flux-primary: #7393B3; /* Yellow */
-    --flux-secondary: #63F7B4; /* Green */
-    --flux-background: #fdfdfd;
-    --flux-text: #1a1a1a;
-    --workspace-card-height: 220px;
+    --slack-sidebar-bg: #f8f8f8; /* Light gray background for the sidebar */
+    --slack-sidebar-text: #000000; /* Black text */
+    --slack-sidebar-hover: #e8e8e8;
+    --slack-activity-bg: #19171d;
 }
 
 body {
     margin: 0;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: var(--flux-background);
-    color: var(--flux-text);
+    padding: 0;
+    font-family: "Segoe UI", "Inter", sans-serif;
+    overflow: hidden;
 }
 
-.workspace-grid-container {
-    flex-grow: 1;
-    padding: 40px;
-    overflow-y: auto;
+.main-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
-.workspace-card {
-    height: var(--workspace-card-height);
-    cursor: pointer;
-    transition: all 0.2s ease-in-out;
-    position: relative;
+.slack-layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
 }
 
-.workspace-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+/* 1. Activity Bar (Narrow Left) */
+.activity-bar {
+    width: 68px;
+    background-color: var(--slack-activity-bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 0;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    gap: 8px;
 }
 
-.workspace-icon {
-    width: 64px;
-    height: 64px;
-    background-color: var(--flux-secondary);
-    color: var(--flux-primary);
-    border-radius: 12px;
+/* Base style for icons/buttons in the activity bar */
+.activity-item {
+    width: 44px;
+    height: 44px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
+    border-radius: 8px;
+    transition: all 0.2s ease-in-out;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.activity-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+    transform: scale(1.05);
+}
+
+.activity-item.active {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+/* 2. Sidebar (Channels/DMs) */
+.workspace-sidebar {
+    width: 260px;
+    background-color: var(--slack-sidebar-bg);
+    color: var(--slack-sidebar-text);
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #ddd;
+}
+
+.sidebar-header {
+    padding: 16px;
     font-weight: bold;
-    margin-bottom: 15px;
+    color: var(--slack-sidebar-text);
+    border-bottom: 1px solid #ddd;
 }
 
-.workspace-delete-btn {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    opacity: 0;
-    transition: opacity 0.2s;
+/* Ensure FluentNavMenu uses the black text color */
+.workspace-sidebar fluent-nav-link, 
+.workspace-sidebar fluent-nav-group,
+.workspace-sidebar .fluent-nav-menu {
+    color: var(--slack-sidebar-text) !important;
 }
 
-.workspace-card:hover .workspace-delete-btn {
-    opacity: 1;
+/* 3. Main Content */
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background-color: white;
 }
 
-.create-workspace-card {
-    border: 2px dashed var(--neutral-stroke-rest) !important;
-    background: transparent !important;
+.chat-header {
+    height: 50px;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #ddd;
 }
 
-.create-workspace-card:hover {
-    border-color: var(--accent-fill-rest) !important;
+.messages-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+}
+
+.message-input-area {
+    padding: 16px;
+    border-top: 1px solid #ddd;
 }

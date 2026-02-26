@@ -1,41 +1,65 @@
 @inherits LayoutComponentBase
 @using Microsoft.FluentUI.AspNetCore.Components
 
-<FluentLayout>
-    <div style="display: flex; height: 100vh; width: 100%;">
-        @* Vertical AppBar - Only visible when in a Workspace context *@
-        <FluentAppBar Style="width: 72px; height: 100%; background-color: var(--neutral-layer-2); border-right: 1px solid var(--neutral-stroke-rest);">
-            
-            <FluentAppBarItem Text="Home" 
-                              Href="/" 
-                              IconRest="@(new Icons.Regular.Size24.Home())" 
-                              IconActive="@(new Icons.Filled.Size24.Home())" />
+<div class="main-container">
+    <div class="slack-layout">
+        <!-- 1. Activity Bar (Workspace Switcher & Core Nav) -->
+        <div class="activity-bar">
+            <FluentTooltip Anchor="ws-icon" Position="TooltipPosition.Right">Workspaces</FluentTooltip>
+            <div id="ws-icon" class="activity-item">
+                <FluentIcon Value="@(new Icons.Regular.Size32.Home())" Color="Color.Fill" />
+            </div>
 
-            <FluentAppBarItem Text="Channels" 
-                              Href="/channels" 
-                              IconRest="@(new Icons.Regular.Size24.Chat())" 
-                              IconActive="@(new Icons.Filled.Size24.Chat())" />
+            <FluentTooltip Anchor="dm-icon" Position="TooltipPosition.Right">Direct Messages</FluentTooltip>
+            <div id="dm-icon" class="activity-item active">
+                <FluentIcon Value="@(new Icons.Regular.Size32.Chat())" Color="Color.Fill" />
+            </div>
 
-            <FluentAppBarItem Text="Tasks" 
-                              Href="/tasks" 
-                              IconRest="@(new Icons.Regular.Size24.Board())" 
-                              IconActive="@(new Icons.Filled.Size24.Board())" />
+            <FluentTooltip Anchor="alert-icon" Position="TooltipPosition.Right">Activity</FluentTooltip>
+            <div id="alert-icon" class="activity-item">
+                <FluentIcon Value="@(new Icons.Regular.Size32.Alert())" Color="Color.Fill" />
+            </div>
 
             <FluentSpacer />
 
-            <FluentAppBarItem Text="Settings" 
-                              Href="/settings" 
-                              IconRest="@(new Icons.Regular.Size24.Settings())" 
-                              IconActive="@(new Icons.Filled.Size24.Settings())" />
+            <FluentTooltip Anchor="profile-icon" Position="TooltipPosition.Right">Profile</FluentTooltip>
+            <div id="profile-icon" style="padding-bottom: 12px; cursor: pointer;">
+                <FluentPersona Status="PresenceStatus.Available" ImageSize="36px" Initials="JD" />
+            </div>
+        </div>
 
-        </FluentAppBar>
+        <!-- 2. Workspace Sidebar (Channels/DMs list) -->
+        <div class="workspace-sidebar">
+            <div class="sidebar-header">
+                <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="10">
+                    <span style="font-size: 1.1rem; letter-spacing: -0.5px;">Flux Workspace</span>
+                    <FluentSpacer />
+                    <FluentIcon Value="@(new Icons.Regular.Size20.ChevronDown())" />
+                </FluentStack>
+            </div>
+            
+            <div style="flex: 1; overflow-y: auto; padding: 10px 0;">
+                <FluentNavMenu Width="260">
+                    <FluentNavGroup Title="Channels" Icon="@(new Icons.Regular.Size20.CaretDown())" Expanded="true">
+                        <FluentNavLink Icon="@(new Icons.Regular.Size16.Tag())" Href="/chat">general</FluentNavLink>
+                        <FluentNavLink Icon="@(new Icons.Regular.Size16.LockClosed())">private-project</FluentNavLink>
+                        <FluentNavLink Icon="@(new Icons.Regular.Size16.Add())" Style="opacity: 0.7;">Add Channels</FluentNavLink>
+                    </FluentNavGroup>
 
-        @* Main Content Area within Workspace *@
-        <div style="flex-grow: 1; padding: 20px; overflow-y: auto;">
+                    <FluentNavGroup Title="Direct Messages" Icon="@(new Icons.Regular.Size20.CaretDown())" Expanded="true" Style="margin-top: 20px;">
+                        <FluentNavLink Icon="@(new Icons.Regular.Size16.Person())">John Doe (You)</FluentNavLink>
+                        <FluentNavLink Icon="@(new Icons.Regular.Size16.Person())">Jane Smith</FluentNavLink>
+                    </FluentNavGroup>
+                </FluentNavMenu>
+            </div>
+        </div>
+
+        <!-- 3. Main Content (Chat Area / Dashboard) -->
+        <div class="main-content">
             @Body
         </div>
     </div>
-</FluentLayout>
+</div>
 
 <FluentToastProvider />
 <FluentDialogProvider />

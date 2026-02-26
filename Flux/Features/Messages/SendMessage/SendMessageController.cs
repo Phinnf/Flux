@@ -23,11 +23,35 @@ public class SendMessageController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> SendMessage([FromBody] SendMessageRequest request)
     {
-        var channel = await _context.Channels.FindAsync(request.ChannelId);
+        var channel = await _context.Channels
+            .Include(c => c.Members)
+            .FirstOrDefaultAsync(c => c.Id == request.ChannelId);
+
         if (channel == null) return NotFound("Channel not found");
 
-        var user = await _context.Users.FindAsync(request.UserId);
+        var user = await _context.Users
+            .Include(u => u.Workspaces)
+            .FirstOrDefaultAsync(u => u.Id == request.UserId);
+
         if (user == null) return NotFound("User not found");
+
+        // Permission Check:
+        // 1. If Private: User must be in channel.Members
+        // 2. If Public: User must be in workspace.Members
+        bool hasPermission = false;
+        if (channel.Type == ChannelType.Private)
+        {
+            hasPermission = channel.Members.Any(m => m.Id == user.Id);
+        }
+        else
+        {
+            hasPermission = user.Workspaces.Any(w => w.Id == channel.WorkspaceId);
+        }
+
+        if (!hasPermission)
+        {
+            return Forbid("You do not have permission to send messages to this channel.");
+        }
 
         var message = new Message
         {

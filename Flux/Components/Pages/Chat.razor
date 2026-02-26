@@ -1,0 +1,70 @@
+@page "/workspace/{WorkspaceId:guid}/channel/{ChannelId:guid}"
+@using Microsoft.FluentUI.AspNetCore.Components
+@layout Flux.Components.Layout.WorkspaceLayout
+
+<div class="main-content" style="height: 100%; display: flex; flex-direction: column;">
+    <!-- Chat Header -->
+    <div class="chat-header">
+        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="10" Style="width: 100%;">
+            <FluentIcon Value="@(new Icons.Regular.Size20.Tag())" />
+            <span style="font-weight: bold; font-size: 1.1rem; letter-spacing: -0.5px;">general</span>
+            <FluentIcon Value="@(new Icons.Regular.Size16.ChevronDown())" />
+            <FluentSpacer />
+            <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.People())">34</FluentButton>
+            <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Info())" />
+        </FluentStack>
+    </div>
+
+    <!-- Messages List -->
+    <div class="messages-list">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="20">
+            <!-- Example Message 1 -->
+            <div style="display: flex; gap: 12px; align-items: flex-start;">
+                <FluentPersona Status="PresenceStatus.Available" ImageSize="36px" Initials="JD" />
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <span style="font-weight: bold; cursor: pointer;">John Doe</span>
+                        <span style="color: gray; font-size: 0.8rem;">10:45 AM</span>
+                    </div>
+                    <div>Welcome to the project! This is our first message in the Slack-like UI using Fluent UI Blazor. Workspace: @WorkspaceId</div>
+                </div>
+            </div>
+
+            <!-- Example Message 2 -->
+            <div style="display: flex; gap: 12px; align-items: flex-start;">
+                <FluentPersona Status="PresenceStatus.Busy" ImageSize="36px" Initials="JS" />
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <span style="font-weight: bold; cursor: pointer;">Jane Smith</span>
+                        <span style="color: gray; font-size: 0.8rem;">10:46 AM</span>
+                    </div>
+                    <div>Looks great! The Vertical Slice architecture and Fluent UI combination is very powerful. Channel: @ChannelId</div>
+                </div>
+            </div>
+        </FluentStack>
+    </div>
+
+    <!-- Message Input -->
+    <div class="message-input-area" style="padding-bottom: 24px;">
+        <FluentCard Style="padding: 0; border-radius: 8px; border: 1px solid #ddd; box-shadow: none;">
+            <div style="padding: 8px;">
+                <FluentTextField Placeholder="Message #general" Style="width: 100%; border: none; box-shadow: none;" Appearance="FluentInputAppearance.Filled" />
+            </div>
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="5" Style="padding: 8px; border-top: 1px solid #eee;">
+                <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Emoji())" />
+                <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Attach())" />
+                <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Mention())" />
+                <FluentSpacer />
+                <FluentButton Appearance="Appearance.Accent" IconEnd="@(new Icons.Regular.Size20.Send())" />
+            </FluentStack>
+        </FluentCard>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public Guid WorkspaceId { get; set; }
+
+    [Parameter]
+    public Guid ChannelId { get; set; }
+}

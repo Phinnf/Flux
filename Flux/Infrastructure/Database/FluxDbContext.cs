@@ -34,6 +34,11 @@ namespace Flux.Infrastructure.Database
                 .HasMany(w => w.Members)
                 .WithMany(u => u.Workspaces);
 
+            // Channel - User (Many-to-Many for members, especially for private channels)
+            modelBuilder.Entity<Channel>()
+                .HasMany(c => c.Members)
+                .WithMany(u => u.Channels);
+
             // Channel - Message (1-to-Many)
             modelBuilder.Entity<Message>()
                 .HasOne(m => m.Channel)
