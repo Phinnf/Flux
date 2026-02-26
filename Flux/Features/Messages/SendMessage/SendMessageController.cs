@@ -65,12 +65,14 @@ public class SendMessageController : ControllerBase
         await _context.SaveChangesAsync();
 
         // Broadcast to SignalR group (ChannelId)
+        // Including Username for the UI
         await _hubContext.Clients.Group(request.ChannelId.ToString())
             .SendAsync("ReceiveMessage", new 
             {
                 Id = message.Id,
                 Content = message.Content,
                 UserId = message.UserId,
+                Username = user.Username,
                 ChannelId = message.ChannelId,
                 CreatedAt = message.CreatedAt
             });

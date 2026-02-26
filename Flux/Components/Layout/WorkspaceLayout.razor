@@ -1,12 +1,17 @@
 @inherits LayoutComponentBase
 @using Microsoft.FluentUI.AspNetCore.Components
+@using Flux.Infrastructure.Client
+@using Flux.Domain.Entities
+@inject WorkspaceStateService WorkspaceState
+@inject NavigationManager Navigation
+@implements IDisposable
 
 <div class="main-container">
     <div class="slack-layout">
-        <!-- 1. Activity Bar (Workspace Switcher & Core Nav) -->
+        <!-- 1. Activity Bar -->
         <div class="activity-bar">
             <FluentTooltip Anchor="ws-icon" Position="TooltipPosition.Right">Workspaces</FluentTooltip>
-            <div id="ws-icon" class="activity-item">
+            <div id="ws-icon" class="activity-item" @onclick='() => Navigation.NavigateTo("/")'>
                 <FluentIcon Value="@(new Icons.Regular.Size32.Home())" Color="Color.Fill" />
             </div>
 
@@ -28,11 +33,11 @@
             </div>
         </div>
 
-        <!-- 2. Workspace Sidebar (Channels/DMs list) -->
+        <!-- 2. Workspace Sidebar -->
         <div class="workspace-sidebar">
             <div class="sidebar-header">
                 <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="10">
-                    <span style="font-size: 1.1rem; letter-spacing: -0.5px;">Flux Workspace</span>
+                    <span style="font-size: 1.1rem; letter-spacing: -0.5px; font-weight: 600;">Flux Workspace</span>
                     <FluentSpacer />
                     <FluentIcon Value="@(new Icons.Regular.Size20.ChevronDown())" />
                 </FluentStack>
@@ -41,8 +46,17 @@
             <div style="flex: 1; overflow-y: auto; padding: 10px 0;">
                 <FluentNavMenu Width="260">
                     <FluentNavGroup Title="Channels" Icon="@(new Icons.Regular.Size20.CaretDown())" Expanded="true">
-                        <FluentNavLink Icon="@(new Icons.Regular.Size16.Tag())" Href="/chat">general</FluentNavLink>
-                        <FluentNavLink Icon="@(new Icons.Regular.Size16.LockClosed())">private-project</FluentNavLink>
+                        @foreach (var channel in WorkspaceState.Channels)
+                        {
+                            var icon = channel.Type == ChannelType.Private 
+                                ? (Icon)new Icons.Regular.Size16.LockClosed() 
+                                : (Icon)new Icons.Regular.Size16.Tag();
+                                
+                            <FluentNavLink Icon="@icon" 
+                                           Href="@($"/workspace/{WorkspaceState.CurrentWorkspaceId}/channel/{channel.Id}")">
+                                @channel.Name
+                            </FluentNavLink>
+                        }
                         <FluentNavLink Icon="@(new Icons.Regular.Size16.Add())" Style="opacity: 0.7;">Add Channels</FluentNavLink>
                     </FluentNavGroup>
 
@@ -54,7 +68,7 @@
             </div>
         </div>
 
-        <!-- 3. Main Content (Chat Area / Dashboard) -->
+        <!-- 3. Main Content -->
         <div class="main-content">
             @Body
         </div>
@@ -65,3 +79,33 @@
 <FluentDialogProvider />
 <FluentTooltipProvider />
 <FluentMenuProvider />
+
+@code {
+    private static readonly Guid CurrentUserId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+
+    protected override void OnInitialized()
+    {
+        WorkspaceState.OnStateChanged += StateHasChanged;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Try to extract WorkspaceId from the URL
+        var uri = Navigation.Uri;
+        var parts = uri.Split('/');
+        int wsIndex = Array.IndexOf(parts, "workspace");
+        
+        if (wsIndex != -1 && wsIndex + 1 < parts.Length)
+        {
+            if (Guid.TryParse(parts[wsIndex + 1], out Guid workspaceId))
+            {
+                await WorkspaceState.LoadWorkspaceAsync(workspaceId, CurrentUserId);
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        WorkspaceState.OnStateChanged -= StateHasChanged;
+    }
+}

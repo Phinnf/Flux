@@ -1,13 +1,25 @@
 @page "/workspace/{WorkspaceId:guid}/channel/{ChannelId:guid}"
 @using Microsoft.FluentUI.AspNetCore.Components
+@using Flux.Infrastructure.Client
+@using Flux.Domain.Entities
+@using Microsoft.AspNetCore.SignalR.Client
 @layout Flux.Components.Layout.WorkspaceLayout
+@inject WorkspaceStateService WorkspaceState
+@inject FluxClientService FluxService
+@inject NavigationManager Navigation
+@implements IAsyncDisposable
 
 <div class="main-content" style="height: 100%; display: flex; flex-direction: column;">
     <!-- Chat Header -->
     <div class="chat-header">
         <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="10" Style="width: 100%;">
-            <FluentIcon Value="@(new Icons.Regular.Size20.Tag())" />
-            <span style="font-weight: bold; font-size: 1.1rem; letter-spacing: -0.5px;">general</span>
+            @{
+                var channel = WorkspaceState.Channels.FirstOrDefault(c => c.Id == ChannelId);
+                var currentChannelName = channel?.Name ?? "Loading...";
+                var isPrivate = channel?.Type == ChannelType.Private;
+            }
+            <FluentIcon Value="@(isPrivate ? (Icon)new Icons.Regular.Size20.LockClosed() : (Icon)new Icons.Regular.Size20.Tag())" />
+            <span style="font-weight: bold; font-size: 1.1rem; letter-spacing: -0.5px;">@currentChannelName</span>
             <FluentIcon Value="@(new Icons.Regular.Size16.ChevronDown())" />
             <FluentSpacer />
             <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.People())">34</FluentButton>
@@ -16,46 +28,60 @@
     </div>
 
     <!-- Messages List -->
-    <div class="messages-list">
+    <div class="messages-list" id="scroll-target">
         <FluentStack Orientation="Orientation.Vertical" VerticalGap="20">
-            <!-- Example Message 1 -->
-            <div style="display: flex; gap: 12px; align-items: flex-start;">
-                <FluentPersona Status="PresenceStatus.Available" ImageSize="36px" Initials="JD" />
-                <div style="display: flex; flex-direction: column; gap: 4px;">
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <span style="font-weight: bold; cursor: pointer;">John Doe</span>
-                        <span style="color: gray; font-size: 0.8rem;">10:45 AM</span>
-                    </div>
-                    <div>Welcome to the project! This is our first message in the Slack-like UI using Fluent UI Blazor. Workspace: @WorkspaceId</div>
+            @if (_messages == null)
+            {
+                <FluentProgressRing Style="margin: 20px auto;"></FluentProgressRing>
+            }
+            else if (!_messages.Any())
+            {
+                <div style="text-align: center; color: gray; margin-top: 40px;">
+                    <FluentIcon Value="@(new Icons.Regular.Size32.Chat())" Style="opacity: 0.3;" />
+                    <p>No messages yet. Start the conversation!</p>
                 </div>
-            </div>
-
-            <!-- Example Message 2 -->
-            <div style="display: flex; gap: 12px; align-items: flex-start;">
-                <FluentPersona Status="PresenceStatus.Busy" ImageSize="36px" Initials="JS" />
-                <div style="display: flex; flex-direction: column; gap: 4px;">
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <span style="font-weight: bold; cursor: pointer;">Jane Smith</span>
-                        <span style="color: gray; font-size: 0.8rem;">10:46 AM</span>
+            }
+            else
+            {
+                @foreach (var msg in _messages)
+                {
+                    <div style="display: flex; gap: 12px; align-items: flex-start;">
+                        <FluentPersona Status="PresenceStatus.Available" ImageSize="36px" Initials="@msg.Username.Substring(0,1).ToUpper()" />
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <span style="font-weight: bold; cursor: pointer;">@msg.Username</span>
+                                <span style="color: gray; font-size: 0.8rem;">@msg.CreatedAt.ToString("t")</span>
+                            </div>
+                            <div>@msg.Content</div>
+                        </div>
                     </div>
-                    <div>Looks great! The Vertical Slice architecture and Fluent UI combination is very powerful. Channel: @ChannelId</div>
-                </div>
-            </div>
+                }
+            }
         </FluentStack>
     </div>
 
     <!-- Message Input -->
     <div class="message-input-area" style="padding-bottom: 24px;">
         <FluentCard Style="padding: 0; border-radius: 8px; border: 1px solid #ddd; box-shadow: none;">
+            @{
+                var placeholderName = WorkspaceState.Channels.FirstOrDefault(c => c.Id == ChannelId)?.Name ?? "channel";
+            }
             <div style="padding: 8px;">
-                <FluentTextField Placeholder="Message #general" Style="width: 100%; border: none; box-shadow: none;" Appearance="FluentInputAppearance.Filled" />
+                <FluentTextField Placeholder="@($"Message #{placeholderName}")" 
+                                 Style="width: 100%; border: none; box-shadow: none;" 
+                                 Appearance="FluentInputAppearance.Filled"
+                                 @bind-Value="_newMessageContent"
+                                 @onkeyup="HandleKeyUp" />
             </div>
             <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="5" Style="padding: 8px; border-top: 1px solid #eee;">
                 <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Emoji())" />
                 <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Attach())" />
                 <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Mention())" />
                 <FluentSpacer />
-                <FluentButton Appearance="Appearance.Accent" IconEnd="@(new Icons.Regular.Size20.Send())" />
+                <FluentButton Appearance="Appearance.Accent" 
+                              IconEnd="@(new Icons.Regular.Size20.Send())" 
+                              OnClick="SendMessage"
+                              Disabled="@(string.IsNullOrWhiteSpace(_newMessageContent))" />
             </FluentStack>
         </FluentCard>
     </div>
@@ -67,4 +93,76 @@
 
     [Parameter]
     public Guid ChannelId { get; set; }
+
+    private List<MessageSummary>? _messages;
+    private string _newMessageContent = "";
+    private HubConnection? _hubConnection;
+    private static readonly Guid CurrentUserId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _messages = null;
+        await LoadMessages();
+        await SetupSignalR();
+    }
+
+    private async Task LoadMessages()
+    {
+        _messages = await FluxService.GetMessagesAsync(ChannelId);
+    }
+
+    private async Task SetupSignalR()
+    {
+        if (_hubConnection is not null)
+        {
+            await _hubConnection.DisposeAsync();
+        }
+
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/chatHub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hubConnection.On<MessageSummary>("ReceiveMessage", (msg) =>
+        {
+            InvokeAsync(() => 
+            {
+                if (_messages != null && !(_messages.Any(m => m.Id == msg.Id)))
+                {
+                    _messages.Add(msg);
+                    StateHasChanged();
+                }
+            });
+        });
+
+        await _hubConnection.StartAsync();
+        await _hubConnection.SendAsync("JoinChannel", ChannelId.ToString());
+    }
+
+    private async Task HandleKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SendMessage();
+        }
+    }
+
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(_newMessageContent)) return;
+
+        var contentToSend = _newMessageContent;
+        _newMessageContent = ""; // Clear input immediately
+        
+        var request = new SendMessageRequest(contentToSend, ChannelId, CurrentUserId);
+        await FluxService.SendMessageAsync(request);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection is not null)
+        {
+            await _hubConnection.DisposeAsync();
+        }
+    }
 }

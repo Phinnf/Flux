@@ -1,7 +1,9 @@
 @page "/"
 @using Microsoft.FluentUI.AspNetCore.Components
 @using Flux.Domain.Entities
+@using Flux.Infrastructure.Client
 @inject NavigationManager Navigation
+@inject FluxClientService FluxService
 
 <div style="padding: 40px; max-width: 1200px; margin: 0 auto;">
     
@@ -32,29 +34,40 @@
             <FluentDivider Style="width: 100%; margin: 20px 0;" />
 
             <FluentGrid Spacing="3" AdaptiveRendering="true">
-                @* List of Workspaces *@
-                @foreach (var workspace in _workspaces)
+                @if (_workspaces == null)
                 {
-                    <FluentGridItem xs="12" sm="6" md="4" lg="3">
-                        <FluentCard class="workspace-card" @onclick="@(() => SelectWorkspace(workspace))" Style="cursor: pointer;">
-                            
-                            @* Delete Button *@
-                            <div class="workspace-delete-btn" @onclick:stopPropagation="true">
-                                <FluentButton Appearance="Appearance.Stealth" 
-                                              IconEnd="@(new Icons.Regular.Size20.Delete())" 
-                                              OnClick="@(() => DeleteWorkspace(workspace))"
-                                              Title="Delete Workspace" />
-                            </div>
-
-                            <FluentStack Orientation="Orientation.Vertical" HorizontalAlignment="HorizontalAlignment.Center" VerticalAlignment="VerticalAlignment.Center" Style="height: 100%; text-align: center; padding: 20px;">
-                                <div class="workspace-icon" style="width: 60px; height: 60px; background-color: var(--accent-fill-rest); color: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; margin-bottom: 15px;">
-                                    @workspace.Name.Substring(0, 1).ToUpper()
-                                </div>
-                                <FluentLabel Typo="Typography.H3">@workspace.Name</FluentLabel>
-                                <FluentLabel Typo="Typography.Body" Style="color: var(--neutral-foreground-hint);">@workspace.Description</FluentLabel>
-                            </FluentStack>
-                        </FluentCard>
+                    <FluentGridItem xs="12">
+                        <FluentStack HorizontalAlignment="HorizontalAlignment.Center" Style="margin: 40px 0;">
+                            <FluentProgressRing></FluentProgressRing>
+                        </FluentStack>
                     </FluentGridItem>
+                }
+                else
+                {
+                    @* List of Workspaces *@
+                    @foreach (var workspace in _workspaces)
+                    {
+                        <FluentGridItem xs="12" sm="6" md="4" lg="3">
+                            <FluentCard class="workspace-card" @onclick="@(() => SelectWorkspace(workspace))" Style="cursor: pointer; position: relative;">
+                                
+                                @* Delete Button *@
+                                <div style="position: absolute; top: 10px; right: 10px; z-index: 10;" @onclick:stopPropagation="true">
+                                    <FluentButton Appearance="Appearance.Stealth" 
+                                                  IconEnd="@(new Icons.Regular.Size20.Delete())" 
+                                                  OnClick="@(() => DeleteWorkspace(workspace))"
+                                                  Title="Delete Workspace" />
+                                </div>
+
+                                <FluentStack Orientation="Orientation.Vertical" HorizontalAlignment="HorizontalAlignment.Center" VerticalAlignment="VerticalAlignment.Center" Style="height: 100%; text-align: center; padding: 20px;">
+                                    <div class="workspace-icon" style="width: 60px; height: 60px; background-color: var(--accent-fill-rest); color: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; margin-bottom: 15px;">
+                                        @(workspace.Name.Length > 0 ? workspace.Name.Substring(0, 1).ToUpper() : "?")
+                                    </div>
+                                    <FluentLabel Typo="Typography.H3">@workspace.Name</FluentLabel>
+                                    <FluentLabel Typo="Typography.Body" Style="color: var(--neutral-foreground-hint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;">@workspace.Description</FluentLabel>
+                                </FluentStack>
+                            </FluentCard>
+                        </FluentGridItem>
+                    }
                 }
 
                 @* Add New Workspace Card *@
@@ -92,18 +105,34 @@
 }
 
 @code {
-    private List<Workspace> _workspaces = new()
+    // Current user GUID (for simulation purposes before auth is implemented)
+    private static readonly Guid CurrentUserId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+    
+    private List<WorkspaceSummary>? _workspaces;
+
+    protected override async Task OnInitializedAsync()
     {
-        new Workspace { Id = Guid.Parse("00000000-0000-0000-0000-000000000001"), Name = "General", Description = "Default workspace for everyone" },
-        new Workspace { Id = Guid.Parse("00000000-0000-0000-0000-000000000002"), Name = "BTEC Project", Description = "Graduation Thesis Development" },
-        new Workspace { Id = Guid.Parse("00000000-0000-0000-0000-000000000003"), Name = "Design Team", Description = "UI/UX and Branding assets" }
-    };
+        await LoadWorkspaces();
+    }
+
+    private async Task LoadWorkspaces()
+    {
+        try 
+        {
+            _workspaces = await FluxService.GetWorkspacesAsync(CurrentUserId);
+        }
+        catch (Exception ex)
+        {
+            // Fallback for demo if API fails
+            _workspaces = new();
+        }
+    }
 
     private bool _showCreateDialog = false;
     private string _newWorkspaceName = "";
     private string _newWorkspaceDescription = "";
 
-    private void SelectWorkspace(Workspace workspace)
+    private void SelectWorkspace(WorkspaceSummary workspace)
     {
         Navigation.NavigateTo($"/workspace/{workspace.Id}");
     }
@@ -115,21 +144,18 @@
         _showCreateDialog = true;
     }
 
-    private void CreateWorkspace()
+    private async Task CreateWorkspace()
     {
+        // TODO: Call the real Create API here
         if (!string.IsNullOrWhiteSpace(_newWorkspaceName))
         {
-            _workspaces.Add(new Workspace 
-            { 
-                Name = _newWorkspaceName, 
-                Description = _newWorkspaceDescription 
-            });
             _showCreateDialog = false;
+            await LoadWorkspaces();
         }
     }
 
-    private void DeleteWorkspace(Workspace workspace)
+    private void DeleteWorkspace(WorkspaceSummary workspace)
     {
-        _workspaces.Remove(workspace);
+        _workspaces?.Remove(workspace);
     }
 }
