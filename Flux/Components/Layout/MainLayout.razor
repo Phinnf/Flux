@@ -2,13 +2,17 @@
 
 <FluentLayout>
     <FluentHeader>
-        Flux Fluent UI Test
+        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="10">
+            <div style="font-weight: bold; font-size: 1.2rem;">FLUX</div>
+            <FluentSpacer />
+            <FluentButton Appearance="Appearance.Stealth">Help</FluentButton>
+            <FluentButton Appearance="Appearance.Stealth">Profile</FluentButton>
+        </FluentStack>
     </FluentHeader>
-    <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Stretch" Style="height: calc(100vh - 40px);">
-        <FluentBodyContent Style="padding: 20px;">
-            @Body
-        </FluentBodyContent>
-    </FluentStack>
+    
+    <FluentBodyContent>
+        @Body
+    </FluentBodyContent>
 </FluentLayout>
 
 <FluentToastProvider />

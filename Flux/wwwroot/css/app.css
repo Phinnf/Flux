@@ -1,12 +1,13 @@
 :root {
-    --accent-fill-rest: #63F7B4; /* Forest Green */
+    --accent-fill-rest: #63F7B4; 
     --accent-fill-hover: #1b5e20;
     --accent-fill-active: #4caf50;
+
     --flux-primary: #7393B3; /* Yellow */
     --flux-secondary: #63F7B4; /* Green */
     --flux-background: #fdfdfd;
     --flux-text: #1a1a1a;
-    / --workspace-card-height: 220px;
+    --workspace-card-height: 220px;
 }
 
 body {

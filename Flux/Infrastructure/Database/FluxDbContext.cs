@@ -10,7 +10,7 @@ namespace Flux.Infrastructure.Database
         {
         }
 
-        // DbSets represent the tables in our database
+        // DbSets represent the tables in postgreSQL
         public DbSet<Workspace> Workspaces => Set<Workspace>();
         public DbSet<User> Users => Set<User>();
         public DbSet<Channel> Channels => Set<Channel>();
