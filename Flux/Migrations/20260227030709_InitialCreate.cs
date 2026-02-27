@@ -47,6 +47,7 @@ namespace Flux.Migrations
                     Name = table.Column<string>(type: "text", nullable: false),
                     Description = table.Column<string>(type: "text", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Type = table.Column<int>(type: "integer", nullable: false),
                     WorkspaceId = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
@@ -85,12 +86,37 @@ namespace Flux.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ChannelUser",
+                columns: table => new
+                {
+                    ChannelsId = table.Column<Guid>(type: "uuid", nullable: false),
+                    MembersId = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ChannelUser", x => new { x.ChannelsId, x.MembersId });
+                    table.ForeignKey(
+                        name: "FK_ChannelUser_Channels_ChannelsId",
+                        column: x => x.ChannelsId,
+                        principalTable: "Channels",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ChannelUser_Users_MembersId",
+                        column: x => x.MembersId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Messages",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     Content = table.Column<string>(type: "text", nullable: false),
-                    SentAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     UserId = table.Column<Guid>(type: "uuid", nullable: false),
                     ChannelId = table.Column<Guid>(type: "uuid", nullable: false)
                 },
@@ -118,6 +144,11 @@ namespace Flux.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_ChannelUser_MembersId",
+                table: "ChannelUser",
+                column: "MembersId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Messages_ChannelId",
                 table: "Messages",
                 column: "ChannelId");
@@ -136,6 +167,9 @@ namespace Flux.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "ChannelUser");
+
             migrationBuilder.DropTable(
                 name: "Messages");
 
