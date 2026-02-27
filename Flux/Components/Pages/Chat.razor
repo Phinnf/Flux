@@ -55,11 +55,10 @@
                 {
                     bool isSelf = msg.UserId == CurrentUserId;
                     <div class="message-group @(isSelf ? "self" : "")">
-                        <FluentPersona Name="@msg.Username" 
-                                       Status="PresenceStatus.Available" 
-                                       ImageSize="36px" 
-                                       Initials="@msg.Username.Substring(0, 1).ToUpper()"
-                                       Style="margin-top: 4px;" />
+                        <FluentAvatar Name="@msg.Username" 
+                                      Size="AvatarSize.Size36" 
+                                      Initials="@GetInitials(msg.Username)"
+                                      Style="margin-top: 4px;" />
                         
                         <div class="message-content">
                             <div class="message-meta">
@@ -87,7 +86,7 @@
     <div class="chat-input-container">
         <div class="chat-input-box">
             <FluentStack Orientation="Orientation.Vertical" VerticalGap="0">
-                <div class="input-toolbar">
+                <div class="input-toolbar" style="">
                     <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.TextBold())" />
                     <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.TextItalic())" />
                     <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.TextStrikethrough())" />
@@ -96,20 +95,29 @@
                     <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.List())" />
                 </div>
                 
-                <FluentTextField @bind-Value="_newMessageContent" 
-                                 Placeholder="@($"Message #{_currentChannelName}")"
-                                 Style="width: 100%; border: none;"
+                <FluentTextArea @bind-Value="_newMessageContent" 
+                                 Placeholder="@($"Message #{(_currentChannelName?.StartsWith("#") == true ? _currentChannelName.Substring(1) : _currentChannelName)}")"
+                                 Class="chat-textarea"
+                                 Rows="1"
                                  @onkeyup="HandleKeyUp" />
 
                 <div class="input-footer">
-                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Add())" />
-                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Emoji())" />
-                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Mention())" />
+                    <div class="footer-left">
+                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Add())" Style="min-width: 28px; height: 28px;" />
+                        <FluentDivider Orientation="Orientation.Vertical" Style="height: 16px; margin: 0 4px;" />
+                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Emoji())" Style="min-width: 28px; height: 28px;" />
+                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Mention())" Style="min-width: 28px; height: 28px;" />
+                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Video())" Style="min-width: 28px; height: 28px;" />
+                    </div>
                     <FluentSpacer />
-                    <FluentButton Appearance="Appearance.Accent" 
-                                  IconEnd="@(new Icons.Regular.Size16.Send())" 
-                                  OnClick="SendMessage"
-                                  Disabled="@(string.IsNullOrWhiteSpace(_newMessageContent))" />
+                    <div class="footer-right">
+                        <FluentButton Appearance="Appearance.Accent" 
+                                      IconEnd="@(new Icons.Regular.Size16.Send())" 
+                                      OnClick="SendMessage"
+                                      Disabled="@(string.IsNullOrWhiteSpace(_newMessageContent))" 
+                                      Title="Send message (Enter)"
+                                      Style="height: 28px;" />
+                    </div>
                 </div>
             </FluentStack>
         </div>
@@ -130,6 +138,14 @@
 
     // Hardcoded for now, will be replaced by Auth service later
     private Guid CurrentUserId = Guid.Parse("00000000-0000-0000-0000-000000000001"); 
+
+    private string GetInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1) return parts[0].Substring(0, Math.Min(2, parts[0].Length)).ToUpper();
+        return (parts[0][0].ToString() + parts[^1][0].ToString()).ToUpper();
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -343,31 +359,77 @@
 
     /* Input Styling */
     .chat-input-container {
-        padding: 0 20px 24px 20px;
+        padding: 0 20px 16px 20px;
+        background-color: var(--neutral-layer-1);
     }
 
     .chat-input-box {
         border: 1px solid var(--neutral-stroke-rest);
         border-radius: 8px;
         background-color: var(--neutral-layer-1);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        transition: border-color 0.2s, box-shadow 0.2s;
+        display: flex;
+        flex-direction: column;
     }
 
     .chat-input-box:focus-within {
-        border-color: var(--accent-fill-rest);
+        border-color: rgba(0, 0, 0, 0.3);
     }
 
     .input-toolbar {
         display: flex;
-        padding: 4px;
-        border-bottom: 1px solid var(--neutral-stroke-rest);
+        padding: 2px 8px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
         background-color: var(--neutral-layer-2);
         border-radius: 8px 8px 0 0;
+        gap: 2px;
+    }
+
+    .input-toolbar .fluent-button {
+        height: 28px;
+        min-width: 28px;
+    }
+
+    .chat-textarea {
+        width: 100%;
+        background: transparent;
+        border: none;
+    }
+
+    /* Target the internal textarea of the Fluent UI component */
+    .chat-textarea::part(control) {
+        border: none;
+        background: transparent;
+        padding: 6px 12px;
+        resize: none !important;
+        box-shadow: none;
+        font-size: 0.9rem;
+        line-height: 1.4;
+        min-height: 36px;
+    }
+
+    .chat-textarea::part(control):focus {
+        border: none;
+        outline: none;
+        box-shadow: none;
     }
 
     .input-footer {
         display: flex;
         align-items: center;
-        padding: 4px 8px;
+        padding: 2px 12px 6px 12px;
+    }
+
+    .footer-left {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .footer-right {
+        display: flex;
+        align-items: center;
     }
 
     .loading-container {
