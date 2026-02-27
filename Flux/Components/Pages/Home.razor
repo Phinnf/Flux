@@ -1,114 +1,101 @@
 @page "/"
-@using Microsoft.FluentUI.AspNetCore.Components
-@using Flux.Domain.Entities
-@using Flux.Infrastructure.Client
 @inject NavigationManager Navigation
 @inject FluxClientService FluxService
 
 <div style="padding: 40px; max-width: 1200px; margin: 0 auto;">
     
     @* Flux Introduction Section *@
-    <FluentStack Orientation="Orientation.Vertical" VerticalGap="20" HorizontalAlignment="HorizontalAlignment.Center" Style="text-align: center; margin-bottom: 60px;">
-        <div style="font-size: 48px; font-weight: 800; color: var(--accent-fill-rest);">FLUX</div>
-        <FluentLabel Typo="Typography.H1">Unified Communication + Task Management</FluentLabel>
-        <FluentLabel Typo="Typography.Body" Style="max-width: 800px; font-size: 1.2rem; color: var(--neutral-foreground-hint);">
-            Flux is a modern collaboration platform. 
-            Connect with your team, manage tasks, and organize your work seamlessly in one place.
-        </FluentLabel>
-        
-        <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.Center" VerticalGap="10">
-            <FluentButton Appearance="Appearance.Accent" OnClick="OpenCreateWorkspaceDialog">Start New Workspace</FluentButton>
-            <FluentButton Appearance="Appearance.Stealth" Href="https://github.com/flux-project" Target="_blank">Documentation</FluentButton>
-        </FluentStack>
-    </FluentStack>
-
-    @* Main Content Area - Workspace List *@
-    <div class="workspace-grid-container">
-        
-        <FluentStack Orientation="Orientation.Vertical" VerticalGap="20">
-            <div>
-                <FluentLabel Typo="Typography.H2">Your Workspaces</FluentLabel>
-                <FluentLabel Typo="Typography.Body">Select a workspace to start collaborating or create a new one.</FluentLabel>
+    <div style="text-align: center; margin-bottom: 60px;">
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.Center" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="15">
+            <div style="background-color: var(--accent-fill-rest); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                <FluentIcon Value="@(new Icons.Regular.Size32.Chat())" Color="Color.Fill" />
             </div>
-
-            <FluentDivider Style="width: 100%; margin: 20px 0;" />
-
-            <FluentGrid Spacing="3" AdaptiveRendering="true">
-                @if (_workspaces == null)
-                {
-                    <FluentGridItem xs="12">
-                        <FluentStack HorizontalAlignment="HorizontalAlignment.Center" Style="margin: 40px 0;">
-                            <FluentProgressRing></FluentProgressRing>
-                        </FluentStack>
-                    </FluentGridItem>
-                }
-                else
-                {
-                    @* List of Workspaces *@
-                    @foreach (var workspace in _workspaces)
-                    {
-                        <FluentGridItem xs="12" sm="6" md="4" lg="3">
-                            <FluentCard class="workspace-card" @onclick="@(() => SelectWorkspace(workspace))" Style="cursor: pointer; position: relative;">
-                                
-                                @* Delete Button *@
-                                <div style="position: absolute; top: 10px; right: 10px; z-index: 10;" @onclick:stopPropagation="true">
-                                    <FluentButton Appearance="Appearance.Stealth" 
-                                                  IconEnd="@(new Icons.Regular.Size20.Delete())" 
-                                                  OnClick="@(() => DeleteWorkspace(workspace))"
-                                                  Title="Delete Workspace" />
-                                </div>
-
-                                <FluentStack Orientation="Orientation.Vertical" HorizontalAlignment="HorizontalAlignment.Center" VerticalAlignment="VerticalAlignment.Center" Style="height: 100%; text-align: center; padding: 20px;">
-                                    <div class="workspace-icon" style="width: 60px; height: 60px; background-color: var(--accent-fill-rest); color: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; margin-bottom: 15px;">
-                                        @(workspace.Name.Length > 0 ? workspace.Name.Substring(0, 1).ToUpper() : "?")
-                                    </div>
-                                    <FluentLabel Typo="Typography.H3">@workspace.Name</FluentLabel>
-                                    <FluentLabel Typo="Typography.Body" Style="color: var(--neutral-foreground-hint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;">@workspace.Description</FluentLabel>
-                                </FluentStack>
-                            </FluentCard>
-                        </FluentGridItem>
-                    }
-                }
-
-                @* Add New Workspace Card *@
-                <FluentGridItem xs="12" sm="6" md="4" lg="3">
-                    <FluentCard class="workspace-card create-workspace-card" @onclick="OpenCreateWorkspaceDialog" Style="cursor: pointer;">
-                        <FluentStack Orientation="Orientation.Vertical" HorizontalAlignment="HorizontalAlignment.Center" VerticalAlignment="VerticalAlignment.Center" Style="height: 100%; color: var(--neutral-foreground-hint); padding: 20px;">
-                            <FluentIcon Value="@(new Icons.Regular.Size32.Add())" Color="Color.Accent" />
-                            <FluentLabel Style="margin-top: 10px;">Create Workspace</FluentLabel>
-                        </FluentStack>
-                    </FluentCard>
-                </FluentGridItem>
-            </FluentGrid>
+            <FluentLabel Typo="Typography.H1" Style="margin: 0;">Flux</FluentLabel>
         </FluentStack>
+        
+        <FluentLabel Typo="Typography.H3" Style="margin-top: 15px; opacity: 0.8;">Unified Communication & Task Management</FluentLabel>
+        <FluentLabel Typo="Typography.Body" Style="margin-top: 10px; max-width: 600px; margin-left: auto; margin-right: auto;">
+            Experience a new way of collaborating. Connect with your team, manage channels, and transform messages into actionable tasks seamlessly.
+        </FluentLabel>
     </div>
+
+    <FluentDivider Style="margin-bottom: 50px;" />
+
+    @* Create WorkSpace *@
+    @if (_workspaces == null)
+    {
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px;">
+            <FluentProgressRing />
+            <FluentLabel Style="margin-top: 15px;">Finding your workspaces...</FluentLabel>
+        </div>
+    }
+    else
+    {
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">
+            @foreach (var workspace in _workspaces)
+            {
+                <FluentCard Style="padding: 20px; cursor: pointer; transition: transform 0.2s;" @onclick="() => SelectWorkspace(workspace)">
+                    <FluentStack Orientation="Orientation.Vertical" VerticalGap="15">
+                        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="10">
+                            <div style="background-color: var(--neutral-layer-2); width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold;">
+                                @(workspace.Name?.Length > 0 ? workspace.Name[0].ToString().ToUpper() : "?")
+                            </div>
+                            <FluentLabel Typo="Typography.H4" Style="margin: 0;">@workspace.Name</FluentLabel>
+                        </FluentStack>
+                        
+                        <FluentLabel Typo="Typography.Body" Style="height: 40px; overflow: hidden; text-overflow: ellipsis;">
+                            @workspace.Description
+                        </FluentLabel>
+
+                        <FluentDivider />
+
+                        <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween">
+                            <div @onclick:stopPropagation="true">
+                                <FluentButton Appearance="Appearance.Stealth" 
+                                              IconStart="@(new Icons.Regular.Size16.Delete())" 
+                                              Color="Color.Error" 
+                                              OnClick="() => DeleteWorkspace(workspace)">
+                                </FluentButton>
+                            </div>
+                            <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.ArrowRight())">Enter Workspace</FluentButton>
+                        </FluentStack>
+                    </FluentStack>
+                </FluentCard>
+            }
+
+            <FluentCard Style="padding: 20px; border: 2px dashed var(--neutral-stroke-rest); background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer;" 
+                        @onclick="() => _showCreateDialog = true">
+                <FluentStack Orientation="Orientation.Vertical" VerticalAlignment="VerticalAlignment.Center" HorizontalAlignment="HorizontalAlignment.Center" VerticalGap="10">
+                    <FluentIcon Value="@(new Icons.Regular.Size32.Add())" Color="Color.Neutral" />
+                    <FluentLabel Typo="Typography.Body">Create Workspace</FluentLabel>
+                </FluentStack>
+            </FluentCard>
+        </div>
+    }
 </div>
 
-@* Simple Create Workspace Dialog Overlay *@
-@if (_showCreateDialog)
-{
-    <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
-        <FluentCard Style="width: 400px; padding: 25px; margin: 25px">
-            <FluentStack Orientation="Orientation.Vertical" VerticalGap="15">
-                <FluentLabel Typo="Typography.H2">New Workspace</FluentLabel>
-                
-                <FluentTextField @bind-Value="_newWorkspaceName" Label="Workspace Name" Placeholder="e.g. Engineering Team" Style="width: 100%;" />
-                <FluentTextArea @bind-Value="_newWorkspaceDescription" Label="Description" Placeholder="What is this workspace for?" Style="width: 100%;" />
-
-                <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.Right" Style="margin-top: 10px;">
-                    <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => _showCreateDialog = false)">Cancel</FluentButton>
-                    <FluentButton Appearance="Appearance.Accent" OnClick="CreateWorkspace">Create Workspace</FluentButton>
-                </FluentStack>
-            </FluentStack>
-        </FluentCard>
+@* Create Workspace Dialog Placeholder *@
+<FluentDialog Hidden="!_showCreateDialog" Modal="true" TrapFocus="true" @onclick:stopPropagation>
+    <div style="padding: 20px; width: 400px;">
+        <FluentLabel Typo="Typography.H3">New Workspace</FluentLabel>
+        <div style="margin-top: 20px;">
+            <FluentTextField Label="Workspace Name" @bind-Value="_newWorkspaceName" Style="width: 100%;" />
+        </div>
+        <div style="margin-top: 15px;">
+            <FluentTextArea Label="Description" @bind-Value="_newWorkspaceDescription" Style="width: 100%;" />
+        </div>
+        <div style="margin-top: 25px; display: flex; justify-content: flex-end; gap: 10px;">
+            <FluentButton Appearance="Appearance.Neutral" OnClick="() => _showCreateDialog = false">Cancel</FluentButton>
+            <FluentButton Appearance="Appearance.Accent" OnClick="CreateWorkspace">Create</FluentButton>
+        </div>
     </div>
-}
+</FluentDialog>
 
 @code {
-    // Current user GUID (for simulation purposes before auth is implemented)
-    private static readonly Guid CurrentUserId = Guid.Parse("00000000-0000-0000-0000-000000000001");
-    
     private List<WorkspaceSummary>? _workspaces;
+    
+    // Hardcoded for now
+    private static readonly Guid CurrentUserId = Guid.Parse("00000000-0000-0000-0000-000000000001");
 
     protected override async Task OnInitializedAsync()
     {
@@ -119,11 +106,21 @@
     {
         try 
         {
-            _workspaces = await FluxService.GetWorkspacesAsync(CurrentUserId);
+            var result = await FluxService.GetWorkspacesAsync(CurrentUserId);
+            if (result.IsSuccess)
+            {
+                _workspaces = result.Value ?? new();
+                Console.WriteLine($"Successfully loaded {_workspaces.Count} workspaces.");
+            }
+            else
+            {
+                Console.WriteLine($"Error loading workspaces: {result.Error}");
+                _workspaces = new();
+            }
         }
         catch (Exception ex)
         {
-            // Fallback for demo if API fails
+            Console.WriteLine($"Exception loading workspaces: {ex.Message}");
             _workspaces = new();
         }
     }
@@ -134,28 +131,30 @@
 
     private void SelectWorkspace(WorkspaceSummary workspace)
     {
-        Navigation.NavigateTo($"/workspace/{workspace.Id}");
+        Navigation.NavigateTo($"/workspace/{workspace.Id}/dashboard");
     }
 
-    private void OpenCreateWorkspaceDialog()
+    private async Task DeleteWorkspace(WorkspaceSummary workspace)
     {
-        _newWorkspaceName = "";
-        _newWorkspaceDescription = "";
-        _showCreateDialog = true;
-    }
-
-    private async Task CreateWorkspace()
-    {
-        // TODO: Call the real Create API here
-        if (!string.IsNullOrWhiteSpace(_newWorkspaceName))
+        var result = await FluxService.DeleteWorkspaceAsync(workspace.Id, CurrentUserId);
+        if (result.IsSuccess)
         {
-            _showCreateDialog = false;
             await LoadWorkspaces();
         }
     }
 
-    private void DeleteWorkspace(WorkspaceSummary workspace)
+    private async Task CreateWorkspace()
     {
-        _workspaces?.Remove(workspace);
+        if (string.IsNullOrWhiteSpace(_newWorkspaceName)) return;
+        
+        var result = await FluxService.CreateWorkspaceAsync(CurrentUserId, _newWorkspaceName, _newWorkspaceDescription);
+        
+        if (result.IsSuccess)
+        {
+            _newWorkspaceName = "";
+            _newWorkspaceDescription = "";
+            _showCreateDialog = false;
+            await LoadWorkspaces();
+        }
     }
 }

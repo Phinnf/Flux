@@ -1,6 +1,7 @@
 using Flux.Infrastructure.Database;
 using Flux.Domain.Entities;
 using Flux.Infrastructure.SignalR;
+using Flux.Domain.Common;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -9,31 +10,25 @@ namespace Flux.Features.Messages.SendMessage;
 
 [ApiController]
 [Route("api/messages")]
-public class SendMessageController : ControllerBase
+public class SendMessageController(FluxDbContext context, IHubContext<ChatHub> hubContext) : ControllerBase
 {
-    private readonly FluxDbContext _context;
-    private readonly IHubContext<ChatHub> _hubContext;
-
-    public SendMessageController(FluxDbContext context, IHubContext<ChatHub> hubContext)
-    {
-        _context = context;
-        _hubContext = hubContext;
-    }
-
     [HttpPost]
-    public async Task<IActionResult> SendMessage([FromBody] SendMessageRequest request)
+    public async Task<ActionResult<Result<SendMessageResponse>>> SendMessage([FromBody] SendMessageRequest request)
     {
-        var channel = await _context.Channels
+        // 1. Basic validation is handled by FluentValidation (Middleware/Filter automatically)
+
+        // 2. Business logic & domain validation
+        var channel = await context.Channels
             .Include(c => c.Members)
             .FirstOrDefaultAsync(c => c.Id == request.ChannelId);
 
-        if (channel == null) return NotFound("Channel not found");
+        if (channel == null) return BadRequest(Result<SendMessageResponse>.Failure("Channel not found."));
 
-        var user = await _context.Users
+        var user = await context.Users
             .Include(u => u.Workspaces)
             .FirstOrDefaultAsync(u => u.Id == request.UserId);
 
-        if (user == null) return NotFound("User not found");
+        if (user == null) return BadRequest(Result<SendMessageResponse>.Failure("User not found."));
 
         // Permission Check:
         // 1. If Private: User must be in channel.Members
@@ -50,9 +45,10 @@ public class SendMessageController : ControllerBase
 
         if (!hasPermission)
         {
-            return Forbid("You do not have permission to send messages to this channel.");
+            return Forbid();
         }
 
+        // 3. Persist message
         var message = new Message
         {
             Content = request.Content,
@@ -61,24 +57,31 @@ public class SendMessageController : ControllerBase
             CreatedAt = DateTime.UtcNow
         };
 
-        _context.Messages.Add(message);
-        await _context.SaveChangesAsync();
+        context.Messages.Add(message);
+        await context.SaveChangesAsync();
 
-        // Broadcast to SignalR group (ChannelId)
-        // Including Username for the UI
-        await _hubContext.Clients.Group(request.ChannelId.ToString())
-            .SendAsync("ReceiveMessage", new 
-            {
-                Id = message.Id,
-                Content = message.Content,
-                UserId = message.UserId,
-                Username = user.Username,
-                ChannelId = message.ChannelId,
-                CreatedAt = message.CreatedAt
-            });
+        var response = new SendMessageResponse(
+            message.Id,
+            message.Content,
+            message.UserId,
+            user.Username,
+            message.ChannelId,
+            message.CreatedAt);
 
-        return Ok(message);
+        // 4. Notify clients via SignalR (Real-time update)
+        await hubContext.Clients.Group(request.ChannelId.ToString())
+            .SendAsync("ReceiveMessage", response);
+
+        return Ok(Result<SendMessageResponse>.Success(response));
     }
 }
 
 public record SendMessageRequest(string Content, Guid ChannelId, Guid UserId);
+
+public record SendMessageResponse(
+    Guid Id, 
+    string Content, 
+    Guid UserId, 
+    string Username, 
+    Guid ChannelId, 
+    DateTime CreatedAt);

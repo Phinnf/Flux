@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Flux.Migrations
 {
     [DbContext(typeof(FluxDbContext))]
-    [Migration("20260227030709_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260227040116_InitialMigration")]
+    partial class InitialMigration
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

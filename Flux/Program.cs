@@ -1,14 +1,19 @@
+using FluentValidation;
+using FluentValidation.AspNetCore;
+using Flux.Components;
 using Flux.Infrastructure.Database;
 using Flux.Infrastructure.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.FluentUI.AspNetCore.Components;
-using Flux.Components;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
+builder.Services.AddFluentValidationAutoValidation()
+    .AddFluentValidationClientsideAdapters()
+    .AddValidatorsFromAssemblyContaining<Program>();
 
 // Add Blazor and Fluent UI
 builder.Services.AddRazorComponents()
@@ -19,11 +24,21 @@ builder.Services.AddFluentUIComponents();
 builder.Services.AddHttpClient<Flux.Infrastructure.Client.FluxClientService>((sp, client) =>
 {
     // Point to the local server address
-    var httpContext = sp.GetRequiredService<IHttpContextAccessor>().HttpContext;
+    var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
+    var httpContext = httpContextAccessor.HttpContext;
+    
     if (httpContext != null)
     {
         var request = httpContext.Request;
         client.BaseAddress = new Uri($"{request.Scheme}://{request.Host}");
+    }
+    else
+    {
+        // Fallback for cases where HttpContext is not available (common in Blazor Server interactive mode)
+        // You can also get this from appsettings.json
+        var config = sp.GetRequiredService<IConfiguration>();
+        var baseUrl = config["ApiSettings:BaseUrl"] ?? "https://localhost:7274"; 
+        client.BaseAddress = new Uri(baseUrl);
     }
 });
 

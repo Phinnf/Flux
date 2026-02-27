@@ -1,43 +1,41 @@
 using Flux.Infrastructure.Database;
+using Flux.Domain.Common;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace Flux.Features.Messages.GetMessages;
 
-/// <summary>
-/// Data transfer object for a message.
-/// </summary>
-public record MessageDto(Guid Id, string Content, Guid UserId, string Username, DateTime CreatedAt);
+public record MessageDto(
+    Guid Id, 
+    string Content, 
+    Guid UserId, 
+    string Username, 
+    DateTime CreatedAt, 
+    DateTime? UpdatedAt);
 
 [ApiController]
 [Route("api/channels/{channelId:guid}/messages")]
-public class GetMessagesController : ControllerBase
+public class GetMessagesController(FluxDbContext dbContext) : ControllerBase
 {
-    private readonly FluxDbContext _dbContext;
-
-    public GetMessagesController(FluxDbContext dbContext)
-    {
-        _dbContext = dbContext;
-    }
-
-    /// <summary>
-    /// Gets a list of messages for a specific channel.
-    /// </summary>
     [HttpGet]
-    public async Task<IActionResult> HandleAsync([FromRoute] Guid channelId, [FromQuery] int limit = 50, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<Result<List<MessageDto>>>> GetMessages(
+        [FromRoute] Guid channelId, 
+        [FromQuery] int limit = 50, 
+        CancellationToken cancellationToken = default)
     {
-        var messages = await _dbContext.Messages
+        var messages = await dbContext.Messages
             .Where(m => m.ChannelId == channelId)
-            .OrderBy(m => m.CreatedAt) // Oldest first for chat flow
+            .OrderBy(m => m.CreatedAt)
             .Take(limit)
             .Select(m => new MessageDto(
                 m.Id, 
                 m.Content, 
                 m.UserId, 
-                m.User != null ? m.User.Username : "Unknown", 
-                m.CreatedAt))
+                m.User != null ? m.User.Username : "Unknown User", 
+                m.CreatedAt,
+                m.UpdatedAt))
             .ToListAsync(cancellationToken);
 
-        return Ok(messages);
+        return Ok(Result<List<MessageDto>>.Success(messages));
     }
 }

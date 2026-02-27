@@ -1,168 +1,391 @@
-@page "/workspace/{WorkspaceId:guid}/channel/{ChannelId:guid}"
-@using Microsoft.FluentUI.AspNetCore.Components
-@using Flux.Infrastructure.Client
-@using Flux.Domain.Entities
-@using Microsoft.AspNetCore.SignalR.Client
+@page "/workspace/{WorkspaceId:guid}/chat/{ChannelId:guid}"
 @layout Flux.Components.Layout.WorkspaceLayout
-@inject WorkspaceStateService WorkspaceState
+@using Microsoft.AspNetCore.SignalR.Client
 @inject FluxClientService FluxService
+@inject WorkspaceStateService StateService
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 @implements IAsyncDisposable
 
-<div class="main-content" style="height: 100%; display: flex; flex-direction: column;">
+<PageTitle>Chat - @(_currentChannelName ?? "Loading...")</PageTitle>
+
+<div class="chat-container">
     <!-- Chat Header -->
     <div class="chat-header">
-        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="10" Style="width: 100%;">
-            @{
-                var channel = WorkspaceState.Channels.FirstOrDefault(c => c.Id == ChannelId);
-                var currentChannelName = channel?.Name ?? "Loading...";
-                var isPrivate = channel?.Type == ChannelType.Private;
-            }
-            <FluentIcon Value="@(isPrivate ? (Icon)new Icons.Regular.Size20.LockClosed() : (Icon)new Icons.Regular.Size20.Tag())" />
-            <span style="font-weight: bold; font-size: 1.1rem; letter-spacing: -0.5px;">@currentChannelName</span>
-            <FluentIcon Value="@(new Icons.Regular.Size16.ChevronDown())" />
+        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center">
+            <div class="channel-info">
+                <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="4">
+                    <FluentIcon Value="@(new Icons.Regular.Size20.Tag())" />
+                    <FluentLabel Typo="Typography.H6" Style="font-weight: 700;">@(_currentChannelName ?? "channel-name")</FluentLabel>
+                    <FluentIcon Value="@(new Icons.Regular.Size12.ChevronDown())" Style="margin-left: 4px; opacity: 0.6;" />
+                </FluentStack>
+            </div>
             <FluentSpacer />
-            <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.People())">34</FluentButton>
-            <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Info())" />
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8">
+                <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Call())" />
+                <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Video())" />
+                <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Info())" />
+            </FluentStack>
         </FluentStack>
     </div>
 
-    <!-- Messages List -->
-    <div class="messages-list" id="scroll-target">
-        <FluentStack Orientation="Orientation.Vertical" VerticalGap="20">
-            @if (_messages == null)
-            {
-                <FluentProgressRing Style="margin: 20px auto;"></FluentProgressRing>
-            }
-            else if (!_messages.Any())
-            {
-                <div style="text-align: center; color: gray; margin-top: 40px;">
-                    <FluentIcon Value="@(new Icons.Regular.Size32.Chat())" Style="opacity: 0.3;" />
-                    <p>No messages yet. Start the conversation!</p>
+    <!-- Messages Viewport -->
+    <div class="messages-viewport" @ref="_messagesViewport">
+        @if (_isLoading)
+        {
+            <div class="loading-container">
+                <FluentProgressRing />
+                <FluentLabel>Loading messages...</FluentLabel>
+            </div>
+        }
+        else if (!_messages.Any())
+        {
+            <div class="empty-chat">
+                <div class="empty-chat-hero">
+                    <FluentIcon Value="@(new Icons.Regular.Size48.Chat())" Color="Color.Accent" />
+                    <FluentLabel Typo="Typography.H5">This is the start of the #@_currentChannelName channel</FluentLabel>
+                    <FluentLabel Typo="Typography.Body" Style="opacity: 0.7;">Be the first to send a message!</FluentLabel>
                 </div>
-            }
-            else
-            {
+            </div>
+        }
+        else
+        {
+            <div class="message-list">
                 @foreach (var msg in _messages)
                 {
-                    <div style="display: flex; gap: 12px; align-items: flex-start;">
-                        <FluentPersona Status="PresenceStatus.Available" ImageSize="36px" Initials="@msg.Username.Substring(0,1).ToUpper()" />
-                        <div style="display: flex; flex-direction: column; gap: 4px;">
-                            <div style="display: flex; gap: 8px; align-items: center;">
-                                <span style="font-weight: bold; cursor: pointer;">@msg.Username</span>
-                                <span style="color: gray; font-size: 0.8rem;">@msg.CreatedAt.ToString("t")</span>
+                    bool isSelf = msg.UserId == CurrentUserId;
+                    <div class="message-group @(isSelf ? "self" : "")">
+                        <FluentPersona Name="@msg.Username" 
+                                       Status="PresenceStatus.Available" 
+                                       ImageSize="36px" 
+                                       Initials="@msg.Username.Substring(0, 1).ToUpper()"
+                                       Style="margin-top: 4px;" />
+                        
+                        <div class="message-content">
+                            <div class="message-meta">
+                                <span class="username">@msg.Username</span>
+                                <span class="timestamp">@msg.CreatedAt.ToString("h:mm tt")</span>
                             </div>
-                            <div>@msg.Content</div>
+                            <div class="message-bubble-wrapper">
+                                <div class="message-bubble">
+                                    @msg.Content
+                                </div>
+                                <div class="message-actions">
+                                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.EmojiAdd())" />
+                                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.ArrowReply())" />
+                                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.MoreHorizontal())" />
+                                </div>
+                            </div>
                         </div>
                     </div>
                 }
-            }
-        </FluentStack>
+            </div>
+        }
     </div>
 
-    <!-- Message Input -->
-    <div class="message-input-area" style="padding-bottom: 24px;">
-        <FluentCard Style="padding: 0; border-radius: 8px; border: 1px solid #ddd; box-shadow: none;">
-            @{
-                var placeholderName = WorkspaceState.Channels.FirstOrDefault(c => c.Id == ChannelId)?.Name ?? "channel";
-            }
-            <div style="padding: 8px;">
-                <FluentTextField Placeholder="@($"Message #{placeholderName}")" 
-                                 Style="width: 100%; border: none; box-shadow: none;" 
-                                 Appearance="FluentInputAppearance.Filled"
-                                 @bind-Value="_newMessageContent"
+    <!-- Chat Input -->
+    <div class="chat-input-container">
+        <div class="chat-input-box">
+            <FluentStack Orientation="Orientation.Vertical" VerticalGap="0">
+                <div class="input-toolbar">
+                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.TextBold())" />
+                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.TextItalic())" />
+                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.TextStrikethrough())" />
+                    <FluentDivider Orientation="Orientation.Vertical" Style="height: 20px; margin: 0 4px;" />
+                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.Link())" />
+                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.List())" />
+                </div>
+                
+                <FluentTextField @bind-Value="_newMessageContent" 
+                                 Placeholder="@($"Message #{_currentChannelName}")"
+                                 Style="width: 100%; border: none;"
                                  @onkeyup="HandleKeyUp" />
-            </div>
-            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="5" Style="padding: 8px; border-top: 1px solid #eee;">
-                <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Emoji())" />
-                <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Attach())" />
-                <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Mention())" />
-                <FluentSpacer />
-                <FluentButton Appearance="Appearance.Accent" 
-                              IconEnd="@(new Icons.Regular.Size20.Send())" 
-                              OnClick="SendMessage"
-                              Disabled="@(string.IsNullOrWhiteSpace(_newMessageContent))" />
+
+                <div class="input-footer">
+                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Add())" />
+                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Emoji())" />
+                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Mention())" />
+                    <FluentSpacer />
+                    <FluentButton Appearance="Appearance.Accent" 
+                                  IconEnd="@(new Icons.Regular.Size16.Send())" 
+                                  OnClick="SendMessage"
+                                  Disabled="@(string.IsNullOrWhiteSpace(_newMessageContent))" />
+                </div>
             </FluentStack>
-        </FluentCard>
+        </div>
     </div>
 </div>
 
 @code {
-    [Parameter]
-    public Guid WorkspaceId { get; set; }
+    [Parameter] public Guid WorkspaceId { get; set; }
+    [Parameter] public Guid ChannelId { get; set; }
 
-    [Parameter]
-    public Guid ChannelId { get; set; }
-
-    private List<MessageSummary>? _messages;
+    private List<MessageDto> _messages = new();
     private string _newMessageContent = "";
+    private string? _currentChannelName;
+    private bool _isLoading = true;
+    private ElementReference _messagesViewport;
+    private bool _shouldScrollToBottom = false;
     private HubConnection? _hubConnection;
-    private static readonly Guid CurrentUserId = Guid.Parse("00000000-0000-0000-0000-000000000001");
 
-    protected override async Task OnParametersSetAsync()
+    // Hardcoded for now, will be replaced by Auth service later
+    private Guid CurrentUserId = Guid.Parse("00000000-0000-0000-0000-000000000001"); 
+
+    protected override async Task OnInitializedAsync()
     {
-        _messages = null;
-        await LoadMessages();
-        await SetupSignalR();
-    }
-
-    private async Task LoadMessages()
-    {
-        _messages = await FluxService.GetMessagesAsync(ChannelId);
-    }
-
-    private async Task SetupSignalR()
-    {
-        if (_hubConnection is not null)
-        {
-            await _hubConnection.DisposeAsync();
-        }
-
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(Navigation.ToAbsoluteUri("/chatHub"))
             .WithAutomaticReconnect()
             .Build();
 
-        _hubConnection.On<MessageSummary>("ReceiveMessage", (msg) =>
+        _hubConnection.On<SendMessageResponse>("ReceiveMessage", async (response) =>
         {
-            InvokeAsync(() => 
+            if (response.ChannelId == ChannelId)
             {
-                if (_messages != null && !(_messages.Any(m => m.Id == msg.Id)))
+                if (!_messages.Any(m => m.Id == response.Id))
                 {
-                    _messages.Add(msg);
-                    StateHasChanged();
+                    _messages.Add(new MessageDto(
+                        response.Id, 
+                        response.Content, 
+                        response.UserId, 
+                        response.Username, 
+                        response.CreatedAt, 
+                        null));
+                    
+                    _shouldScrollToBottom = true;
+                    await InvokeAsync(StateHasChanged);
                 }
-            });
+            }
         });
 
         await _hubConnection.StartAsync();
-        await _hubConnection.SendAsync("JoinChannel", ChannelId.ToString());
     }
 
-    private async Task HandleKeyUp(KeyboardEventArgs e)
+    protected override async Task OnParametersSetAsync()
     {
-        if (e.Key == "Enter")
+        if (_hubConnection?.State == HubConnectionState.Connected)
         {
-            await SendMessage();
+            await _hubConnection.InvokeAsync("JoinChannel", ChannelId.ToString());
         }
+        await LoadChatData();
+    }
+
+    private async Task LoadChatData()
+    {
+        _isLoading = true;
+        try
+        {
+            // Try to find channel name from WorkspaceState
+            var channel = StateService.Channels.FirstOrDefault(c => c.Id == ChannelId);
+            _currentChannelName = channel?.Name ?? "general"; 
+            
+            var result = await FluxService.GetMessagesAsync(ChannelId);
+            if (result.IsSuccess)
+            {
+                _messages = result.Value ?? new();
+                _shouldScrollToBottom = true;
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_shouldScrollToBottom)
+        {
+            _shouldScrollToBottom = false;
+            await ScrollToBottom();
+        }
+    }
+
+    private async Task ScrollToBottom()
+    {
+        await JS.InvokeVoidAsync("scrollToBottom", _messagesViewport);
     }
 
     private async Task SendMessage()
     {
         if (string.IsNullOrWhiteSpace(_newMessageContent)) return;
 
-        var contentToSend = _newMessageContent;
-        _newMessageContent = ""; // Clear input immediately
-        
-        var request = new SendMessageRequest(contentToSend, ChannelId, CurrentUserId);
-        await FluxService.SendMessageAsync(request);
+        var request = new SendMessageRequest(_newMessageContent, ChannelId, CurrentUserId);
+        var result = await FluxService.SendMessageAsync(request);
+
+        if (result.IsSuccess && result.Value != null)
+        {
+            _newMessageContent = "";
+            // The message will be added via SignalR callback
+        }
+    }
+
+    private async Task HandleKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            await SendMessage();
+        }
     }
 
     public async ValueTask DisposeAsync()
     {
-        if (_hubConnection is not null)
+        if (_hubConnection != null)
         {
+            try
+            {
+                if (_hubConnection.State == HubConnectionState.Connected)
+                {
+                    await _hubConnection.InvokeAsync("LeaveChannel", ChannelId.ToString());
+                }
+            }
+            catch { }
             await _hubConnection.DisposeAsync();
+            _hubConnection = null;
         }
     }
 }
+
+<style>
+    .chat-container {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        background-color: var(--neutral-layer-1);
+    }
+
+    .chat-header {
+        padding: 8px 16px;
+        height: 48px;
+        border-bottom: 1px solid var(--neutral-stroke-rest);
+        background-color: var(--neutral-layer-1);
+        display: flex;
+        align-items: center;
+    }
+
+    .messages-viewport {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0;
+    }
+
+    .message-list {
+        display: flex;
+        flex-direction: column;
+        padding: 20px 0;
+    }
+
+    .message-group {
+        display: flex;
+        padding: 8px 20px;
+        gap: 12px;
+        transition: background-color 0.1s;
+    }
+
+    .message-group:hover {
+        background-color: var(--neutral-layer-2);
+    }
+
+    .message-group:hover .message-actions {
+        opacity: 1;
+    }
+
+    .message-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .message-meta {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        margin-bottom: 2px;
+    }
+
+    .username {
+        font-weight: 700;
+        font-size: 0.95rem;
+    }
+
+    .timestamp {
+        font-size: 0.75rem;
+        color: var(--neutral-foreground-hint);
+    }
+
+    .message-bubble-wrapper {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        position: relative;
+    }
+
+    .message-bubble {
+        line-height: 1.5;
+        font-size: 0.95rem;
+        color: var(--neutral-foreground-rest);
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    .message-actions {
+        position: absolute;
+        top: -24px;
+        right: 0;
+        background-color: var(--neutral-layer-1);
+        border: 1px solid var(--neutral-stroke-rest);
+        border-radius: 4px;
+        display: flex;
+        opacity: 0;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        z-index: 10;
+    }
+
+    /* Input Styling */
+    .chat-input-container {
+        padding: 0 20px 24px 20px;
+    }
+
+    .chat-input-box {
+        border: 1px solid var(--neutral-stroke-rest);
+        border-radius: 8px;
+        background-color: var(--neutral-layer-1);
+    }
+
+    .chat-input-box:focus-within {
+        border-color: var(--accent-fill-rest);
+    }
+
+    .input-toolbar {
+        display: flex;
+        padding: 4px;
+        border-bottom: 1px solid var(--neutral-stroke-rest);
+        background-color: var(--neutral-layer-2);
+        border-radius: 8px 8px 0 0;
+    }
+
+    .input-footer {
+        display: flex;
+        align-items: center;
+        padding: 4px 8px;
+    }
+
+    .loading-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        gap: 12px;
+    }
+
+    .empty-chat {
+        padding: 40px 20px;
+    }
+
+    .empty-chat-hero {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+</style>

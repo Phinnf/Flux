@@ -1,5 +1,6 @@
 using Flux.Infrastructure.Database;
 using Flux.Infrastructure.SignalR;
+using Flux.Domain.Common;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -8,33 +9,33 @@ namespace Flux.Features.Messages.DeleteMessage;
 
 [ApiController]
 [Route("api/messages")]
-public class DeleteMessageController : ControllerBase
+public class DeleteMessageController(FluxDbContext context, IHubContext<ChatHub> hubContext) : ControllerBase
 {
-    private readonly FluxDbContext _context;
-    private readonly IHubContext<ChatHub> _hubContext;
-
-    public DeleteMessageController(FluxDbContext context, IHubContext<ChatHub> hubContext)
+    [HttpDelete("{messageId:guid}")]
+    public async Task<ActionResult<Result>> DeleteMessage(
+        [FromRoute] Guid messageId, 
+        [FromQuery] Guid userId)
     {
-        _context = context;
-        _hubContext = hubContext;
-    }
+        // 1. Fetch message from DB
+        var message = await context.Messages
+            .FirstOrDefaultAsync(m => m.Id == messageId);
 
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteMessage(Guid id, [FromQuery] Guid userId)
-    {
-        var message = await _context.Messages.FindAsync(id);
-        if (message == null) return NotFound("Message not found");
+        if (message == null)
+            return NotFound(Result.Failure("Message not found."));
 
-        if (message.UserId != userId) return Forbid("You are not the sender of this message.");
+        // 2. Ownership check: Only the author can delete their message
+        // (Note: In a real app, Workspace/Channel admins might also have this power)
+        if (message.UserId != userId)
+            return Forbid();
 
-        var channelId = message.ChannelId;
-        _context.Messages.Remove(message);
-        await _context.SaveChangesAsync();
+        // 3. Remove message
+        context.Messages.Remove(message);
+        await context.SaveChangesAsync();
 
-        // Broadcast deletion to SignalR group
-        await _hubContext.Clients.Group(channelId.ToString())
-            .SendAsync("MessageDeleted", id);
+        // 4. Notify clients via SignalR (MessageDeleted event)
+        await hubContext.Clients.Group(message.ChannelId.ToString())
+            .SendAsync("MessageDeleted", messageId);
 
-        return NoContent();
+        return Ok(Result.Success());
     }
 }

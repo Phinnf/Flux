@@ -1,4 +1,5 @@
-﻿using Flux.Domain.Entities;
+﻿using Flux.Domain.Common;
+using Flux.Domain.Entities;
 using Flux.Infrastructure.Database;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -41,6 +42,6 @@ public class GetChannelsController : ControllerBase
             .Select(c => new ChannelDto(c.Id, c.Name, c.Description, c.Type))
             .ToListAsync(cancellationToken);
 
-        return Ok(channels);
+        return Ok(Result<List<ChannelDto>>.CreateSuccess(channels));
     }
 }

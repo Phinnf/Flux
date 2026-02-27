@@ -8,7 +8,8 @@ public static class DbInitializer
 {
     public static async Task SeedAsync(FluxDbContext context)
     {
-        await context.Database.EnsureCreatedAsync();
+        // Use MigrateAsync instead of EnsureCreatedAsync to handle migrations correctly
+        await context.Database.MigrateAsync();
 
         // Check if we already have data
         if (await context.Users.AnyAsync()) return;

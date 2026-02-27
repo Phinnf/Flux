@@ -1,5 +1,3 @@
-using Flux.Infrastructure.Client;
-
 namespace Flux.Infrastructure.Client;
 
 /// <summary>
@@ -17,18 +15,32 @@ public class WorkspaceStateService
 
     public Guid? CurrentWorkspaceId { get; private set; }
     public List<ChannelSummary> Channels { get; private set; } = new();
-    
+
     public event Action? OnStateChanged;
 
-    /// <summary>
     /// Loads channels for a workspace and updates the state.
-    /// </summary>
     public async Task LoadWorkspaceAsync(Guid workspaceId, Guid userId)
     {
         if (CurrentWorkspaceId == workspaceId && Channels.Count > 0) return;
 
         CurrentWorkspaceId = workspaceId;
-        Channels = await _fluxService.GetChannelsAsync(workspaceId, userId);
+        await RefreshChannelsAsync(userId);
+    }
+
+    public async Task RefreshChannelsAsync(Guid userId)
+    {
+        if (CurrentWorkspaceId == null) return;
+        
+        var result = await _fluxService.GetChannelsAsync(CurrentWorkspaceId.Value, userId);
+        if (result.IsSuccess)
+        {
+            Channels = result.Value ?? new();
+        }
+        else
+        {
+            Channels = new List<ChannelSummary>();
+        }
+        
         NotifyStateChanged();
     }
 

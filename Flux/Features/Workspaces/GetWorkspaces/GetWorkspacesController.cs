@@ -1,3 +1,4 @@
+using Flux.Domain.Common;
 using Flux.Infrastructure.Database;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -32,6 +33,6 @@ public class GetWorkspacesController : ControllerBase
             .Select(w => new WorkspaceDto(w.Id, w.Name, w.Description, w.CreatedAt))
             .ToListAsync(cancellationToken);
 
-        return Ok(workspaces);
+        return Ok(Result<List<WorkspaceDto>>.CreateSuccess(workspaces));
     }
 }
