@@ -1,43 +1,343 @@
 @inherits LayoutComponentBase
-@using Microsoft.FluentUI.AspNetCore.Components
+@using Flux.Domain.Entities
+@using Flux.Features.Channels.CreateChannel
+@inject WorkspaceStateService WorkspaceState
+@inject NavigationManager Navigation
+@inject FluxClientService FluxService
+@inject IDialogService DialogService
+@implements IDisposable
 
-<FluentLayout>
-    <div style="display: flex; height: 100vh; width: 100%;">
-        @* Vertical AppBar - Only visible when in a Workspace context *@
-        <FluentAppBar Style="width: 72px; height: 100%; background-color: var(--neutral-layer-2); border-right: 1px solid var(--neutral-stroke-rest);">
-            
-            <FluentAppBarItem Text="Home" 
-                              Href="/" 
-                              IconRest="@(new Icons.Regular.Size24.Home())" 
-                              IconActive="@(new Icons.Filled.Size24.Home())" />
+<div class="main-container">
+    <div class="slack-layout">
+        <!-- 1. Activity Bar -->
+        <div class="activity-bar">
+            <div class="activity-top">
+                <div class="workspace-icon-wrapper" @onclick='() => Navigation.NavigateTo("/")' title="Go to Home">
+                    <div class="workspace-initial">@(WorkspaceState.CurrentWorkspaceName?[0].ToString().ToUpper() ?? "F")</div>
+                </div>
 
-            <FluentAppBarItem Text="Channels" 
-                              Href="/channels" 
-                              IconRest="@(new Icons.Regular.Size24.Chat())" 
-                              IconActive="@(new Icons.Filled.Size24.Chat())" />
+                <FluentTooltip Anchor="home-icon" Position="TooltipPosition.Right">Home</FluentTooltip>
+                <div id="home-icon" class="activity-item @(IsActive("/workspace") && !IsActive("/dms") ? "active" : "")" @onclick="NavigateToFirstChannel">
+                    <FluentIcon Value="@(new Icons.Regular.Size28.Home())" />
+                </div>
 
-            <FluentAppBarItem Text="Tasks" 
-                              Href="/tasks" 
-                              IconRest="@(new Icons.Regular.Size24.Board())" 
-                              IconActive="@(new Icons.Filled.Size24.Board())" />
-
+                <FluentTooltip Anchor="dm-icon" Position="TooltipPosition.Right">Direct Messages</FluentTooltip>
+                <div id="dm-icon" class="activity-item @(IsActive("/dms") ? "active" : "")" @onclick='() => Navigation.NavigateTo("/dms")'>
+                    <FluentIcon Value="@(new Icons.Regular.Size28.People())" />
+                </div>
+            </div>
             <FluentSpacer />
+            <div class="activity-bottom">
+                <div class="profile-item">
+                    <FluentPersona Status="PresenceStatus.Available" ImageSize="32px" Initials="JD" />
+                </div>
+            </div>
+        </div>
 
-            <FluentAppBarItem Text="Settings" 
-                              Href="/settings" 
-                              IconRest="@(new Icons.Regular.Size24.Settings())" 
-                              IconActive="@(new Icons.Filled.Size24.Settings())" />
+        <!-- 2. Workspace Sidebar -->
+        <div class="workspace-sidebar">
+            <div class="sidebar-header">
+                <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center">
+                    <div class="workspace-name">
+                        <FluentLabel Typo="Typography.Body" Style="font-weight: 800;">@(WorkspaceState.CurrentWorkspaceName ?? "Loading...")</FluentLabel>
+                    </div>
+                    <FluentSpacer />
+                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.ChevronDown())" />
+                </FluentStack>
+            </div>
+            
+            <div class="sidebar-scrollable">
+                <FluentNavMenu Width="260">
+                    <div @oncontextmenu="@(e => ShowGroupContextMenu(e))" @oncontextmenu:preventDefault="true">
+                        <FluentNavGroup Title="Channels" Icon="@(new Icons.Regular.Size20.CaretDown())" Expanded="true">
+                            @foreach (var channel in WorkspaceState.Channels)
+                            {
+                                var icon = channel.Type == ChannelType.Private 
+                                    ? (Icon)new Icons.Regular.Size16.LockClosed() 
+                                    : (Icon)new Icons.Regular.Size16.Tag();
+                                    
+                                <div @oncontextmenu="@(e => ShowContextMenu(e, channel.Id, channel.Name))" 
+                                     @oncontextmenu:preventDefault="true"
+                                     @oncontextmenu:stopPropagation="true">
+                                    <FluentNavLink Icon="@icon" 
+                                                   Href="@($"/workspace/{WorkspaceState.CurrentWorkspaceId}/chat/{channel.Id}")"
+                                                   Match="NavLinkMatch.All">
+                                        <span># @channel.Name</span>
+                                    </FluentNavLink>
+                                </div>
+                            }
+                            <FluentNavLink Icon="@(new Icons.Regular.Size16.Add())" 
+                                           Style="opacity: 0.8; font-style: italic;"
+                                           OnClick="OpenCreateDialog">
+                                Add Channels
+                            </FluentNavLink>
+                        </FluentNavGroup>
+                    </div>
 
-        </FluentAppBar>
+                    <FluentNavGroup Title="Direct Messages" Icon="@(new Icons.Regular.Size20.CaretDown())" Expanded="true" Style="margin-top: 16px;">
+                        <FluentNavLink Icon="@(new Icons.Regular.Size16.Person())">John Doe (You)</FluentNavLink>
+                    </FluentNavGroup>
+                </FluentNavMenu>
+            </div>
+        </div>
 
-        @* Main Content Area within Workspace *@
-        <div style="flex-grow: 1; padding: 20px; overflow-y: auto;">
+        <!-- 3. Main Content -->
+        <div class="main-content">
             @Body
         </div>
     </div>
-</FluentLayout>
+</div>
 
-<FluentToastProvider />
-<FluentDialogProvider />
-<FluentTooltipProvider />
-<FluentMenuProvider />
+<!-- CUSTOM CONTEXT MENU -->
+@if (_showContextMenu)
+{
+    <!-- Transparent overlay to close menu on click outside -->
+    <div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9998; background: transparent;" 
+         @onclick="() => _showContextMenu = false"
+         @oncontextmenu:preventDefault="true"
+         @oncontextmenu="() => _showContextMenu = false">
+    </div>
+
+    <!-- The actual menu container -->
+    <div style="position: fixed; left: @(_mouseX)px; top: @(_mouseY)px; z-index: 9999; 
+                background: var(--neutral-layer-floating); 
+                border: 1px solid var(--neutral-stroke-rest); 
+                border-radius: 4px; 
+                box-shadow: 0 8px 16px rgba(0,0,0,0.2); 
+                min-width: 180px; 
+                padding: 4px 0;">
+        
+        <div style="padding: 8px 12px; border-bottom: 1px solid var(--neutral-stroke-rest); margin-bottom: 4px;">
+            <FluentLabel Typo="Typography.Body" Style="font-weight: bold; opacity: 0.7; font-size: 10px; text-transform: uppercase;">
+                @(_isGroupMenu ? "CHANNELS ACTIONS" : $"# {_selectedChannelName}")
+            </FluentLabel>
+        </div>
+
+        @if (_isGroupMenu)
+        {
+            <FluentMenuItem Icon="@(new Icons.Regular.Size16.Add())" OnClick="OpenCreateDialog">Create New Channel</FluentMenuItem>
+            <FluentMenuItem Icon="@(new Icons.Regular.Size16.ArrowSync())" OnClick="RefreshChannels">Refresh List</FluentMenuItem>
+        }
+        else
+        {
+            <FluentMenuItem Icon="@(new Icons.Regular.Size16.Search())" OnClick="SearchInChannel">Search in #@_selectedChannelName</FluentMenuItem>
+            <FluentMenuItem Icon="@(new Icons.Regular.Size16.Edit())" OnClick="OpenRenameDialog">Rename Channel</FluentMenuItem>
+            <FluentDivider />
+            <FluentMenuItem Icon="@(new Icons.Regular.Size16.Delete())" OnClick="DeleteFromMenu">
+                <FluentLabel Color="Color.Error">Delete Channel</FluentLabel>
+            </FluentMenuItem>
+        }
+    </div>
+}
+
+<!-- DIALOGS -->
+<FluentDialog @bind-Hidden="_hideRenameChannelDialog" Modal="true" TrapFocus="true" @onclick:stopPropagation>
+    <div style="padding: 24px; width: 400px;">
+        <FluentLabel Typo="Typography.H3">Rename Channel</FluentLabel>
+        <div style="margin-top: 20px;">
+            <FluentTextField Label="New Name" @bind-Value="_renameChannelName" Style="width: 100%;" />
+        </div>
+        <div style="margin-top: 25px; display: flex; justify-content: flex-end; gap: 10px;">
+            <FluentButton OnClick="() => _hideRenameChannelDialog = true">Cancel</FluentButton>
+            <FluentButton Appearance="Appearance.Accent" OnClick="RenameChannel">Rename</FluentButton>
+        </div>
+    </div>
+</FluentDialog>
+
+<FluentDialog @bind-Hidden="_hideCreateChannelDialog" Modal="true" TrapFocus="true" @onclick:stopPropagation>
+    <div style="padding: 24px; width: 400px;">
+        <FluentLabel Typo="Typography.H3">Create a Channel</FluentLabel>
+        <div style="margin-top: 20px;">
+            <FluentTextField Label="Name" @bind-Value="_newChannelName" Placeholder="# e.g. marketing" Style="width: 100%;" />
+        </div>
+        <div style="margin-top: 15px;">
+            <FluentTextArea Label="Description (Optional)" @bind-Value="_newChannelDescription" Style="width: 100%;" />
+        </div>
+        <div style="margin-top: 15px;">
+            <FluentSelect TOption="string" Label="Channel Type" @bind-Value="_newChannelTypeString" Style="width: 100%;">
+                <FluentOption Value="Public">Public</FluentOption>
+                <FluentOption Value="Private">Private</FluentOption>
+            </FluentSelect>
+        </div>
+        <div style="margin-top: 25px; display: flex; justify-content: flex-end; gap: 10px;">
+            <FluentButton OnClick="() => _hideCreateChannelDialog = true">Cancel</FluentButton>
+            <FluentButton Appearance="Appearance.Accent" OnClick="CreateChannel">Create</FluentButton>
+        </div>
+    </div>
+</FluentDialog>
+
+<style>
+    .workspace-sidebar {
+        background-color: var(--neutral-layer-2);
+        border-right: 1px solid var(--neutral-stroke-rest);
+    }
+    .sidebar-scrollable {
+        flex: 1; 
+        overflow-y: auto; 
+    }
+    .activity-bar {
+        background-color: #1a1a1a;
+        color: white;
+    }
+
+    .workspace-icon-wrapper {
+        width: 44px;
+        height: 44px;
+        background-color: #611f69; /* Flux Primary Purple */
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        margin-bottom: 4px;
+        transition: all 0.2s ease-in-out;
+    }
+
+    .workspace-icon-wrapper:hover {
+        background-color: #7d3085;
+        transform: scale(1.05);
+    }
+
+    .workspace-initial {
+        color: white;
+        font-weight: 800;
+        font-size: 1.4rem;
+        user-select: none;
+    }
+</style>
+
+@code {
+    private static readonly Guid CurrentUserId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+    private bool _hideCreateChannelDialog = true;
+    private string _newChannelName = "";
+    private string _newChannelDescription = "";
+    private string _newChannelTypeString = "Public";
+
+    private bool _hideRenameChannelDialog = true;
+    private string _renameChannelName = "";
+
+    // Context Menu State
+    private bool _showContextMenu = false;
+    private double _mouseX = 0;
+    private double _mouseY = 0;
+    private bool _isGroupMenu = false;
+    private Guid _selectedChannelId;
+    private string? _selectedChannelName;
+
+    protected override void OnInitialized()
+    {
+        WorkspaceState.OnStateChanged += StateHasChanged;
+    }
+
+    private void OpenCreateDialog()
+    {
+        _showContextMenu = false;
+        _newChannelName = "";
+        _newChannelDescription = "";
+        _hideCreateChannelDialog = false;
+    }
+
+    private async Task RefreshChannels()
+    {
+        _showContextMenu = false;
+        await WorkspaceState.RefreshChannelsAsync(CurrentUserId);
+    }
+
+    private void OpenRenameDialog()
+    {
+        _showContextMenu = false;
+        _renameChannelName = _selectedChannelName ?? "";
+        _hideRenameChannelDialog = false;
+    }
+
+    private async Task RenameChannel()
+    {
+        if (string.IsNullOrWhiteSpace(_renameChannelName) || WorkspaceState.CurrentWorkspaceId == null) return;
+
+        try {
+            var result = await FluxService.RenameChannelAsync(WorkspaceState.CurrentWorkspaceId.Value, _selectedChannelId, _renameChannelName, CurrentUserId);
+            if (result.IsSuccess)
+            {
+                _hideRenameChannelDialog = true;
+                await WorkspaceState.RefreshChannelsAsync(CurrentUserId);
+            }
+        } catch (TaskCanceledException) { }
+    }
+
+    private void ShowContextMenu(MouseEventArgs e, Guid channelId, string channelName)
+    {
+        _isGroupMenu = false;
+        _selectedChannelId = channelId;
+        _selectedChannelName = channelName;
+        _mouseX = e.ClientX;
+        _mouseY = e.ClientY;
+        _showContextMenu = true;
+    }
+
+    private void ShowGroupContextMenu(MouseEventArgs e)
+    {
+        _isGroupMenu = true;
+        _mouseX = e.ClientX;
+        _mouseY = e.ClientY;
+        _showContextMenu = true;
+    }
+
+    private void SearchInChannel() => _showContextMenu = false;
+
+    private async Task DeleteFromMenu()
+    {
+        _showContextMenu = false;
+        if (_selectedChannelName != null) await ConfirmDeleteChannel(_selectedChannelId, _selectedChannelName);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        try {
+            var uri = Navigation.Uri;
+            var parts = uri.Split('/');
+            int wsIndex = Array.IndexOf(parts, "workspace");
+            if (wsIndex != -1 && wsIndex + 1 < parts.Length && Guid.TryParse(parts[wsIndex + 1], out Guid workspaceId))
+            {
+                await WorkspaceState.LoadWorkspaceAsync(workspaceId, CurrentUserId);
+            }
+        } catch (TaskCanceledException) { }
+    }
+
+    private async Task CreateChannel()
+    {
+        if (string.IsNullOrWhiteSpace(_newChannelName) || WorkspaceState.CurrentWorkspaceId == null) return;
+        try {
+            var type = _newChannelTypeString == "Public" ? ChannelType.Public : ChannelType.Private;
+            var request = new CreateChannelRequest(_newChannelName, _newChannelDescription, type, CurrentUserId);
+            var result = await FluxService.CreateChannelAsync(WorkspaceState.CurrentWorkspaceId.Value, request);
+            if (result.IsSuccess) {
+                _hideCreateChannelDialog = true;
+                await WorkspaceState.RefreshChannelsAsync(CurrentUserId);
+            }
+        } catch (TaskCanceledException) { }
+    }
+
+    private void NavigateToFirstChannel()
+    {
+        if (WorkspaceState.CurrentWorkspaceId != null && WorkspaceState.Channels.Any())
+            Navigation.NavigateTo($"/workspace/{WorkspaceState.CurrentWorkspaceId}/chat/{WorkspaceState.Channels.First().Id}");
+    }
+
+    private async Task ConfirmDeleteChannel(Guid channelId, string channelName)
+    {
+        try {
+            var dialog = await DialogService.ShowConfirmationAsync($"Are you sure you want to delete #{channelName}?", "Delete Channel", "Delete", "Cancel");
+            var result = await dialog.Result;
+            if (!result.Cancelled && WorkspaceState.CurrentWorkspaceId != null) {
+                if ((await FluxService.DeleteChannelAsync(WorkspaceState.CurrentWorkspaceId.Value, channelId, CurrentUserId)).IsSuccess) {
+                    await WorkspaceState.RefreshChannelsAsync(CurrentUserId);
+                    if (Navigation.Uri.Contains(channelId.ToString())) NavigateToFirstChannel();
+                }
+            }
+        } catch (TaskCanceledException) { }
+    }
+
+    private bool IsActive(string href) => Navigation.ToBaseRelativePath(Navigation.Uri).StartsWith(href.TrimStart('/'));
+
+    public void Dispose() => WorkspaceState.OnStateChanged -= StateHasChanged;
+}

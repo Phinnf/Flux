@@ -22,6 +22,21 @@ namespace Flux.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("ChannelUser", b =>
+                {
+                    b.Property<Guid>("ChannelsId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("MembersId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("ChannelsId", "MembersId");
+
+                    b.HasIndex("MembersId");
+
+                    b.ToTable("ChannelUser");
+                });
+
             modelBuilder.Entity("Flux.Domain.Entities.Channel", b =>
                 {
                     b.Property<Guid>("Id")
@@ -37,6 +52,9 @@ namespace Flux.Migrations
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
 
                     b.Property<Guid?>("WorkspaceId")
                         .HasColumnType("uuid");
@@ -73,9 +91,9 @@ namespace Flux.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ChannelId");
-
                     b.HasIndex("UserId");
+
+                    b.HasIndex("ChannelId", "CreatedAt");
 
                     b.ToTable("Messages");
                 });
@@ -136,6 +154,21 @@ namespace Flux.Migrations
                     b.HasIndex("WorkspacesId");
 
                     b.ToTable("UserWorkspace");
+                });
+
+            modelBuilder.Entity("ChannelUser", b =>
+                {
+                    b.HasOne("Flux.Domain.Entities.Channel", null)
+                        .WithMany()
+                        .HasForeignKey("ChannelsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Flux.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("MembersId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Flux.Domain.Entities.Channel", b =>

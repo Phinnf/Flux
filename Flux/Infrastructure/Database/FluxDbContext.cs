@@ -34,6 +34,11 @@ namespace Flux.Infrastructure.Database
                 .HasMany(w => w.Members)
                 .WithMany(u => u.Workspaces);
 
+            // Channel - User (Many-to-Many for members, especially for private channels)
+            modelBuilder.Entity<Channel>()
+                .HasMany(c => c.Members)
+                .WithMany(u => u.Channels);
+
             // Channel - Message (1-to-Many)
             modelBuilder.Entity<Message>()
                 .HasOne(m => m.Channel)
@@ -47,6 +52,10 @@ namespace Flux.Infrastructure.Database
                 .WithMany(u => u.Messages)
                 .HasForeignKey(m => m.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Message - Indexes for optimization (Chat performance)
+            modelBuilder.Entity<Message>()
+                .HasIndex(m => new { m.ChannelId, m.CreatedAt });
 
             // Đảm bảo tên Channel là duy nhất TRONG CÙNG MỘT WORKSPACE
             modelBuilder.Entity<Channel>()

@@ -6,7 +6,13 @@
 @using static Microsoft.AspNetCore.Components.Web.RenderMode
 @using Microsoft.AspNetCore.Components.Web.Virtualization
 @using Microsoft.JSInterop
-@using Microsoft.FluentUI.AspNetCore.Components
-@using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons
 @using Flux
 @using Flux.Components
+@using Microsoft.FluentUI.AspNetCore.Components
+@using Microsoft.FluentUI.AspNetCore.Components.Icons
+@using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons
+@using Flux.Infrastructure.Client
+@using Flux.Domain.Entities
+@using Flux.Features.Messages.GetMessages
+@using Flux.Features.Messages.SendMessage
+@using Microsoft.AspNetCore.SignalR.Client

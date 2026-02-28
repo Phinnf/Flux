@@ -1,58 +1,27 @@
-using Flux.Infrastructure.Database;
-using Flux.Domain.Entities;
-using Flux.Infrastructure.SignalR;
+using Flux.Domain.Common;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
-using Microsoft.EntityFrameworkCore;
 
 namespace Flux.Features.Messages.SendMessage;
 
 [ApiController]
 [Route("api/messages")]
-public class SendMessageController : ControllerBase
+public class SendMessageController(IMediator mediator) : ControllerBase
 {
-    private readonly FluxDbContext _context;
-    private readonly IHubContext<ChatHub> _hubContext;
-
-    public SendMessageController(FluxDbContext context, IHubContext<ChatHub> hubContext)
-    {
-        _context = context;
-        _hubContext = hubContext;
-    }
-
     [HttpPost]
-    public async Task<IActionResult> SendMessage([FromBody] SendMessageRequest request)
+    public async Task<ActionResult<Result<SendMessageResponse>>> SendMessage([FromBody] SendMessageCommand command)
     {
-        var channel = await _context.Channels.FindAsync(request.ChannelId);
-        if (channel == null) return NotFound("Channel not found");
+        var result = await mediator.Send(command);
 
-        var user = await _context.Users.FindAsync(request.UserId);
-        if (user == null) return NotFound("User not found");
-
-        var message = new Message
+        if (!result.IsSuccess)
         {
-            Content = request.Content,
-            ChannelId = request.ChannelId,
-            UserId = request.UserId,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        _context.Messages.Add(message);
-        await _context.SaveChangesAsync();
-
-        // Broadcast to SignalR group (ChannelId)
-        await _hubContext.Clients.Group(request.ChannelId.ToString())
-            .SendAsync("ReceiveMessage", new 
+            if (result.Error == "Access denied.")
             {
-                Id = message.Id,
-                Content = message.Content,
-                UserId = message.UserId,
-                ChannelId = message.ChannelId,
-                CreatedAt = message.CreatedAt
-            });
+                return Forbid();
+            }
+            return BadRequest(result);
+        }
 
-        return Ok(message);
+        return Ok(result);
     }
 }
-
-public record SendMessageRequest(string Content, Guid ChannelId, Guid UserId);

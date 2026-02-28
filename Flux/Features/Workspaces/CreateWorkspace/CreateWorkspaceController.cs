@@ -1,4 +1,5 @@
-﻿using Flux.Domain.Entities;
+﻿using Flux.Domain.Common;
+using Flux.Domain.Entities;
 using Flux.Infrastructure.Database;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,7 +20,7 @@ namespace Flux.Features.Workspaces.CreateWorkspace
         }
 
         [HttpPost]
-        public async Task<IActionResult> HandleAsync([FromBody] CreateWorkspaceRequest request, CancellationToken cancellationToken)
+        public async Task<IActionResult> HandleAsync([FromBody] CreateWorkspaceRequest request, [FromQuery] Guid userId, CancellationToken cancellationToken)
         {
             // Map request to domain entity
             var workspace = new Workspace
@@ -30,6 +31,14 @@ namespace Flux.Features.Workspaces.CreateWorkspace
 
             // Save to database
             _dbContext.Workspaces.Add(workspace);
+            
+            // In a real app, we'd add the user as a member here too
+            var user = await _dbContext.Users.FindAsync(new object[] { userId }, cancellationToken);
+            if (user != null)
+            {
+                workspace.Members.Add(user);
+            }
+
             await _dbContext.SaveChangesAsync(cancellationToken);
 
             // Return response
@@ -39,7 +48,7 @@ namespace Flux.Features.Workspaces.CreateWorkspace
                 workspace.Description,
                 workspace.CreatedAt);
 
-            return Created($"/api/workspaces/{workspace.Id}", response);
+            return Ok(Result<CreateWorkspaceResponse>.CreateSuccess(response));
         }
     }
 }
