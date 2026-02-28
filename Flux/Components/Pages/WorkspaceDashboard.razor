@@ -3,18 +3,19 @@
 
 <PageTitle>Workspace Dashboard - Flux</PageTitle>
 
+<div style="margin: 0px 20px ;">
 <FluentStack Orientation="Orientation.Vertical" VerticalGap="20">
+    
     <FluentBreadcrumb>
         <FluentBreadcrumbItem Href="/">Flux</FluentBreadcrumbItem>
         <FluentBreadcrumbItem>Workspace Dashboard</FluentBreadcrumbItem>
     </FluentBreadcrumb>
 
-    <div style="margin-top: 20px;">
+    
         <FluentLabel Typo="Typography.H2">Welcome to your Workspace!</FluentLabel>
         <FluentLabel Typo="Typography.Body">Workspace ID: @Id</FluentLabel>
-    </div>
-
-    <FluentDivider Style="width: 100%; margin: 20px 0;" />
+  
+    <FluentDivider Style="width: 100%; margin: 20px ;" />
 
     <FluentGrid Spacing="3">
         <FluentGridItem xs="12" sm="6">
@@ -37,7 +38,7 @@
         </FluentGridItem>
     </FluentGrid>
 </FluentStack>
-
+</div>
 @code {
     [Parameter]
     public Guid Id { get; set; }

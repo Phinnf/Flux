@@ -2,7 +2,7 @@ using FluentValidation;
 
 namespace Flux.Features.Messages.SendMessage;
 
-public class SendMessageValidator : AbstractValidator<SendMessageRequest>
+public class SendMessageValidator : AbstractValidator<SendMessageCommand>
 {
     public SendMessageValidator()
     {

@@ -53,6 +53,10 @@ namespace Flux.Infrastructure.Database
                 .HasForeignKey(m => m.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Message - Indexes for optimization (Chat performance)
+            modelBuilder.Entity<Message>()
+                .HasIndex(m => new { m.ChannelId, m.CreatedAt });
+
             // Đảm bảo tên Channel là duy nhất TRONG CÙNG MỘT WORKSPACE
             modelBuilder.Entity<Channel>()
                 .HasIndex(c => new { c.WorkspaceId, c.Name })

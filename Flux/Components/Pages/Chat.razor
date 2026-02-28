@@ -51,6 +51,18 @@
         else
         {
             <div class="message-list">
+                @if (_hasMoreMessages)
+                {
+                    <div class="load-more-container">
+                        <FluentButton Appearance="Appearance.Stealth" 
+                                      OnClick="LoadMoreMessages" 
+                                      Loading="_isLoadingMore"
+                                      IconStart="@(new Icons.Regular.Size16.ArrowClockwise())">
+                            Load older messages
+                        </FluentButton>
+                    </div>
+                }
+
                 @foreach (var msg in _messages)
                 {
                     bool isSelf = msg.UserId == CurrentUserId;
@@ -132,6 +144,8 @@
     private string _newMessageContent = "";
     private string? _currentChannelName;
     private bool _isLoading = true;
+    private bool _isLoadingMore = false;
+    private bool _hasMoreMessages = true;
     private ElementReference _messagesViewport;
     private bool _shouldScrollToBottom = false;
     private HubConnection? _hubConnection;
@@ -189,6 +203,8 @@
     private async Task LoadChatData()
     {
         _isLoading = true;
+        _messages.Clear();
+        _hasMoreMessages = true;
         try
         {
             // Try to find channel name from WorkspaceState
@@ -199,12 +215,45 @@
             if (result.IsSuccess)
             {
                 _messages = result.Value ?? new();
+                _hasMoreMessages = _messages.Count >= 50; // Assume there's more if we hit the limit
                 _shouldScrollToBottom = true;
             }
         }
         finally
         {
             _isLoading = false;
+        }
+    }
+
+    private async Task LoadMoreMessages()
+    {
+        if (_isLoadingMore || !_hasMoreMessages || !_messages.Any()) return;
+
+        _isLoadingMore = true;
+        try
+        {
+            var oldestMessageTimestamp = _messages.First().CreatedAt;
+            var result = await FluxService.GetMessagesAsync(ChannelId, oldestMessageTimestamp);
+            
+            if (result.IsSuccess && result.Value != null && result.Value.Any())
+            {
+                var olderMessages = result.Value;
+                _hasMoreMessages = olderMessages.Count >= 50;
+                
+                // Prepend older messages
+                _messages.InsertRange(0, olderMessages);
+                
+                // We don't want to scroll to bottom when loading older messages
+                // In a real app, we'd preserve the scroll position relative to the current view
+            }
+            else
+            {
+                _hasMoreMessages = false;
+            }
+        }
+        finally
+        {
+            _isLoadingMore = false;
         }
     }
 
@@ -226,8 +275,8 @@
     {
         if (string.IsNullOrWhiteSpace(_newMessageContent)) return;
 
-        var request = new SendMessageRequest(_newMessageContent, ChannelId, CurrentUserId);
-        var result = await FluxService.SendMessageAsync(request);
+        var command = new SendMessageCommand(_newMessageContent, ChannelId, CurrentUserId);
+        var result = await FluxService.SendMessageAsync(command);
 
         if (result.IsSuccess && result.Value != null)
         {
@@ -263,6 +312,11 @@
 }
 
 <style>
+    .load-more-container {
+        display: flex;
+        justify-content: center;
+        padding: 10px 0;
+    }
     .chat-container {
         display: flex;
         flex-direction: column;

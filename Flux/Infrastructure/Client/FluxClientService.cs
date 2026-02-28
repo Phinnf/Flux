@@ -81,11 +81,17 @@ public class FluxClientService(HttpClient httpClient)
         }
     }
 
-    public async Task<Result<List<MessageDto>>> GetMessagesAsync(Guid channelId)
+    public async Task<Result<List<MessageDto>>> GetMessagesAsync(Guid channelId, DateTime? before = null)
     {
         try
         {
-            var response = await httpClient.GetFromJsonAsync<Result<List<MessageDto>>>($"/api/channels/{channelId}/messages");
+            var url = $"/api/channels/{channelId}/messages";
+            if (before.HasValue)
+            {
+                url += $"?before={Uri.EscapeDataString(before.Value.ToString("O"))}";
+            }
+            
+            var response = await httpClient.GetFromJsonAsync<Result<List<MessageDto>>>(url);
             return response ?? Result<List<MessageDto>>.CreateFailure("Failed to load messages.");
         }
         catch (Exception ex)
@@ -94,11 +100,11 @@ public class FluxClientService(HttpClient httpClient)
         }
     }
 
-    public async Task<Result<SendMessageResponse>> SendMessageAsync(SendMessageRequest request)
+    public async Task<Result<SendMessageResponse>> SendMessageAsync(SendMessageCommand command)
     {
         try
         {
-            var response = await httpClient.PostAsJsonAsync("/api/messages", request);
+            var response = await httpClient.PostAsJsonAsync("/api/messages", command);
             var result = await response.Content.ReadFromJsonAsync<Result<SendMessageResponse>>();
             return result ?? Result<SendMessageResponse>.CreateFailure("Failed to send message.");
         }
