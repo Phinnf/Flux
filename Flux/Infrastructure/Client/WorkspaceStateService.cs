@@ -14,6 +14,7 @@ public class WorkspaceStateService
     }
 
     public Guid? CurrentWorkspaceId { get; private set; }
+    public string? CurrentWorkspaceName { get; private set; }
     public List<ChannelSummary> Channels { get; private set; } = new();
 
     public event Action? OnStateChanged;
@@ -24,6 +25,15 @@ public class WorkspaceStateService
         if (CurrentWorkspaceId == workspaceId && Channels.Count > 0) return;
 
         CurrentWorkspaceId = workspaceId;
+        
+        // Load workspace details to get the name
+        var workspacesResult = await _fluxService.GetWorkspacesAsync(userId);
+        if (workspacesResult.IsSuccess && workspacesResult.Value != null)
+        {
+            var currentWorkspace = workspacesResult.Value.FirstOrDefault(w => w.Id == workspaceId);
+            CurrentWorkspaceName = currentWorkspace?.Name;
+        }
+
         await RefreshChannelsAsync(userId);
     }
 

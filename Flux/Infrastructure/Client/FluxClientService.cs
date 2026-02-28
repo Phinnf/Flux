@@ -180,4 +180,25 @@ public class FluxClientService(HttpClient httpClient)
             return Result.Failure(ex.Message);
         }
     }
+
+    public async Task<Result> RenameChannelAsync(Guid workspaceId, Guid channelId, string newName, Guid userId)
+    {
+        try
+        {
+            var request = new { NewName = newName, UserId = userId };
+            var response = await httpClient.PutAsJsonAsync($"/api/workspaces/{workspaceId}/channels/{channelId}/rename", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return Result.Success();
+            }
+            
+            var error = await response.Content.ReadAsStringAsync();
+            return Result.Failure(error);
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure(ex.Message);
+        }
+    }
 }

@@ -67,8 +67,9 @@
                 {
                     bool isSelf = msg.UserId == CurrentUserId;
                     <div class="message-group @(isSelf ? "self" : "")">
-                        <FluentAvatar Name="@msg.Username" 
-                                      Size="AvatarSize.Size36" 
+                        <FluentPersona Name="@msg.Username" 
+                                      Status="PresenceStatus.Available"
+                                      ImageSize="36px" 
                                       Initials="@GetInitials(msg.Username)"
                                       Style="margin-top: 4px;" />
                         

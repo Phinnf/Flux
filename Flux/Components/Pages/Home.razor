@@ -129,9 +129,22 @@
     private string _newWorkspaceName = "";
     private string _newWorkspaceDescription = "";
 
-    private void SelectWorkspace(WorkspaceSummary workspace)
+    private async Task SelectWorkspace(WorkspaceSummary workspace)
     {
-        Navigation.NavigateTo($"/workspace/{workspace.Id}/dashboard");
+        // Instead of dashboard, we want to go to the first channel of this workspace
+        var channelsResult = await FluxService.GetChannelsAsync(workspace.Id, CurrentUserId);
+        
+        if (channelsResult.IsSuccess && channelsResult.Value != null && channelsResult.Value.Any())
+        {
+            var firstChannel = channelsResult.Value.First();
+            Navigation.NavigateTo($"/workspace/{workspace.Id}/chat/{firstChannel.Id}");
+        }
+        else
+        {
+            // Fallback if no channels exist yet (though seed should provide them)
+            // We'll go to a base workspace URL which the layout can handle to show a "no channels" state or similar
+            Navigation.NavigateTo($"/workspace/{workspace.Id}");
+        }
     }
 
     private async Task DeleteWorkspace(WorkspaceSummary workspace)
