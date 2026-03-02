@@ -66,11 +66,11 @@
                 @foreach (var msg in _messages)
                 {
                     bool isSelf = msg.UserId == CurrentUserId;
-                    <div class="message-group @(isSelf ? "self" : "")">
-                        <FluentPersona Name="@msg.Username" 
-                                      Status="PresenceStatus.Available"
+                    <div class="message-group @(isSelf ? "self" : "")" @onclick="@(e => ShowMessageMenu(e, msg))">
+                        <FluentPersona Status="PresenceStatus.Available"
                                       ImageSize="36px" 
                                       Initials="@GetInitials(msg.Username)"
+                                      Title="@msg.Username"
                                       Style="margin-top: 4px;" />
                         
                         <div class="message-content">
@@ -82,11 +82,6 @@
                                 <div class="message-bubble">
                                     @msg.Content
                                 </div>
-                                <div class="message-actions">
-                                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.EmojiAdd())" />
-                                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.ArrowReply())" />
-                                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.MoreHorizontal())" />
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -94,6 +89,29 @@
             </div>
         }
     </div>
+
+    <!-- Message Actions Menu Overlay -->
+    @if (_showMessageMenu)
+    {
+        <div class="menu-overlay" @onclick="CloseMessageMenu" @oncontextmenu:preventDefault="true"></div>
+        <div class="message-context-menu" style="left: @(_menuX)px; top: @(_menuY)px;">
+            <FluentStack Orientation="Orientation.Vertical" VerticalGap="0">
+                <div class="menu-header">
+                    <FluentLabel Typo="Typography.Body" Style="font-weight: bold; opacity: 0.6; font-size: 10px;">MESSAGE ACTIONS</FluentLabel>
+                </div>
+                <FluentMenuItem Icon="@(new Icons.Regular.Size16.ArrowReply())" OnClick="@(() => HandleAction("Reply"))">Reply</FluentMenuItem>
+                <FluentMenuItem Icon="@(new Icons.Regular.Size16.Edit())" OnClick="@(() => HandleAction("Edit"))">Edit Message</FluentMenuItem>
+                <FluentDivider />
+                <FluentMenuItem Icon="@(new Icons.Regular.Size16.ClipboardTaskList())" OnClick="@(() => HandleAction("ConvertTask"))">
+                    <FluentLabel Color="Color.Accent" Style="font-weight: 600;">Convert to Task</FluentLabel>
+                </FluentMenuItem>
+                <FluentDivider />
+                <FluentMenuItem Icon="@(new Icons.Regular.Size16.Delete())" OnClick="@(() => HandleAction("Delete"))">
+                    <FluentLabel Color="Color.Error">Delete Message</FluentLabel>
+                </FluentMenuItem>
+            </FluentStack>
+        </div>
+    }
 
     <!-- Chat Input -->
     <div class="chat-input-container">
@@ -124,12 +142,12 @@
                     </div>
                     <FluentSpacer />
                     <div class="footer-right">
-                        <FluentButton Appearance="Appearance.Accent" 
+                        <FluentButton Appearance="@(string.IsNullOrWhiteSpace(_newMessageContent) ? Appearance.Stealth : Appearance.Accent)" 
                                       IconEnd="@(new Icons.Regular.Size16.Send())" 
                                       OnClick="SendMessage"
                                       Disabled="@(string.IsNullOrWhiteSpace(_newMessageContent))" 
                                       Title="Send message (Enter)"
-                                      Style="height: 28px;" />
+                                      Style="height: 28px; transition: all 0.2s;" />
                     </div>
                 </div>
             </FluentStack>
@@ -310,9 +328,114 @@
             _hubConnection = null;
         }
     }
+
+    // --- Message Actions Logic ---
+    private bool _showMessageMenu = false;
+    private double _menuX = 0;
+    private double _menuY = 0;
+    private MessageDto? _selectedMessage;
+
+    private void ShowMessageMenu(MouseEventArgs e, MessageDto message)
+    {
+        _selectedMessage = message;
+        _menuX = e.ClientX;
+        _menuY = e.ClientY;
+        _showMessageMenu = true;
+    }
+
+    private void CloseMessageMenu()
+    {
+        _showMessageMenu = false;
+        _selectedMessage = null;
+    }
+
+    private async Task HandleAction(string action)
+    {
+        if (_selectedMessage == null) return;
+        
+        var messageId = _selectedMessage.Id;
+        var content = _selectedMessage.Content;
+        
+        CloseMessageMenu();
+
+        switch (action)
+        {
+            case "Reply":
+                // Logic for reply (can set a 'replying to' state)
+                break;
+            case "Edit":
+                // Logic for opening edit dialog/mode
+                break;
+            case "Delete":
+                await ConfirmDeleteMessage(messageId);
+                break;
+            case "ConvertTask":
+                await ConvertToTask(messageId, content);
+                break;
+        }
+    }
+
+    private async Task ConvertToTask(Guid messageId, string content)
+    {
+        // Integration point with Productivity module
+        // We can show a dialog to set due date, assignee, etc.
+        var dialog = await JS.InvokeAsync<bool>("confirm", $"Do you want to convert this message to a task?\n\n\"{content}\"");
+        if (dialog)
+        {
+            // Call service to create task from message
+            // Result result = await FluxService.CreateTaskFromMessageAsync(messageId, CurrentUserId);
+        }
+    }
+
+    private async Task ConfirmDeleteMessage(Guid messageId)
+    {
+        // Logic for deleting message
+    }
 }
 
 <style>
+    /* Message Actions Menu */
+    .menu-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 1000;
+        background: transparent;
+    }
+
+    .message-context-menu {
+        position: fixed;
+        z-index: 1001;
+        background: var(--neutral-layer-floating);
+        border: 1px solid var(--neutral-stroke-rest);
+        border-radius: 8px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        min-width: 200px;
+        padding: 4px 0;
+        animation: fade-in 0.1s ease-out;
+    }
+
+    @@keyframes fade-in {
+        from { opacity: 0; transform: translateY(-5px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .menu-header {
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--neutral-stroke-rest);
+        margin-bottom: 4px;
+    }
+
+    .message-group {
+        cursor: pointer;
+    }
+
+    .message-group:hover {
+        background-color: var(--neutral-layer-2);
+    }
+
     .load-more-container {
         display: flex;
         justify-content: center;

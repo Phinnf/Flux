@@ -1,59 +1,75 @@
-/* Slack Palette */
+/* Flux Global Styles & Theme Variables - RESTORED */
 :root {
-    --slack-sidebar-bg: #f8f8f8; /* Light gray background for the sidebar */
-    --slack-sidebar-text: #000000; /* Black text */
-    --slack-sidebar-hover: #e8e8e8;
-    --slack-activity-bg: #19171d;
+    --flux-primary: #611f69;
+    --flux-primary-hover: #7d3085;
+    --flux-activity-bg: #1a1a1a;
+    --flux-sidebar-bg: var(--neutral-layer-2);
+    --flux-chat-bg: var(--neutral-layer-1);
+    --flux-border: var(--neutral-stroke-rest);
+    --flux-text-main: var(--neutral-foreground-rest);
+    --flux-text-hint: var(--neutral-foreground-hint);
+    --flux-accent: #0078d4;
 }
 
 body {
     margin: 0;
     padding: 0;
-    font-family: "Segoe UI", "Inter", sans-serif;
+    font-family: "Segoe UI", "Inter", -apple-system, sans-serif;
     overflow: hidden;
+    background-color: var(--flux-chat-bg);
+    color: var(--flux-text-main);
 }
 
+/* Layout Framework */
 .main-container {
     height: 100vh;
+    width: 100vw;
     display: flex;
-    flex-direction: column;
 }
 
 .slack-layout {
     display: flex;
     flex: 1;
+    width: 100%;
     overflow: hidden;
 }
 
-/* 1. Activity Bar (Narrow Left) */
+/* 1. Activity Bar */
 .activity-bar {
     width: 68px;
-    background-color: var(--slack-activity-bg);
+    background-color: var(--flux-activity-bg);
     display: flex;
     flex-direction: column;
     align-items: center;
     padding: 12px 0;
-    border-right: 1px solid rgba(255, 255, 255, 0.1);
-    gap: 8px;
+    z-index: 100;
+    color: white;
 }
 
-/* Base style for icons/buttons in the activity bar */
-.activity-item {
-    width: 44px;
-    height: 44px;
+.activity-top {
     display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+.activity-item {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    border-radius: 8px;
-    transition: all 0.2s ease-in-out;
     cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s;
+    gap: 4px;
     color: rgba(255, 255, 255, 0.7);
 }
 
 .activity-item:hover {
     background-color: rgba(255, 255, 255, 0.1);
     color: white;
-    transform: scale(1.05);
 }
 
 .activity-item.active {
@@ -61,53 +77,95 @@ body {
     color: white;
 }
 
-/* 2. Sidebar (Channels/DMs) */
+.activity-label {
+    font-size: 11px;
+    font-weight: 500;
+    user-select: none;
+    line-height: 1;
+}
+
+.workspace-icon-wrapper {
+    width: 44px;
+    height: 44px;
+    background-color: var(--flux-primary);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    margin-bottom: 8px;
+    transition: all 0.2s ease-in-out;
+}
+
+.workspace-icon-wrapper:hover {
+    background-color: var(--flux-primary-hover);
+    transform: scale(1.05);
+}
+
+.workspace-initial {
+    color: white;
+    font-weight: 900;
+    font-size: 1.5rem;
+    user-select: none;
+}
+
+/* 2. Sidebar */
 .workspace-sidebar {
     width: 260px;
-    background-color: var(--slack-sidebar-bg);
-    color: var(--slack-sidebar-text);
+    background-color: var(--flux-sidebar-bg);
+    border-right: 1px solid var(--flux-border);
     display: flex;
     flex-direction: column;
-    border-right: 1px solid #ddd;
 }
 
 .sidebar-header {
-    padding: 16px;
-    font-weight: bold;
-    color: var(--slack-sidebar-text);
-    border-bottom: 1px solid #ddd;
+    padding: 0 16px;
+    height: 48px;
+    border-bottom: 1px solid var(--flux-border);
+    display: flex;
+    align-items: center;
 }
 
-/* Ensure FluentNavMenu uses the black text color */
-.workspace-sidebar fluent-nav-link, 
-.workspace-sidebar fluent-nav-group,
-.workspace-sidebar .fluent-nav-menu {
-    color: var(--slack-sidebar-text) !important;
+.workspace-name {
+    flex: 1;
+    overflow: hidden;
 }
 
-/* 3. Main Content */
+.workspace-name fluent-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
+    font-weight: 800 !important;
+}
+
+.sidebar-scrollable {
+    flex: 1;
+    overflow-y: auto;
+}
+
+/* 3. Main Content Area */
 .main-content {
     flex: 1;
     display: flex;
     flex-direction: column;
-    background-color: white;
+    background-color: var(--flux-chat-bg);
 }
 
-.chat-header {
-    height: 50px;
-    padding: 0 16px;
-    display: flex;
-    align-items: center;
-    border-bottom: 1px solid #ddd;
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 8px;
 }
 
-.messages-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px;
+::-webkit-scrollbar-track {
+    background: transparent;
 }
 
-.message-input-area {
-    padding: 16px;
-    border-top: 1px solid #ddd;
+::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.2);
 }

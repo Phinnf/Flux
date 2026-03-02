@@ -32,6 +32,7 @@ public class WorkspaceStateService
         {
             var currentWorkspace = workspacesResult.Value.FirstOrDefault(w => w.Id == workspaceId);
             CurrentWorkspaceName = currentWorkspace?.Name;
+            NotifyStateChanged();
         }
 
         await RefreshChannelsAsync(userId);
