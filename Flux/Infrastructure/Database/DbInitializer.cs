@@ -20,6 +20,7 @@ public static class DbInitializer
             Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
             Username = "JohnDoe",
             Email = "john@example.com",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123"),
             CreatedAt = DateTime.UtcNow
         };
 
