@@ -1,7 +1,7 @@
-using Flux.Infrastructure.Database;
-using Flux.Domain.Entities;
-using Flux.Infrastructure.SignalR;
 using Flux.Domain.Common;
+using Flux.Domain.Entities;
+using Flux.Infrastructure.Database;
+using Flux.Infrastructure.SignalR;
 using MediatR;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Flux.Features.Messages.SendMessage;
 
 public class SendMessageHandler(
-    FluxDbContext context, 
+    FluxDbContext context,
     IHubContext<ChatHub> hubContext) : IRequestHandler<SendMessageCommand, Result<SendMessageResponse>>
 {
     public async Task<Result<SendMessageResponse>> Handle(SendMessageCommand request, CancellationToken cancellationToken)
@@ -19,14 +19,14 @@ public class SendMessageHandler(
             .Include(c => c.Members)
             .FirstOrDefaultAsync(c => c.Id == request.ChannelId, cancellationToken);
 
-        if (channel == null) 
+        if (channel == null)
             return Result<SendMessageResponse>.CreateFailure("Channel not found.");
 
         var user = await context.Users
             .Include(u => u.Workspaces)
             .FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
 
-        if (user == null) 
+        if (user == null)
             return Result<SendMessageResponse>.CreateFailure("User not found.");
 
         // Permission Check:

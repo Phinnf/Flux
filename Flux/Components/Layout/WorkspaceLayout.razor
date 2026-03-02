@@ -13,17 +13,19 @@
         <div class="activity-bar">
             <div class="activity-top">
                 <div class="workspace-icon-wrapper" @onclick='() => Navigation.NavigateTo("/")' title="Go to Home">
-                    <div class="workspace-initial">@(WorkspaceState.CurrentWorkspaceName?[0].ToString().ToUpper() ?? "F")</div>
+                    <div class="workspace-initial">@(string.IsNullOrEmpty(WorkspaceState.CurrentWorkspaceName) ? "F" : WorkspaceState.CurrentWorkspaceName[0].ToString().ToUpper())</div>
                 </div>
 
                 <FluentTooltip Anchor="home-icon" Position="TooltipPosition.Right">Home</FluentTooltip>
                 <div id="home-icon" class="activity-item @(IsActive("/workspace") && !IsActive("/dms") ? "active" : "")" @onclick="NavigateToFirstChannel">
-                    <FluentIcon Value="@(new Icons.Regular.Size28.Home())" />
+                    <FluentIcon Value="@(new Icons.Regular.Size24.Home())" Color="@Color.Custom" CustomColor="white" />
+                    <span class="activity-label">Home</span>
                 </div>
 
                 <FluentTooltip Anchor="dm-icon" Position="TooltipPosition.Right">Direct Messages</FluentTooltip>
                 <div id="dm-icon" class="activity-item @(IsActive("/dms") ? "active" : "")" @onclick='() => Navigation.NavigateTo("/dms")'>
-                    <FluentIcon Value="@(new Icons.Regular.Size28.People())" />
+                    <FluentIcon Value="@(new Icons.Regular.Size24.Chat())" Color="@Color.Custom" CustomColor="white" />
+                    <span class="activity-label">DM</span>
                 </div>
             </div>
             <FluentSpacer />
@@ -73,10 +75,6 @@
                             </FluentNavLink>
                         </FluentNavGroup>
                     </div>
-
-                    <FluentNavGroup Title="Direct Messages" Icon="@(new Icons.Regular.Size20.CaretDown())" Expanded="true" Style="margin-top: 16px;">
-                        <FluentNavLink Icon="@(new Icons.Regular.Size16.Person())">John Doe (You)</FluentNavLink>
-                    </FluentNavGroup>
                 </FluentNavMenu>
             </div>
         </div>
@@ -167,43 +165,7 @@
 </FluentDialog>
 
 <style>
-    .workspace-sidebar {
-        background-color: var(--neutral-layer-2);
-        border-right: 1px solid var(--neutral-stroke-rest);
-    }
-    .sidebar-scrollable {
-        flex: 1; 
-        overflow-y: auto; 
-    }
-    .activity-bar {
-        background-color: #1a1a1a;
-        color: white;
-    }
-
-    .workspace-icon-wrapper {
-        width: 44px;
-        height: 44px;
-        background-color: #611f69; /* Flux Primary Purple */
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        margin-bottom: 4px;
-        transition: all 0.2s ease-in-out;
-    }
-
-    .workspace-icon-wrapper:hover {
-        background-color: #7d3085;
-        transform: scale(1.05);
-    }
-
-    .workspace-initial {
-        color: white;
-        font-weight: 800;
-        font-size: 1.4rem;
-        user-select: none;
-    }
+    /* Specific workspace layout styles not in app.css can go here if needed */
 </style>
 
 @code {
