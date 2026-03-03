@@ -22,8 +22,7 @@
             </div>
             <FluentSpacer />
             <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8">
-                <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Call())" />
-                <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Video())" />
+                
                 <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Info())" />
             </FluentStack>
         </FluentStack>
@@ -70,8 +69,7 @@
                         <FluentPersona Status="PresenceStatus.Available"
                                       ImageSize="36px" 
                                       Initials="@GetInitials(msg.Username)"
-                                      Title="@msg.Username"
-                                      Style="margin-top: 4px;" />
+                                      Title="@msg.Username" />
                         
                         <div class="message-content">
                             <div class="message-meta">
@@ -116,41 +114,35 @@
     <!-- Chat Input -->
     <div class="chat-input-container">
         <div class="chat-input-box">
-            <FluentStack Orientation="Orientation.Vertical" VerticalGap="0">
-                <div class="input-toolbar" style="">
-                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.TextBold())" />
-                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.TextItalic())" />
-                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.TextStrikethrough())" />
-                    <FluentDivider Orientation="Orientation.Vertical" Style="height: 20px; margin: 0 4px;" />
-                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.Link())" />
-                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.List())" />
+            <FluentTextArea @ref="_textAreaRef"
+                            @bind-Value="_newMessageContent"
+                            Immediate="true"
+                            Placeholder="@($"Message #{(_currentChannelName?.StartsWith("#") == true ? _currentChannelName.Substring(1) : _currentChannelName)}")"
+                            title="Press Enter to send. Press Ctrl+Enter for a new line."
+                            Class="chat-textarea-redesigned"
+                            Rows="1" />
+            <div class="bottom-toolbar">
+                <div class="toolbar-left">
+                    <FluentButton class="add-button" Appearance="Appearance.Accent" IconStart="@(new Icons.Regular.Size20.Add())" />
+                    <FluentDivider Vertical="true" style="height: 20px;" />
+                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Video())" />
+                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Mic())" />
+                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Emoji())" />
+                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Mention())" />
+                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.TextFont())" />
+                    <FluentDivider Vertical="true" style="height: 20px;" />
+                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.ChatWarning())" />
                 </div>
-                
-                <FluentTextArea @bind-Value="_newMessageContent" 
-                                 Placeholder="@($"Message #{(_currentChannelName?.StartsWith("#") == true ? _currentChannelName.Substring(1) : _currentChannelName)}")"
-                                 Class="chat-textarea"
-                                 Rows="1"
-                                 @onkeyup="HandleKeyUp" />
-
-                <div class="input-footer">
-                    <div class="footer-left">
-                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Add())" Style="min-width: 28px; height: 28px;" />
-                        <FluentDivider Orientation="Orientation.Vertical" Style="height: 16px; margin: 0 4px;" />
-                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Emoji())" Style="min-width: 28px; height: 28px;" />
-                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Mention())" Style="min-width: 28px; height: 28px;" />
-                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Video())" Style="min-width: 28px; height: 28px;" />
-                    </div>
-                    <FluentSpacer />
-                    <div class="footer-right">
-                        <FluentButton Appearance="@(string.IsNullOrWhiteSpace(_newMessageContent) ? Appearance.Stealth : Appearance.Accent)" 
-                                      IconEnd="@(new Icons.Regular.Size16.Send())" 
-                                      OnClick="SendMessage"
-                                      Disabled="@(string.IsNullOrWhiteSpace(_newMessageContent))" 
-                                      Title="Send message (Enter)"
-                                      Style="height: 28px; transition: all 0.2s;" />
-                    </div>
+                <div class="toolbar-right">
+                    <FluentButton Appearance="@(string.IsNullOrWhiteSpace(_newMessageContent) ? Appearance.Stealth : Appearance.Accent)"
+                                  IconEnd="@(new Icons.Regular.Size16.Send())"
+                                  OnClick="SendMessage"
+                                  Disabled="@(string.IsNullOrWhiteSpace(_newMessageContent))"
+                                  Title="Send message (Enter)" />
+                    <FluentDivider Vertical="true" style="height: 20px;" />
+                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size12.ChevronDown())" />
                 </div>
-            </FluentStack>
+            </div>
         </div>
     </div>
 </div>
@@ -166,6 +158,8 @@
     private bool _isLoadingMore = false;
     private bool _hasMoreMessages = true;
     private ElementReference _messagesViewport;
+    private ElementReference _textAreaRef;
+    private DotNetObjectReference<Chat>? _objRef;
     private bool _shouldScrollToBottom = false;
     private HubConnection? _hubConnection;
 
@@ -278,6 +272,12 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (firstRender)
+        {
+            _objRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("registerEnterKeyHandler", _textAreaRef, _objRef);
+        }
+
         if (_shouldScrollToBottom)
         {
             _shouldScrollToBottom = false;
@@ -290,30 +290,37 @@
         await JS.InvokeVoidAsync("scrollToBottom", _messagesViewport);
     }
 
+    [JSInvokable]
+    public async Task SendMessageFromJS()
+    {
+        await SendMessage();
+    }
+
     private async Task SendMessage()
     {
         if (string.IsNullOrWhiteSpace(_newMessageContent)) return;
 
-        var command = new SendMessageCommand(_newMessageContent, ChannelId, CurrentUserId);
+        var content = _newMessageContent.Trim();
+        _newMessageContent = string.Empty; // Clear optimistically
+
+        // Force UI update to clear textarea and disable button
+        await InvokeAsync(StateHasChanged);
+
+        var command = new SendMessageCommand(content, ChannelId, CurrentUserId);
         var result = await FluxService.SendMessageAsync(command);
 
-        if (result.IsSuccess && result.Value != null)
+        if (!result.IsSuccess)
         {
-            _newMessageContent = "";
-            // The message will be added via SignalR callback
+            // On failure, restore the content so the user can retry.
+            _newMessageContent = content;
         }
-    }
-
-    private async Task HandleKeyUp(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter" && !e.ShiftKey)
-        {
-            await SendMessage();
-        }
+        
+        await InvokeAsync(StateHasChanged);
     }
 
     public async ValueTask DisposeAsync()
     {
+        _objRef?.Dispose();
         if (_hubConnection != null)
         {
             try
@@ -471,6 +478,7 @@
 
     .message-group {
         display: flex;
+        align-items: flex-start;
         padding: 8px 20px;
         gap: 12px;
         transition: background-color 0.1s;
@@ -534,8 +542,7 @@
         box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         z-index: 10;
     }
-
-    /* Input Styling */
+    
     .chat-input-container {
         padding: 0 20px 16px 20px;
         background-color: var(--neutral-layer-1);
@@ -547,67 +554,48 @@
         background-color: var(--neutral-layer-1);
         box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         transition: border-color 0.2s, box-shadow 0.2s;
+        padding: 4px;
         display: flex;
         flex-direction: column;
     }
 
     .chat-input-box:focus-within {
-        border-color: rgba(0, 0, 0, 0.3);
+        border-color: var(--accent-fill-rest);
     }
 
-    .input-toolbar {
-        display: flex;
-        padding: 2px 8px;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-        background-color: var(--neutral-layer-2);
-        border-radius: 8px 8px 0 0;
-        gap: 2px;
-    }
-
-    .input-toolbar .fluent-button {
-        height: 28px;
-        min-width: 28px;
-    }
-
-    .chat-textarea {
-        width: 100%;
-        background: transparent;
-        border: none;
-    }
-
-    /* Target the internal textarea of the Fluent UI component */
-    .chat-textarea::part(control) {
+    .chat-textarea-redesigned::part(control) {
         border: none;
         background: transparent;
-        padding: 6px 12px;
+        padding: 8px 12px;
         resize: none !important;
         box-shadow: none;
         font-size: 0.9rem;
         line-height: 1.4;
-        min-height: 36px;
+        min-height: 24px;
     }
 
-    .chat-textarea::part(control):focus {
-        border: none;
-        outline: none;
-        box-shadow: none;
-    }
-
-    .input-footer {
+    .bottom-toolbar {
         display: flex;
+        justify-content: space-between;
         align-items: center;
-        padding: 2px 12px 6px 12px;
+        padding: 4px 8px;
     }
 
-    .footer-left {
+    .toolbar-left, .toolbar-right {
         display: flex;
         align-items: center;
         gap: 4px;
     }
+    
+    .add-button {
+        border-radius: 50% !important;
+        width: 28px;
+        height: 28px;
+        min-width: 28px;
+    }
 
-    .footer-right {
-        display: flex;
-        align-items: center;
+    .add-button::part(control) {
+        border-radius: 50%;
     }
 
     .loading-container {
