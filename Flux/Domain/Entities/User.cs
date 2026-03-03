@@ -6,6 +6,8 @@
         public string Username { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string PasswordHash { get; set; } = string.Empty;
+        public string? ExternalProvider { get; set; }
+        public string? ExternalId { get; set; }
         public bool EmailConfirmed { get; set; } = false;
         public bool TwoFactorEnabled { get; set; } = false;
         public string? TwoFactorCode { get; set; }

@@ -1,0 +1,106 @@
+@page "/auth"
+@layout Flux.Components.Layout.EmptyLayout
+@inject NavigationManager Navigation
+
+<PageTitle>@( _isRegister ? "Register" : "Login" ) - Flux</PageTitle>
+
+<div class="scenic-auth-page">
+    <!-- Navbar (Optional, to match landing page) -->
+    <nav class="scenic-nav">
+        <div class="logo-container" style="cursor: pointer;" @onclick='() => Navigation.NavigateTo("/")'>
+            <span class="logo-text">FLUX</span>
+        </div>
+        <div class="nav-links">
+            <a href="/">Home</a>
+        </div>
+    </nav>
+
+    <!-- Centered Glassmorphism Auth Modal -->
+    <div class="auth-modal-container">
+        <div class="glass-modal @(_isRegister ? "show-register" : "show-login")">
+            
+            <!-- Login View -->
+            <div class="auth-view login-view">
+                <h2 class="auth-title">Login</h2>
+                <form @onsubmit="HandleLogin" class="scenic-form">
+                    <div class="input-group">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.Mail())" class="input-icon" />
+                        <input type="email" placeholder="Email" @bind="_loginEmail" required />
+                    </div>
+                    <div class="input-group">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.LockClosed())" class="input-icon" />
+                        <input type="password" placeholder="Password" @bind="_loginPassword" required />
+                    </div>
+                    
+                    <div class="form-actions">
+                        <label class="remember-me">
+                            <input type="checkbox" /> Remember me
+                        </label>
+                        <a href="#" class="forgot-link">Forgot Password?</a>
+                    </div>
+                    
+                    <button type="submit" class="scenic-submit-btn">Login</button>
+                    
+                    <p class="switch-mode">
+                        Don't have an account? <a href="javascript:void(0)" @onclick="() => _isRegister = true">Register</a>
+                    </p>
+                </form>
+            </div>
+
+            <!-- Register View -->
+            <div class="auth-view register-view">
+                <h2 class="auth-title">Registration</h2>
+                <form @onsubmit="HandleRegister" class="scenic-form">
+                    <div class="input-group">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.Person())" class="input-icon" />
+                        <input type="text" placeholder="Name" @bind="_registerUsername" required />
+                    </div>
+                    <div class="input-group">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.Mail())" class="input-icon" />
+                        <input type="email" placeholder="Email" @bind="_registerEmail" required />
+                    </div>
+                    <div class="input-group">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.LockClosed())" class="input-icon" />
+                        <input type="password" placeholder="Password" @bind="_registerPassword" required />
+                    </div>
+                    
+                    <div class="form-actions">
+                        <label class="remember-me">
+                            <input type="checkbox" required /> I agree to the terms & conditions
+                        </label>
+                    </div>
+                    
+                    <button type="submit" class="scenic-submit-btn">Register</button>
+                    
+                    <p class="switch-mode">
+                        Already have an account? <a href="javascript:void(0)" @onclick="() => _isRegister = false">Login</a>
+                    </p>
+                </form>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool _isRegister = false;
+
+    // Login
+    private string _loginEmail = "";
+    private string _loginPassword = "";
+
+    // Register
+    private string _registerUsername = "";
+    private string _registerEmail = "";
+    private string _registerPassword = "";
+
+    private async Task HandleLogin()
+    {
+        // Login Logic
+    }
+
+    private async Task HandleRegister()
+    {
+        // Register Logic
+    }
+}
