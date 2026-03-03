@@ -1,3 +1,4 @@
+
 using Flux.Domain.Common;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;

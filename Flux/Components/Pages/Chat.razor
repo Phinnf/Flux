@@ -158,7 +158,7 @@
     private bool _isLoadingMore = false;
     private bool _hasMoreMessages = true;
     private ElementReference _messagesViewport;
-    private ElementReference _textAreaRef;
+    private FluentTextArea _textAreaRef = default!;
     private DotNetObjectReference<Chat>? _objRef;
     private bool _shouldScrollToBottom = false;
     private HubConnection? _hubConnection;
@@ -275,7 +275,7 @@
         if (firstRender)
         {
             _objRef = DotNetObjectReference.Create(this);
-            await JS.InvokeVoidAsync("registerEnterKeyHandler", _textAreaRef, _objRef);
+            await JS.InvokeVoidAsync("registerEnterKeyHandler", _textAreaRef.Element, _objRef);
         }
 
         if (_shouldScrollToBottom)
