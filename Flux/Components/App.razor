@@ -21,6 +21,23 @@
                 element.scrollTop = element.scrollHeight;
             }
         };
+
+        window.registerEnterKeyHandler = (element, dotNetHelper) => {
+            if (!element) return;
+            
+            // Try to find textarea in the element or its shadow root
+            const textarea = element.querySelector('textarea') || 
+                           (element.shadowRoot && element.shadowRoot.querySelector('textarea'));
+            
+            if (!textarea) return;
+
+            textarea.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.ctrlKey && !e.shiftKey) {
+                    e.preventDefault();
+                    dotNetHelper.invokeMethodAsync('SendMessageFromJS');
+                }
+            });
+        };
     </script>
 </body>
 
