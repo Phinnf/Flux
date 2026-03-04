@@ -18,7 +18,14 @@ public class FluxAuthStateProvider : AuthenticationStateProvider
     {
         try
         {
-            var token = await _jsRuntime.InvokeAsync<string>("localStorage.getItem", "authToken");
+            // Try sessionStorage first (for when Remember Me is false)
+            var token = await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "authToken");
+            
+            // If not found, try localStorage (for when Remember Me is true)
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                token = await _jsRuntime.InvokeAsync<string>("localStorage.getItem", "authToken");
+            }
 
             if (string.IsNullOrWhiteSpace(token))
             {

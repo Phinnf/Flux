@@ -30,6 +30,7 @@ builder.Services.AddAuthentication(options =>
         options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
         options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
     })
+    .AddCookie("ExternalCookie")
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
@@ -45,6 +46,7 @@ builder.Services.AddAuthentication(options =>
     })
     .AddGoogle(googleOptions =>
     {
+        googleOptions.SignInScheme = "ExternalCookie";
         googleOptions.ClientId = builder.Configuration["Authentication:Google:ClientId"] ?? "placeholder-client-id";
         googleOptions.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? "placeholder-client-secret";
         googleOptions.SaveTokens = true;

@@ -8,6 +8,7 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @inject AuthenticationStateProvider AuthStateProvider
+@inject IToastService ToastService
 @implements IAsyncDisposable
 
 <PageTitle>Chat - @(_currentChannelName ?? "Loading...")</PageTitle>
@@ -187,7 +188,16 @@
             if (idClaim != null && Guid.TryParse(idClaim.Value, out var id))
             {
                 CurrentUserId = id;
+                Console.WriteLine($"[Chat.razor] CurrentUserId set to: {CurrentUserId}");
             }
+            else
+            {
+                Console.WriteLine($"[Chat.razor] Failed to parse idClaim: {idClaim?.Value}");
+            }
+        }
+        else
+        {
+            Console.WriteLine("[Chat.razor] User is not authenticated.");
         }
 
         _hubConnection = new HubConnectionBuilder()
@@ -327,6 +337,7 @@
         {
             // On failure, restore the content so the user can retry.
             _newMessageContent = content;
+            ToastService.ShowError($"Failed to send message: {result.Error}");
         }
         
         await InvokeAsync(StateHasChanged);
@@ -429,11 +440,12 @@
     .message-context-menu {
         position: fixed;
         z-index: 1001;
-        background: rgba(0, 0, 0, 0.7);
-        backdrop-filter: blur(15px);
+        background: rgba(30, 30, 34, 0.7);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
         border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 8px;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
         min-width: 200px;
         padding: 4px 0;
         animation: fade-in 0.1s ease-out;

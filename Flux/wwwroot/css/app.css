@@ -193,7 +193,7 @@ body::before {
 .workspace-name fluent-label {
     font-weight: 700 !important;
     font-size: 15px !important;
-    color: blackworkspace-name
+    color: white !important;
 }
 
 .sidebar-scrollable {

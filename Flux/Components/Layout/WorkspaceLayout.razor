@@ -10,12 +10,14 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @implements IDisposable
 
+<FluentDesignTheme Mode="DesignThemeModes.Dark" CustomColor="#611f69" />
+
 <div class="main-container">
     <div class="slack-layout">
         <!-- 1. Activity Bar -->
         <div class="activity-bar">
             <div class="activity-top">
-                <div class="workspace-icon-wrapper" @onclick='() => Navigation.NavigateTo("/")' title="Go to Home">
+                <div class="workspace-icon-wrapper" @onclick='() => Navigation.NavigateTo("/workspaces")' title="Go to Workspaces">
                     <div class="workspace-initial">@(string.IsNullOrEmpty(WorkspaceState.CurrentWorkspaceName) ? "F" : WorkspaceState.CurrentWorkspaceName[0].ToString().ToUpper())</div>
                 </div>
 

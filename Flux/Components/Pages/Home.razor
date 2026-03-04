@@ -1,4 +1,5 @@
 @page "/"
+@using Microsoft.AspNetCore.Components.Authorization
 @inject NavigationManager Navigation
 @layout Flux.Components.Layout.EmptyLayout
 
@@ -17,7 +18,19 @@
             <a href="#about">About</a>
         </div>
         <div class="nav-actions">
-            <button class="scenic-btn-outline" @onclick='() => Navigation.NavigateTo("/auth")'>Login</button>
+            <AuthorizeView>
+                <Authorized>
+                    <div style="cursor: pointer;" @onclick='() => Navigation.NavigateTo("/workspaces")'>
+                        <FluentPersona Status="PresenceStatus.Available" 
+                                      ImageSize="32px" 
+                                      Initials="@GetInitials(context.User.Identity?.Name)"
+                                      Name="@context.User.Identity?.Name" />
+                    </div>
+                </Authorized>
+                <NotAuthorized>
+                    <button class="scenic-btn-outline" @onclick='() => Navigation.NavigateTo("/auth")'>Login</button>
+                </NotAuthorized>
+            </AuthorizeView>
         </div>
     </nav>
 
@@ -32,9 +45,18 @@
                     Turn conversations into actionable tasks with a single click.
                 </p>
                 <div class="hero-buttons">
-                    <button class="scenic-btn-primary" @onclick='() => Navigation.NavigateTo("/auth")'>
-                        Start for free
-                    </button>
+                    <AuthorizeView>
+                        <Authorized>
+                            <button class="scenic-btn-primary" @onclick='() => Navigation.NavigateTo("/workspaces")'>
+                                Go to Workspaces
+                            </button>
+                        </Authorized>
+                        <NotAuthorized>
+                            <button class="scenic-btn-primary" @onclick='() => Navigation.NavigateTo("/auth")'>
+                                Start for free
+                            </button>
+                        </NotAuthorized>
+                    </AuthorizeView>
                     <button class="scenic-btn-text">
                         <FluentIcon Value="@(new Icons.Regular.Size24.Play())" Color="Color.Custom" CustomColor="#ffffff" Style="margin-right: 8px;" />
                         Watch Demo
@@ -356,3 +378,13 @@
         50% { transform: translateY(-15px); }
     }
 </style>
+
+@code {
+    private string GetInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1) return parts[0].Substring(0, Math.Min(2, parts[0].Length)).ToUpper();
+        return (parts[0][0].ToString() + parts[^1][0].ToString()).ToUpper();
+    }
+}

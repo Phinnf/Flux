@@ -31,7 +31,7 @@ public class AuthController : ControllerBase
     [HttpGet("google-callback")]
     public async Task<IActionResult> GoogleCallback()
     {
-        var result = await HttpContext.AuthenticateAsync(GoogleDefaults.AuthenticationScheme);
+        var result = await HttpContext.AuthenticateAsync("ExternalCookie");
 
         if (!result.Succeeded)
             return BadRequest("Google authentication failed.");
@@ -62,10 +62,25 @@ public class AuthController : ControllerBase
         }
 
         var token = _jwtService.GenerateToken(user);
+        
+        // Sign out of the temporary cookie
+        await HttpContext.SignOutAsync("ExternalCookie");
 
-        // Return a script to pass the token to the Blazor app or set a cookie.
-        // For simplicity, we redirect with the token in query (Not ideal for production, but works for MVP).
-        // A better way is using a minimal HTML page that sends a message to parent window.
-        return Redirect($"/?token={token}");
+        // Return a small script to save the token in localStorage and redirect to workspaces
+        var html = $@"
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Logging in...</title>
+        </head>
+        <body>
+            <script>
+                localStorage.setItem('authToken', '{token}');
+                window.location.href = '/workspaces';
+            </script>
+        </body>
+        </html>";
+
+        return Content(html, "text/html");
     }
 }
