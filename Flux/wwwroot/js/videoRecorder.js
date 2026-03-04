@@ -126,5 +126,30 @@ window.videoRecorder = {
         setTimeout(() => {
             document.body.removeChild(a);
         }, 100);
+    },
+
+    uploadVideo: async (url, uploadEndpoint) => {
+        try {
+            const response = await fetch(url);
+            const blob = await response.blob();
+            
+            const formData = new FormData();
+            formData.append('file', blob, `video_${new Date().getTime()}.webm`);
+
+            const uploadRes = await fetch(uploadEndpoint, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (uploadRes.ok) {
+                const data = await uploadRes.json();
+                return data.url;
+            } else {
+                throw new Error('Upload failed with status ' + uploadRes.status);
+            }
+        } catch (error) {
+            console.error('Error uploading video:', error);
+            return null;
+        }
     }
 };
