@@ -1,10 +1,13 @@
 @inherits LayoutComponentBase
 @using Flux.Domain.Entities
 @using Flux.Features.Channels.CreateChannel
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
 @inject WorkspaceStateService WorkspaceState
 @inject NavigationManager Navigation
 @inject FluxClientService FluxService
 @inject IDialogService DialogService
+@inject AuthenticationStateProvider AuthStateProvider
 @implements IDisposable
 
 <div class="main-container">
@@ -41,7 +44,7 @@
             <div class="sidebar-header">
                 <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center">
                     <div class="workspace-name">
-                        <FluentLabel Typo="Typography.Body" Style="font-weight: 800;">@(WorkspaceState.CurrentWorkspaceName ?? "Loading...")</FluentLabel>
+                        <FluentLabel Typo="Typography.Body" Style="font-weight: 800; color: white">@(WorkspaceState.CurrentWorkspaceName ?? "Loading...")</FluentLabel>
                     </div>
                     <FluentSpacer />
                     <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.ChevronDown())" />
@@ -51,7 +54,7 @@
             <div class="sidebar-scrollable">
                 <FluentNavMenu Width="260">
                     <div @oncontextmenu="@(e => ShowGroupContextMenu(e))" @oncontextmenu:preventDefault="true">
-                        <FluentNavGroup Title="Channels" Icon="@(new Icons.Regular.Size20.CaretDown())" Expanded="true">
+                        <FluentNavGroup Title="Channels" Icon="@(new Icons.Regular.Size20.CaretDown())" Expanded="true" Style="color: slategray">
                             @foreach (var channel in WorkspaceState.Channels)
                             {
                                 var icon = channel.Type == ChannelType.Private 
@@ -64,7 +67,7 @@
                                     <FluentNavLink Icon="@icon" 
                                                    Href="@($"/workspace/{WorkspaceState.CurrentWorkspaceId}/chat/{channel.Id}")"
                                                    Match="NavLinkMatch.All">
-                                        <span># @channel.Name</span>
+                                        <span ># @channel.Name</span>
                                     </FluentNavLink>
                                 </div>
                             }
@@ -169,7 +172,7 @@
 </style>
 
 @code {
-    private static readonly Guid CurrentUserId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+    private Guid _currentUserId;
     private bool _hideCreateChannelDialog = true;
     private string _newChannelName = "";
     private string _newChannelDescription = "";
@@ -186,9 +189,20 @@
     private Guid _selectedChannelId;
     private string? _selectedChannelName;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         WorkspaceState.OnStateChanged += StateHasChanged;
+        
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (user.Identity is { IsAuthenticated: true })
+        {
+            var idClaim = user.FindFirst(ClaimTypes.NameIdentifier) ?? user.FindFirst("sub");
+            if (idClaim != null && Guid.TryParse(idClaim.Value, out var id))
+            {
+                _currentUserId = id;
+            }
+        }
     }
 
     private void OpenCreateDialog()
@@ -202,7 +216,7 @@
     private async Task RefreshChannels()
     {
         _showContextMenu = false;
-        await WorkspaceState.RefreshChannelsAsync(CurrentUserId);
+        await WorkspaceState.RefreshChannelsAsync(_currentUserId);
     }
 
     private void OpenRenameDialog()
@@ -217,11 +231,11 @@
         if (string.IsNullOrWhiteSpace(_renameChannelName) || WorkspaceState.CurrentWorkspaceId == null) return;
 
         try {
-            var result = await FluxService.RenameChannelAsync(WorkspaceState.CurrentWorkspaceId.Value, _selectedChannelId, _renameChannelName, CurrentUserId);
+            var result = await FluxService.RenameChannelAsync(WorkspaceState.CurrentWorkspaceId.Value, _selectedChannelId, _renameChannelName, _currentUserId);
             if (result.IsSuccess)
             {
                 _hideRenameChannelDialog = true;
-                await WorkspaceState.RefreshChannelsAsync(CurrentUserId);
+                await WorkspaceState.RefreshChannelsAsync(_currentUserId);
             }
         } catch (TaskCanceledException) { }
     }
@@ -260,7 +274,7 @@
             int wsIndex = Array.IndexOf(parts, "workspace");
             if (wsIndex != -1 && wsIndex + 1 < parts.Length && Guid.TryParse(parts[wsIndex + 1], out Guid workspaceId))
             {
-                await WorkspaceState.LoadWorkspaceAsync(workspaceId, CurrentUserId);
+                await WorkspaceState.LoadWorkspaceAsync(workspaceId, _currentUserId);
             }
         } catch (TaskCanceledException) { }
     }
@@ -270,11 +284,11 @@
         if (string.IsNullOrWhiteSpace(_newChannelName) || WorkspaceState.CurrentWorkspaceId == null) return;
         try {
             var type = _newChannelTypeString == "Public" ? ChannelType.Public : ChannelType.Private;
-            var request = new CreateChannelRequest(_newChannelName, _newChannelDescription, type, CurrentUserId);
+            var request = new CreateChannelRequest(_newChannelName, _newChannelDescription, type, _currentUserId);
             var result = await FluxService.CreateChannelAsync(WorkspaceState.CurrentWorkspaceId.Value, request);
             if (result.IsSuccess) {
                 _hideCreateChannelDialog = true;
-                await WorkspaceState.RefreshChannelsAsync(CurrentUserId);
+                await WorkspaceState.RefreshChannelsAsync(_currentUserId);
             }
         } catch (TaskCanceledException) { }
     }
@@ -291,8 +305,8 @@
             var dialog = await DialogService.ShowConfirmationAsync($"Are you sure you want to delete #{channelName}?", "Delete Channel", "Delete", "Cancel");
             var result = await dialog.Result;
             if (!result.Cancelled && WorkspaceState.CurrentWorkspaceId != null) {
-                if ((await FluxService.DeleteChannelAsync(WorkspaceState.CurrentWorkspaceId.Value, channelId, CurrentUserId)).IsSuccess) {
-                    await WorkspaceState.RefreshChannelsAsync(CurrentUserId);
+                if ((await FluxService.DeleteChannelAsync(WorkspaceState.CurrentWorkspaceId.Value, channelId, _currentUserId)).IsSuccess) {
+                    await WorkspaceState.RefreshChannelsAsync(_currentUserId);
                     if (Navigation.Uri.Contains(channelId.ToString())) NavigateToFirstChannel();
                 }
             }

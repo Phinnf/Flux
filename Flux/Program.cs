@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.FluentUI.AspNetCore.Components;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Microsoft.AspNetCore.Components.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -54,6 +55,8 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddFluentUIComponents();
+
+builder.Services.AddScoped<AuthenticationStateProvider, FluxAuthStateProvider>();
 
 // Register our Flux API client service
 builder.Services.AddHttpClient<Flux.Infrastructure.Client.FluxClientService>((sp, client) =>

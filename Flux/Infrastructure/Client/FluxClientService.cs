@@ -14,6 +14,52 @@ public record ChannelSummary(Guid Id, string Name, string? Description, ChannelT
 
 public class FluxClientService(HttpClient httpClient)
 {
+    public async Task<Result<string>> LoginAsync(string email, string password)
+    {
+        try
+        {
+            var request = new { Email = email, Password = password };
+            var response = await httpClient.PostAsJsonAsync("/api/users/login", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<LoginResponse>();
+                return result?.Token != null ? Result<string>.CreateSuccess(result.Token) : Result<string>.CreateFailure("Invalid token received.");
+            }
+            
+            return Result<string>.CreateFailure("Invalid email or password.");
+        }
+        catch (Exception ex)
+        {
+            return Result<string>.CreateFailure(ex.Message);
+        }
+    }
+
+    public async Task<Result<string>> RegisterAsync(string username, string email, string password)
+    {
+        try
+        {
+            var request = new { Username = username, Email = email, Password = password };
+            var response = await httpClient.PostAsJsonAsync("/api/users/register", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                // Note: The backend currently returns string token directly if successful, but usually it returns a JSON object.
+                // Depending on the exact RegisterController implementation, let's assume it returns a raw string or we can read it.
+                var content = await response.Content.ReadAsStringAsync();
+                return Result<string>.CreateSuccess(content); 
+            }
+            
+            return Result<string>.CreateFailure("Registration failed.");
+        }
+        catch (Exception ex)
+        {
+            return Result<string>.CreateFailure(ex.Message);
+        }
+    }
+
+    private class LoginResponse { public string? Token { get; set; } }
+
     public async Task<Result<WorkspaceSummary>> CreateWorkspaceAsync(Guid userId, string name, string? description)
     {
         try

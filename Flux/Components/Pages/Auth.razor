@@ -1,6 +1,8 @@
 @page "/auth"
 @layout Flux.Components.Layout.EmptyLayout
 @inject NavigationManager Navigation
+@inject FluxClientService FluxService
+@inject IJSRuntime JS
 
 <PageTitle>@( _isRegister ? "Register" : "Login" ) - Flux</PageTitle>
 
@@ -32,6 +34,11 @@
                         <input type="password" placeholder="Password" @bind="_loginPassword" required />
                     </div>
                     
+                    @if (!string.IsNullOrEmpty(_loginError))
+                    {
+                        <div class="auth-error">@_loginError</div>
+                    }
+
                     <div class="form-actions">
                         <label class="remember-me">
                             <input type="checkbox" /> Remember me
@@ -42,7 +49,7 @@
                     <button type="submit" class="scenic-submit-btn">Login</button>
                     
                     <p class="switch-mode">
-                        Don't have an account? <a href="javascript:void(0)" @onclick="() => _isRegister = true">Register</a>
+                        Don't have an account? <a href="javascript:void(0)" @onclick="() => { _isRegister = true; _successMessage = null; _loginError = null; }">Register</a>
                     </p>
                 </form>
             </div>
@@ -63,6 +70,16 @@
                         <FluentIcon Value="@(new Icons.Regular.Size20.LockClosed())" class="input-icon" />
                         <input type="password" placeholder="Password" @bind="_registerPassword" required />
                     </div>
+
+                    @if (!string.IsNullOrEmpty(_registerError))
+                    {
+                        <div class="auth-error">@_registerError</div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(_successMessage))
+                    {
+                        <div class="auth-success">@_successMessage</div>
+                    }
                     
                     <div class="form-actions">
                         <label class="remember-me">
@@ -73,7 +90,7 @@
                     <button type="submit" class="scenic-submit-btn">Register</button>
                     
                     <p class="switch-mode">
-                        Already have an account? <a href="javascript:void(0)" @onclick="() => _isRegister = false">Login</a>
+                        Already have an account? <a href="javascript:void(0)" @onclick="() => { _isRegister = false; _successMessage = null; _registerError = null; }">Login</a>
                     </p>
                 </form>
             </div>
@@ -84,23 +101,64 @@
 
 @code {
     private bool _isRegister = false;
+    private string? _successMessage;
 
     // Login
     private string _loginEmail = "";
     private string _loginPassword = "";
+    private string? _loginError;
 
     // Register
     private string _registerUsername = "";
     private string _registerEmail = "";
     private string _registerPassword = "";
+    private string? _registerError;
 
     private async Task HandleLogin()
     {
-        // Login Logic
+        _loginError = null;
+        _successMessage = null;
+        
+        var result = await FluxService.LoginAsync(_loginEmail, _loginPassword);
+        
+        if (result.IsSuccess)
+        {
+            // For now, store token in localStorage and redirect
+            await JS.InvokeVoidAsync("localStorage.setItem", "authToken", result.Value);
+            
+            // Redirect to workspace selection page
+            Navigation.NavigateTo("/workspaces");
+        }
+        else
+        {
+            _loginError = result.Error ?? "Login failed. Please check your credentials.";
+        }
     }
 
     private async Task HandleRegister()
     {
-        // Register Logic
+        _registerError = null;
+        _successMessage = null;
+        
+        var result = await FluxService.RegisterAsync(_registerUsername, _registerEmail, _registerPassword);
+        
+        if (result.IsSuccess)
+        {
+            // Set success message
+            _successMessage = "Registration successful! Please login.";
+            
+            // Auto switch to login tab and pre-fill email
+            _isRegister = false;
+            _loginEmail = _registerEmail;
+            
+            // Clear register form
+            _registerUsername = "";
+            _registerEmail = "";
+            _registerPassword = "";
+        }
+        else
+        {
+            _registerError = result.Error ?? "Registration failed. Please try again.";
+        }
     }
 }

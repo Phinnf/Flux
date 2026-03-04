@@ -1,10 +1,13 @@
 @page "/workspace/{WorkspaceId:guid}/chat/{ChannelId:guid}"
 @layout Flux.Components.Layout.WorkspaceLayout
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
 @using Microsoft.AspNetCore.SignalR.Client
 @inject FluxClientService FluxService
 @inject WorkspaceStateService StateService
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthStateProvider
 @implements IAsyncDisposable
 
 <PageTitle>Chat - @(_currentChannelName ?? "Loading...")</PageTitle>
@@ -16,7 +19,7 @@
             <div class="channel-info">
                 <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="4">
                     <FluentIcon Value="@(new Icons.Regular.Size20.Tag())" />
-                    <FluentLabel Typo="Typography.H6" Style="font-weight: 700;">@(_currentChannelName ?? "channel-name")</FluentLabel>
+                    <FluentLabel Typo="Typography.H6" Style="font-weight: 700; color: white">@(_currentChannelName ?? "channel-name")</FluentLabel>
                     <FluentIcon Value="@(new Icons.Regular.Size12.ChevronDown())" Style="margin-left: 4px; opacity: 0.6;" />
                 </FluentStack>
             </div>
@@ -164,7 +167,7 @@
     private HubConnection? _hubConnection;
 
     // Hardcoded for now, will be replaced by Auth service later
-    private Guid CurrentUserId = Guid.Parse("00000000-0000-0000-0000-000000000001"); 
+    private Guid CurrentUserId;
 
     private string GetInitials(string? name)
     {
@@ -176,6 +179,17 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (user.Identity is { IsAuthenticated: true })
+        {
+            var idClaim = user.FindFirst(ClaimTypes.NameIdentifier) ?? user.FindFirst("sub");
+            if (idClaim != null && Guid.TryParse(idClaim.Value, out var id))
+            {
+                CurrentUserId = id;
+            }
+        }
+
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(Navigation.ToAbsoluteUri("/chatHub"))
             .WithAutomaticReconnect()
@@ -415,13 +429,15 @@
     .message-context-menu {
         position: fixed;
         z-index: 1001;
-        background: var(--neutral-layer-floating);
-        border: 1px solid var(--neutral-stroke-rest);
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 8px;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.3);
         min-width: 200px;
         padding: 4px 0;
         animation: fade-in 0.1s ease-out;
+        color: white;
     }
 
     @@keyframes fade-in {
@@ -431,16 +447,8 @@
 
     .menu-header {
         padding: 8px 12px;
-        border-bottom: 1px solid var(--neutral-stroke-rest);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         margin-bottom: 4px;
-    }
-
-    .message-group {
-        cursor: pointer;
-    }
-
-    .message-group:hover {
-        background-color: var(--neutral-layer-2);
     }
 
     .load-more-container {
@@ -452,16 +460,18 @@
         display: flex;
         flex-direction: column;
         height: 100%;
-        background-color: var(--neutral-layer-1);
+        background-color: transparent;
     }
 
     .chat-header {
-        padding: 8px 16px;
-        height: 48px;
-        border-bottom: 1px solid var(--neutral-stroke-rest);
-        background-color: var(--neutral-layer-1);
+        padding: 0 20px;
+        height: 52px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        background-color: rgba(20, 20, 20, 0.3);
+        backdrop-filter: blur(20px);
         display: flex;
         align-items: center;
+        z-index: 10;
     }
 
     .messages-viewport {
@@ -473,23 +483,24 @@
     .message-list {
         display: flex;
         flex-direction: column;
-        padding: 20px 0;
+        padding: 24px 0;
     }
 
     .message-group {
         display: flex;
         align-items: flex-start;
-        padding: 8px 20px;
-        gap: 12px;
-        transition: background-color 0.1s;
+        padding: 10px 24px;
+        gap: 14px;
+        transition: background-color 0.15s;
+        border-left: 3px solid transparent;
     }
 
     .message-group:hover {
-        background-color: var(--neutral-layer-2);
+        background-color: rgba(255, 255, 255, 0.04);
     }
 
-    .message-group:hover .message-actions {
-        opacity: 1;
+    .message-group.self {
+        /* Optional: differentiate self messages */
     }
 
     .message-content {
@@ -501,77 +512,69 @@
     .message-meta {
         display: flex;
         align-items: baseline;
-        gap: 8px;
-        margin-bottom: 2px;
+        gap: 10px;
+        margin-bottom: 4px;
     }
 
     .username {
         font-weight: 700;
         font-size: 0.95rem;
+        color: rgba(255, 255, 255, 0.95);
+        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
     }
 
     .timestamp {
         font-size: 0.75rem;
-        color: var(--neutral-foreground-hint);
-    }
-
-    .message-bubble-wrapper {
-        display: flex;
-        align-items: flex-start;
-        gap: 12px;
-        position: relative;
+        color: rgba(255, 255, 255, 0.5);
     }
 
     .message-bubble {
-        line-height: 1.5;
-        font-size: 0.95rem;
-        color: var(--neutral-foreground-rest);
+        line-height: 1.6;
+        font-size: 1rem;
+        color: rgba(255, 255, 255, 0.9);
         white-space: pre-wrap;
         word-break: break-word;
-    }
-
-    .message-actions {
-        position: absolute;
-        top: -24px;
-        right: 0;
-        background-color: var(--neutral-layer-1);
-        border: 1px solid var(--neutral-stroke-rest);
-        border-radius: 4px;
-        display: flex;
-        opacity: 0;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        z-index: 10;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.3);
     }
     
     .chat-input-container {
-        padding: 0 20px 16px 20px;
-        background-color: var(--neutral-layer-1);
+        padding: 0 24px 24px 24px;
+        background-color: transparent;
     }
 
     .chat-input-box {
-        border: 1px solid var(--neutral-stroke-rest);
-        border-radius: 8px;
-        background-color: var(--neutral-layer-1);
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        transition: border-color 0.2s, box-shadow 0.2s;
-        padding: 4px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 12px;
+        background-color: rgba(15, 15, 15, 0.4);
+        backdrop-filter: blur(25px) saturate(150%);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        transition: all 0.25s ease;
+        padding: 6px;
         display: flex;
         flex-direction: column;
     }
 
     .chat-input-box:focus-within {
-        border-color: var(--accent-fill-rest);
+        border-color: rgba(255, 255, 255, 0.3);
+        background-color: rgba(10, 10, 10, 0.5);
+        box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+        transform: translateY(-2px);
     }
 
     .chat-textarea-redesigned::part(control) {
         border: none;
         background: transparent;
-        padding: 8px 12px;
+        color: white;
+        padding: 12px 16px;
         resize: none !important;
         box-shadow: none;
-        font-size: 0.9rem;
-        line-height: 1.4;
-        min-height: 24px;
+        font-size: 1rem;
+        line-height: 1.5;
+        min-height: 44px;
+    }
+    
+    .chat-textarea-redesigned::part(control)::placeholder {
+        color: rgba(255, 255, 255, 0.5);
     }
 
     .bottom-toolbar {

@@ -62,7 +62,7 @@ public class AuthController : ControllerBase
         }
 
         var token = _jwtService.GenerateToken(user);
-        
+
         // Return a script to pass the token to the Blazor app or set a cookie.
         // For simplicity, we redirect with the token in query (Not ideal for production, but works for MVP).
         // A better way is using a minimal HTML page that sends a message to parent window.
