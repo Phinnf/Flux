@@ -8,43 +8,53 @@
 
 <PageTitle>Your Workspaces - Flux</PageTitle>
 
-<div style="padding: 40px; max-width: 1200px; margin: 0 auto;">
-    
-    <div style="text-align: center; margin-bottom: 50px;">
-        <FluentLabel Typo="Typography.H2" Style="font-weight: bold;">Welcome to Flux!</FluentLabel>
-        <FluentLabel Typo="Typography.Body" Style="margin-top: 10px; opacity: 0.8;">
-            Choose a workspace to join your team, or create a new one.
-        </FluentLabel>
-    </div>
-
-    @if (_workspaces == null)
-    {
-        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px;">
-            <FluentProgressRing />
-            <FluentLabel Style="margin-top: 15px;">Finding your workspaces...</FluentLabel>
+<div class="scenic-workspaces-page">
+    <nav class="scenic-nav">
+        <div class="logo-container" style="cursor: pointer;" @onclick='() => Navigation.NavigateTo("/")'>
+            <span class="logo-text">FLUX</span>
         </div>
-    }
-    else
-    {
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">
-            @foreach (var workspace in _workspaces)
-            {
-                <FluentCard Style="padding: 20px; cursor: pointer; transition: transform 0.2s; background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); color: white;" @onclick="() => SelectWorkspace(workspace)">
-                    <FluentStack Orientation="Orientation.Vertical" VerticalGap="15">
-                        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="10" VerticalAlignment="VerticalAlignment.Center">
-                            <div style="background-color: var(--neutral-layer-2); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2rem; color: var(--flux-primary);">
-                                @(workspace.Name?.Length > 0 ? workspace.Name[0].ToString().ToUpper() : "?")
-                            </div>
-                            <FluentLabel Typo="Typography.H4" Style="margin: 0;">@workspace.Name</FluentLabel>
-                        </FluentStack>
-                        
-                        <FluentLabel Typo="Typography.Body" Style="height: 40px; overflow: hidden; text-overflow: ellipsis; color: var(--neutral-foreground-hint);">
-                            @(string.IsNullOrEmpty(workspace.Description) ? "No description provided." : workspace.Description)
-                        </FluentLabel>
+        <div class="nav-actions">
+            <FluentPersona Status="PresenceStatus.Available" 
+                           ImageSize="32px" 
+                           Initials="Me" />
+        </div>
+    </nav>
 
-                        <FluentDivider />
+    <div class="workspaces-container">
+        <div class="workspaces-header">
+            <h1 class="hero-heading" style="font-size: 3rem; margin-bottom: 10px;">Welcome to Flux!</h1>
+            <p class="hero-subheading" style="margin-bottom: 40px;">
+                Choose a workspace to join your team, or create a new one.
+            </p>
+        </div>
 
-                        <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween">
+        @if (_workspaces == null)
+        {
+            <div class="glass-panel" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; max-width: 400px; margin: 0 auto;">
+                <FluentProgressRing />
+                <FluentLabel Style="margin-top: 15px; color: white;">Finding your workspaces...</FluentLabel>
+            </div>
+        }
+        else
+        {
+            <div class="workspaces-grid">
+                @foreach (var workspace in _workspaces)
+                {
+                    <div class="glass-card workspace-card" @onclick="() => SelectWorkspace(workspace)">
+                        <div class="workspace-card-content">
+                            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="15" VerticalAlignment="VerticalAlignment.Center">
+                                <div class="workspace-avatar">
+                                    @(workspace.Name?.Length > 0 ? workspace.Name[0].ToString().ToUpper() : "?")
+                                </div>
+                                <div style="flex: 1;">
+                                    <h3 style="margin: 0; color: white; font-weight: 700; font-size: 1.2rem;">@workspace.Name</h3>
+                                    <p style="margin: 5px 0 0 0; color: rgba(255,255,255,0.6); font-size: 0.9rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                        @(string.IsNullOrEmpty(workspace.Description) ? "No description provided." : workspace.Description)
+                                    </p>
+                                </div>
+                            </FluentStack>
+                        </div>
+                        <div class="workspace-card-actions">
                             <div @onclick:stopPropagation="true">
                                 <FluentButton Appearance="Appearance.Stealth" 
                                               IconStart="@(new Icons.Regular.Size16.Delete())" 
@@ -53,40 +63,254 @@
                                               Title="Delete Workspace">
                                 </FluentButton>
                             </div>
-                            <FluentButton Appearance="Appearance.Accent" IconEnd="@(new Icons.Regular.Size16.ArrowRight())">Join Workspace</FluentButton>
-                        </FluentStack>
-                    </FluentStack>
-                </FluentCard>
-            }
+                            <button class="scenic-btn-outline" style="padding: 6px 16px; font-size: 12px;">Join</button>
+                        </div>
+                    </div>
+                }
 
-            <!-- Create New Workspace Card -->
-            <FluentCard Style="padding: 20px; border: 2px dashed var(--neutral-stroke-rest); background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; min-height: 200px; transition: background-color 0.2s;" 
-                        @onclick="() => _showCreateDialog = true">
-                <FluentIcon Value="@(new Icons.Regular.Size48.AddCircle())" Color="Color.Accent" Style="margin-bottom: 15px;" />
-                <FluentLabel Typo="Typography.H5">Create New Workspace</FluentLabel>
-            </FluentCard>
-        </div>
-    }
+                <!-- Create New Workspace Card -->
+                <div class="glass-card create-card" @onclick="() => _showCreateDialog = true">
+                    <div class="create-card-content">
+                        <FluentIcon Value="@(new Icons.Regular.Size48.AddCircle())" Color="Color.Accent" Style="margin-bottom: 15px;" />
+                        <h3 style="margin: 0; color: white; font-weight: 600;">Create New Workspace</h3>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
 </div>
 
 @* Create Workspace Dialog *@
 <FluentDialog Hidden="!_showCreateDialog" Modal="true" TrapFocus="true" @onclick:stopPropagation>
-    <div style="padding: 20px; width: 400px;">
-        <FluentLabel Typo="Typography.H3" Style="margin-bottom: 20px;">New Workspace</FluentLabel>
+    <div class="glass-dialog">
+        <h2 style="color: white; margin-top: 0; margin-bottom: 20px;">New Workspace</h2>
         
-        <FluentTextField Label="Workspace Name" @bind-Value="_newWorkspaceName" Style="width: 100%; margin-bottom: 15px;" Required="true" />
-        <FluentTextArea Label="Description" @bind-Value="_newWorkspaceDescription" Style="width: 100%; margin-bottom: 25px;" Rows="3" />
+        <FluentTextField Label="Workspace Name" @bind-Value="_newWorkspaceName" Style="width: 100%; margin-bottom: 15px; color: white;" Required="true" />
+        <FluentTextArea Label="Description" @bind-Value="_newWorkspaceDescription" Style="width: 100%; margin-bottom: 25px; color: white;" Rows="3" />
         
         <div style="display: flex; justify-content: flex-end; gap: 10px;">
-            <FluentButton Appearance="Appearance.Stealth" OnClick="() => _showCreateDialog = false">Cancel</FluentButton>
-            <FluentButton Appearance="Appearance.Accent" OnClick="CreateWorkspace" Disabled="@string.IsNullOrWhiteSpace(_newWorkspaceName)">Create & Join</FluentButton>
+            <button class="scenic-btn-outline" @onclick="() => _showCreateDialog = false">Cancel</button>
+            <button class="scenic-btn-primary" @onclick="CreateWorkspace" disabled="@string.IsNullOrWhiteSpace(_newWorkspaceName)">Create & Join</button>
         </div>
     </div>
 </FluentDialog>
 
+<style>
+    /* Inherit base scenic styles from empty layout but add workspace specific ones */
+    .scenic-workspaces-page {
+        min-height: 100vh;
+        width: 100%;
+        background-color: transparent; /* Assuming Body has the global background image now */
+        color: white;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .scenic-nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 25px 60px;
+        position: relative;
+        z-index: 10;
+        background: rgba(15, 15, 15, 0.4);
+        backdrop-filter: blur(20px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .logo-text {
+        font-size: 24px;
+        font-weight: 800;
+        letter-spacing: 2px;
+        color: white;
+    }
+
+    .workspaces-container {
+        flex: 1;
+        padding: 60px 40px;
+        max-width: 1200px;
+        margin: 0 auto;
+        width: 100%;
+        animation: fadeIn 0.6s ease-out;
+    }
+
+    .workspaces-header {
+        text-align: center;
+        margin-bottom: 60px;
+    }
+
+    .hero-heading {
+        font-weight: 800;
+        letter-spacing: -1px;
+    }
+
+    .hero-subheading {
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 1.1rem;
+    }
+
+    .workspaces-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 24px;
+    }
+
+    /* Glass Cards */
+    .glass-card {
+        background: rgba(30, 30, 34, 0.6);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        transition: all 0.3s ease;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .glass-panel {
+        background: rgba(30, 30, 34, 0.6);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 40px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .workspace-card {
+        cursor: pointer;
+    }
+
+    .workspace-card:hover {
+        transform: translateY(-5px);
+        background: rgba(40, 40, 45, 0.7);
+        border-color: rgba(255, 255, 255, 0.2);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .workspace-card-content {
+        padding: 24px;
+        flex: 1;
+    }
+
+    .workspace-avatar {
+        background: linear-gradient(135deg, #611f69, #e14960);
+        width: 56px;
+        height: 56px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 1.5rem;
+        color: white;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+
+    .workspace-card-actions {
+        padding: 16px 24px;
+        background: rgba(0, 0, 0, 0.2);
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    /* Create Card Specifics */
+    .create-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 2px dashed rgba(255, 255, 255, 0.2);
+        cursor: pointer;
+        min-height: 200px;
+    }
+
+    .create-card:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.4);
+        transform: translateY(-5px);
+    }
+
+    .create-card-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        padding: 24px;
+        text-align: center;
+    }
+
+    /* Custom Dialog Styling */
+    ::deep fluent-dialog::part(control) {
+        background: rgba(25, 25, 28, 0.85);
+        backdrop-filter: blur(25px);
+        -webkit-backdrop-filter: blur(25px);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 20px;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        padding: 0;
+    }
+
+    .glass-dialog {
+        padding: 30px;
+        width: 450px;
+        color: white;
+    }
+
+    /* Buttons from Auth */
+    .scenic-btn-outline {
+        background: transparent;
+        border: 2px solid rgba(255, 255, 255, 0.6);
+        color: white;
+        padding: 8px 24px;
+        border-radius: 30px;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .scenic-btn-outline:hover {
+        border-color: white;
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .scenic-btn-primary {
+        background: white;
+        color: #4b1d52;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 30px;
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .scenic-btn-primary:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    }
+    
+    .scenic-btn-primary:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
 @code {
     private List<WorkspaceSummary>? _workspaces;
     private Guid _currentUserId;
+
+    private bool _showCreateDialog = false;
+    private string _newWorkspaceName = "";
+    private string _newWorkspaceDescription = "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -129,10 +353,6 @@
             _workspaces = new();
         }
     }
-
-    private bool _showCreateDialog = false;
-    private string _newWorkspaceName = "";
-    private string _newWorkspaceDescription = "";
 
     private async Task SelectWorkspace(WorkspaceSummary workspace)
     {

@@ -115,6 +115,67 @@
         </div>
     }
 
+    <!-- Video Recorder Dialog -->
+    @if (_showVideoRecorder)
+    {
+        <div class="video-recorder-overlay" @onclick="CloseVideoRecorder">
+            <div class="video-recorder-dialog" @onclick:stopPropagation>
+                <div class="recorder-header">
+                    <h3>Record video clip</h3>
+                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.Dismiss())" OnClick="CloseVideoRecorder" />
+                </div>
+                
+                <div class="recorder-body">
+                    <video id="videoPreview" autoplay playsinline class="video-preview"></video>
+                    @if (_isCameraError)
+                    {
+                        <div class="camera-error-overlay">
+                            <FluentIcon Value="@(new Icons.Regular.Size32.Warning())" Color="Color.Warning" />
+                            <h4>Can't access camera</h4>
+                            <p>Check your browser settings to make sure Flux has permission to access your camera, and try again.</p>
+                        </div>
+                    }
+                </div>
+                
+                <div class="recorder-footer">
+                    @if (_recordedVideoUrl != null)
+                    {
+                        <FluentButton Appearance="Appearance.Stealth" IconStart="@(new Icons.Regular.Size20.ArrowDownload())" OnClick="DownloadVideo">Download Video</FluentButton>
+                        <FluentSpacer />
+                        <FluentButton Appearance="Appearance.Stealth" OnClick="RetakeVideo">Retake</FluentButton>
+                        <FluentButton Appearance="Appearance.Accent" OnClick="UploadVideo">Upload Video</FluentButton>
+                    }
+                    else
+                    {
+                        <div class="device-controls">
+                            <FluentButton Appearance="@(_currentCaptureMode == "camera" ? Appearance.Neutral : Appearance.Stealth)" IconEnd="@(new Icons.Regular.Size20.Video())" OnClick='() => SwitchCaptureMode("camera")' Title="Camera" />
+                            <FluentButton Appearance="@(_currentCaptureMode == "screen" ? Appearance.Neutral : Appearance.Stealth)" IconEnd="@(new Icons.Regular.Size20.Desktop())" OnClick='() => SwitchCaptureMode("screen")' Title="Screen Share" />
+                            <FluentButton Appearance="@(_isCameraEnabled ? Appearance.Stealth : Appearance.Neutral)" 
+                                          IconEnd="@(_isCameraEnabled ? new Icons.Regular.Size20.Video() : new Icons.Regular.Size20.VideoOff())" 
+                                          OnClick="ToggleCamera" Title="Toggle Camera" />
+                            <FluentButton Appearance="@(_isMicEnabled ? Appearance.Stealth : Appearance.Neutral)" 
+                                          IconEnd="@(_isMicEnabled ? new Icons.Regular.Size20.Mic() : new Icons.Regular.Size20.MicOff())" 
+                                          OnClick="ToggleMic" Title="Toggle Microphone" />
+                        </div>
+                        <FluentSpacer />
+                        @if (_isRecording)
+                        {
+                            <span style="color: #ff0055; font-family: monospace; font-weight: bold; margin-right: 15px; font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">
+                                <span class="status-dot" style="background-color: #ff0055; box-shadow: 0 0 10px #ff0055;"></span>
+                                @_recordingDurationString
+                            </span>
+                            <FluentButton Appearance="Appearance.Stealth" OnClick="StopRecording" Style="color: white; border: 1px solid rgba(255,255,255,0.2);">Stop Recording</FluentButton>
+                        }
+                        else
+                        {
+                            <FluentButton Appearance="Appearance.Accent" OnClick="StartRecording" Style="background-color: #e01e5a;" Disabled="@_isCameraError">Record</FluentButton>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
     <!-- Chat Input -->
     <div class="chat-input-container">
         <div class="chat-input-box">
@@ -129,7 +190,7 @@
                 <div class="toolbar-left">
                     <FluentButton class="add-button" Appearance="Appearance.Accent" IconStart="@(new Icons.Regular.Size20.Add())" />
                     <FluentDivider Vertical="true" style="height: 20px;" />
-                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Video())" />
+                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Video())" OnClick="OpenVideoRecorder" />
                     <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Mic())" />
                     <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Emoji())" />
                     <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Mention())" />
@@ -169,6 +230,146 @@
 
     // Hardcoded for now, will be replaced by Auth service later
     private Guid CurrentUserId;
+    
+    // Video Recorder State
+    private bool _showVideoRecorder = false;
+    private bool _isCameraError = false;
+    private bool _isRecording = false;
+    private string? _recordedVideoUrl = null;
+    private string _currentCaptureMode = "camera";
+    private bool _isCameraEnabled = true;
+    private bool _isMicEnabled = true;
+
+    private System.Timers.Timer? _recordingTimer;
+    private int _recordingSeconds = 0;
+    private string _recordingDurationString = "00:00";
+
+    private async Task OpenVideoRecorder()
+    {
+        _showVideoRecorder = true;
+        _isCameraError = false;
+        _isRecording = false;
+        _recordedVideoUrl = null;
+        _currentCaptureMode = "camera";
+        _isCameraEnabled = true;
+        _isMicEnabled = true;
+        _recordingSeconds = 0;
+        _recordingDurationString = "00:00";
+        StateHasChanged();
+
+        await Task.Delay(100);
+        await SwitchCaptureMode("camera");
+    }
+
+    private async Task ToggleCamera()
+    {
+        _isCameraEnabled = !_isCameraEnabled;
+        await JS.InvokeVoidAsync("window.videoRecorder.toggleVideo", _isCameraEnabled);
+    }
+
+    private async Task ToggleMic()
+    {
+        _isMicEnabled = !_isMicEnabled;
+        await JS.InvokeVoidAsync("window.videoRecorder.toggleAudio", _isMicEnabled);
+    }
+
+    private async Task SwitchCaptureMode(string mode)
+    {
+        _currentCaptureMode = mode;
+        _isCameraError = false;
+        StateHasChanged();
+        
+        bool started;
+        if (mode == "camera")
+        {
+            started = await JS.InvokeAsync<bool>("window.videoRecorder.startCamera", "videoPreview");
+        }
+        else
+        {
+            started = await JS.InvokeAsync<bool>("window.videoRecorder.startScreenShare", "videoPreview");
+        }
+
+        if (!started)
+        {
+            _isCameraError = true;
+            StateHasChanged();
+        }
+        else
+        {
+            // Sync current toggle states
+            await JS.InvokeVoidAsync("window.videoRecorder.toggleVideo", _isCameraEnabled);
+            await JS.InvokeVoidAsync("window.videoRecorder.toggleAudio", _isMicEnabled);
+        }
+    }
+
+    private async Task CloseVideoRecorder()
+    {
+        _showVideoRecorder = false;
+        if (_isRecording)
+        {
+            await StopRecording();
+        }
+        await JS.InvokeVoidAsync("window.videoRecorder.stopCamera");
+    }
+
+    private async Task StartRecording()
+    {
+        var started = await JS.InvokeAsync<bool>("window.videoRecorder.startRecording");
+        if (started)
+        {
+            _isRecording = true;
+            _recordingSeconds = 0;
+            _recordingDurationString = "00:00";
+            
+            if (_recordingTimer != null)
+            {
+                _recordingTimer.Stop();
+                _recordingTimer.Dispose();
+            }
+            
+            _recordingTimer = new System.Timers.Timer(1000);
+            _recordingTimer.Elapsed += (sender, e) =>
+            {
+                _recordingSeconds++;
+                var ts = TimeSpan.FromSeconds(_recordingSeconds);
+                _recordingDurationString = ts.ToString(@"mm\:ss");
+                InvokeAsync(StateHasChanged);
+            };
+            _recordingTimer.Start();
+        }
+    }
+
+    private async Task StopRecording()
+    {
+        _isRecording = false;
+        if (_recordingTimer != null)
+        {
+            _recordingTimer.Stop();
+            _recordingTimer.Dispose();
+            _recordingTimer = null;
+        }
+        _recordedVideoUrl = await JS.InvokeAsync<string>("window.videoRecorder.stopRecording", "videoPreview");
+    }
+
+    private async Task RetakeVideo()
+    {
+        _recordedVideoUrl = null;
+        await JS.InvokeVoidAsync("window.videoRecorder.startCamera", "videoPreview");
+    }
+
+    private async Task DownloadVideo()
+    {
+        if (_recordedVideoUrl != null)
+        {
+            await JS.InvokeVoidAsync("window.videoRecorder.downloadVideo", _recordedVideoUrl);
+        }
+    }
+
+    private async Task UploadVideo()
+    {
+        ToastService.ShowSuccess("Video uploaded successfully (simulated)!");
+        await CloseVideoRecorder();
+    }
 
     private string GetInitials(string? name)
     {
@@ -629,6 +830,97 @@
     .empty-chat-hero {
         display: flex;
         flex-direction: column;
+        gap: 8px;
+    }
+    
+    /* Video Recorder */
+    .video-recorder-overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(5px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+    }
+
+    .video-recorder-dialog {
+        background: #1a1a1d;
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 12px;
+        width: 800px;
+        max-width: 90vw;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .recorder-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 24px;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    
+    .recorder-header h3 {
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: white;
+    }
+
+    .recorder-body {
+        position: relative;
+        background: #000;
+        height: 450px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .video-preview {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .camera-error-overlay {
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(40, 30, 0, 0.9);
+        border: 1px solid #ffb300;
+        padding: 20px;
+        border-radius: 8px;
+        text-align: center;
+        color: white;
+        max-width: 400px;
+    }
+
+    .camera-error-overlay h4 {
+        margin: 10px 0 5px 0;
+        color: #ffb300;
+    }
+    
+    .camera-error-overlay p {
+        margin: 0;
+        font-size: 0.9rem;
+        opacity: 0.8;
+    }
+
+    .recorder-footer {
+        display: flex;
+        align-items: center;
+        padding: 16px 24px;
+        background: #1a1a1d;
+        border-top: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .device-controls {
+        display: flex;
         gap: 8px;
     }
 </style>
