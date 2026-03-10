@@ -222,6 +222,17 @@
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
 }
 
+.google-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.google-btn svg {
+    margin: 0 !important;
+}
+
 /* Switch Mode Link */
 .switch-mode {
     text-align: center;

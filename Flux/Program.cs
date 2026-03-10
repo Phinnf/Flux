@@ -4,6 +4,7 @@ using Flux.Components;
 using Flux.Infrastructure.Database;
 using Flux.Infrastructure.Identity;
 using Flux.Infrastructure.SignalR;
+using Flux.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -24,6 +25,7 @@ builder.Services.AddFluentValidationAutoValidation()
 // --- IDENTITY & JWT SERVICES ---
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 
 builder.Services.AddAuthentication(options =>
     {

@@ -3,6 +3,7 @@ using System;
 using Flux.Infrastructure.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Flux.Migrations
 {
     [DbContext(typeof(FluxDbContext))]
-    partial class FluxDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260305104825_AddProfileFieldsToUser")]
+    partial class AddProfileFieldsToUser
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -178,38 +181,6 @@ namespace Flux.Migrations
                     b.ToTable("Workspaces");
                 });
 
-            modelBuilder.Entity("Flux.Domain.Entities.WorkspaceInvite", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("CreatedByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("WorkspaceId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Code")
-                        .IsUnique();
-
-                    b.HasIndex("WorkspaceId");
-
-                    b.ToTable("WorkspaceInvites");
-                });
-
             modelBuilder.Entity("UserWorkspace", b =>
                 {
                     b.Property<Guid>("MembersId")
@@ -269,17 +240,6 @@ namespace Flux.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Flux.Domain.Entities.WorkspaceInvite", b =>
-                {
-                    b.HasOne("Flux.Domain.Entities.Workspace", "Workspace")
-                        .WithMany("Invites")
-                        .HasForeignKey("WorkspaceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Workspace");
-                });
-
             modelBuilder.Entity("UserWorkspace", b =>
                 {
                     b.HasOne("Flux.Domain.Entities.User", null)
@@ -308,8 +268,6 @@ namespace Flux.Migrations
             modelBuilder.Entity("Flux.Domain.Entities.Workspace", b =>
                 {
                     b.Navigation("Channels");
-
-                    b.Navigation("Invites");
                 });
 #pragma warning restore 612, 618
         }

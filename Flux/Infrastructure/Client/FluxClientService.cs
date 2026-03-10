@@ -58,6 +58,27 @@ public class FluxClientService(HttpClient httpClient)
         }
     }
 
+    public async Task<Result> VerifyEmailAsync(string email, string otp)
+    {
+        try
+        {
+            var request = new { Email = email, Otp = otp };
+            var response = await httpClient.PostAsJsonAsync("/api/users/verify-email", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return Result.Success();
+            }
+            
+            var error = await response.Content.ReadAsStringAsync();
+            return Result.Failure(error);
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure(ex.Message);
+        }
+    }
+
     private class LoginResponse { public string? Token { get; set; } }
 
     public async Task<Result<WorkspaceSummary>> CreateWorkspaceAsync(Guid userId, string name, string? description)
@@ -233,6 +254,164 @@ public class FluxClientService(HttpClient httpClient)
         {
             var request = new { NewName = newName, UserId = userId };
             var response = await httpClient.PutAsJsonAsync($"/api/workspaces/{workspaceId}/channels/{channelId}/rename", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return Result.Success();
+            }
+            
+            var error = await response.Content.ReadAsStringAsync();
+            return Result.Failure(error);
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure(ex.Message);
+        }
+    }
+
+    public async Task<Result<string>> CreateInviteAsync(Guid workspaceId, Guid userId, int? expiresInHours)
+    {
+        try
+        {
+            var request = new { ExpiresInHours = expiresInHours, UserId = userId };
+            var response = await httpClient.PostAsJsonAsync($"/api/workspaces/{workspaceId}/invites", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
+                return result != null && result.TryGetValue("code", out var code) 
+                    ? Result<string>.CreateSuccess(code) 
+                    : Result<string>.CreateFailure("Invalid response format.");
+            }
+            
+            var error = await response.Content.ReadAsStringAsync();
+            return Result<string>.CreateFailure(error);
+        }
+        catch (Exception ex)
+        {
+            return Result<string>.CreateFailure(ex.Message);
+        }
+    }
+
+    public record InviteDetailsDto(Guid WorkspaceId, string WorkspaceName, string? WorkspaceDescription);
+
+    public async Task<Result<InviteDetailsDto>> GetInviteDetailsAsync(string code)
+    {
+        try
+        {
+            var response = await httpClient.GetAsync($"/api/invites/{code}");
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<InviteDetailsDto>();
+                return result != null 
+                    ? Result<InviteDetailsDto>.CreateSuccess(result) 
+                    : Result<InviteDetailsDto>.CreateFailure("Failed to deserialize invite details.");
+            }
+            
+            var error = await response.Content.ReadAsStringAsync();
+            return Result<InviteDetailsDto>.CreateFailure(error);
+        }
+        catch (Exception ex)
+        {
+            return Result<InviteDetailsDto>.CreateFailure(ex.Message);
+        }
+    }
+
+    public async Task<Result<Guid>> JoinWorkspaceViaInviteAsync(string code, Guid userId)
+    {
+        try
+        {
+            var request = new { UserId = userId };
+            var response = await httpClient.PostAsJsonAsync($"/api/invites/{code}/join", request);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<Dictionary<string, Guid>>();
+                return result != null && result.TryGetValue("workspaceId", out var wsId) 
+                    ? Result<Guid>.CreateSuccess(wsId) 
+                    : Result<Guid>.CreateFailure("Invalid response format.");
+            }
+            
+            var error = await response.Content.ReadAsStringAsync();
+            return Result<Guid>.CreateFailure(error);
+        }
+        catch (Exception ex)
+        {
+            return Result<Guid>.CreateFailure(ex.Message);
+        }
+    }
+
+    public record UserProfileDto(Guid Id, string Username, string Email, string? FullName, string? NickName, string? Gender, string? Country, string? AvatarUrl);
+
+    public async Task<Result<UserProfileDto>> GetProfileAsync(Guid userId)
+    {
+        try
+        {
+            var response = await httpClient.GetAsync($"/api/users/profile?userId={userId}");
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<UserProfileDto>();
+                return result != null 
+                    ? Result<UserProfileDto>.CreateSuccess(result) 
+                    : Result<UserProfileDto>.CreateFailure("Failed to deserialize profile.");
+            }
+            
+            var error = await response.Content.ReadAsStringAsync();
+            return Result<UserProfileDto>.CreateFailure(error);
+        }
+        catch (Exception ex)
+        {
+            return Result<UserProfileDto>.CreateFailure(ex.Message);
+        }
+    }
+
+    public async Task<Result> UpdateProfileAsync(Guid userId, string? username, string? fullName, string? nickName, string? gender, string? country, string? avatarUrl)
+    {
+        try
+        {
+            var request = new { UserId = userId, Username = username, FullName = fullName, NickName = nickName, Gender = gender, Country = country, AvatarUrl = avatarUrl };
+            var response = await httpClient.PutAsJsonAsync("/api/users/profile", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return Result.Success();
+            }
+            
+            var error = await response.Content.ReadAsStringAsync();
+            return Result.Failure(error);
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure(ex.Message);
+        }
+    }
+
+    public async Task<Result> SendOtpAsync(Guid userId)
+    {
+        try
+        {
+            var request = new { UserId = userId };
+            var response = await httpClient.PostAsJsonAsync("/api/users/profile/send-otp", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return Result.Success();
+            }
+            
+            var error = await response.Content.ReadAsStringAsync();
+            return Result.Failure(error);
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure(ex.Message);
+        }
+    }
+
+    public async Task<Result> ChangePasswordAsync(Guid userId, string otp, string newPassword)
+    {
+        try
+        {
+            var request = new { UserId = userId, Otp = otp, NewPassword = newPassword };
+            var response = await httpClient.PostAsJsonAsync("/api/users/profile/change-password", request);
             
             if (response.IsSuccessStatusCode)
             {

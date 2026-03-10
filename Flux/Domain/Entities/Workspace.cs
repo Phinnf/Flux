@@ -13,5 +13,8 @@
 
         // 1 Workspace can have many Users (Members)
         public ICollection<User> Members { get; set; } = new List<User>();
+
+        // 1 Workspace can have many Invites
+        public ICollection<WorkspaceInvite> Invites { get; set; } = new List<WorkspaceInvite>();
     }
 }

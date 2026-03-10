@@ -28,6 +28,11 @@ public class LoginHandler : IRequestHandler<LoginCommand, Result<string>>
             return Result.Failure<string>("Invalid email or password.");
         }
 
+        if (!user.EmailConfirmed && string.IsNullOrEmpty(user.ExternalProvider))
+        {
+            return Result.Failure<string>("Please verify your email address before logging in.");
+        }
+
         var token = _jwtService.GenerateToken(user);
         return Result<string>.Success(token);
     }

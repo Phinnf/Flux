@@ -1,0 +1,118 @@
+@page "/invite/{code}"
+@layout Layout.EmptyLayout
+@using Flux.Infrastructure.Client
+@inject FluxClientService FluxService
+@inject NavigationManager Navigation
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
+
+<FluentDesignTheme Mode="DesignThemeModes.Dark" CustomColor="#611f69" />
+
+<div class="auth-container" style="display: flex; justify-content: center; align-items: center; height: 100vh; background-color: var(--neutral-layer-1);">
+    <div class="auth-card" style="width: 400px; padding: 40px; background-color: var(--neutral-layer-2); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;">
+        <div class="logo" style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 30px;">
+            <FluentIcon Value="@(new Icons.Regular.Size24.PersonAdd())" Color="Color.Custom" CustomColor="#611f69" />
+            <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: white;">Flux</h1>
+        </div>
+
+        @if (_isLoading)
+        {
+            <FluentProgressRing />
+            <p style="margin-top: 15px; color: var(--neutral-foreground-rest);">Loading invitation details...</p>
+        }
+        else if (_errorMessage != null)
+        {
+            <div style="background-color: rgba(216, 59, 1, 0.1); color: #ff5e5e; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+                @_errorMessage
+            </div>
+            <FluentButton Appearance="Appearance.Outline" OnClick='() => Navigation.NavigateTo("/")' Style="width: 100%;">Return to Home</FluentButton>
+        }
+        else if (_inviteDetails != null)
+        {
+            <h2 style="font-size: 20px; margin-bottom: 10px; color: white;">You've been invited!</h2>
+            <p style="color: var(--neutral-foreground-rest); margin-bottom: 25px;">
+                Join <strong>@_inviteDetails.WorkspaceName</strong> on Flux.
+                @if (!string.IsNullOrEmpty(_inviteDetails.WorkspaceDescription))
+                {
+                    <br />
+                    <span style="font-size: 13px; opacity: 0.8;">@_inviteDetails.WorkspaceDescription</span>
+                }
+            </p>
+
+            <FluentButton Appearance="Appearance.Accent" OnClick="JoinWorkspace" Style="width: 100%; height: 40px; margin-bottom: 15px;" Loading="_isJoining">
+                Accept Invitation
+            </FluentButton>
+
+            @if (!_isAuthenticated)
+            {
+                <p style="font-size: 12px; color: var(--neutral-foreground-rest);">
+                    You need to be logged in to join. 
+                    <a href="/auth?returnUrl=/invite/@Code" style="color: #611f69; text-decoration: none; font-weight: bold;">Log in here</a>.
+                </p>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string Code { get; set; } = string.Empty;
+
+    private bool _isLoading = true;
+    private bool _isJoining = false;
+    private string? _errorMessage;
+    private FluxClientService.InviteDetailsDto? _inviteDetails;
+    private bool _isAuthenticated = false;
+    private Guid _currentUserId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        _isAuthenticated = authState.User.Identity?.IsAuthenticated ?? false;
+        
+        if (_isAuthenticated)
+        {
+            var idClaim = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier) ?? authState.User.FindFirst("sub");
+            if (idClaim != null && Guid.TryParse(idClaim.Value, out var id))
+            {
+                _currentUserId = id;
+            }
+        }
+
+        var result = await FluxService.GetInviteDetailsAsync(Code);
+        
+        if (result.IsSuccess)
+        {
+            _inviteDetails = result.Value;
+        }
+        else
+        {
+            _errorMessage = result.Error;
+        }
+
+        _isLoading = false;
+    }
+
+    private async Task JoinWorkspace()
+    {
+        if (!_isAuthenticated || _currentUserId == Guid.Empty)
+        {
+            Navigation.NavigateTo($"/auth?returnUrl=/invite/{Code}");
+            return;
+        }
+
+        _isJoining = true;
+        _errorMessage = null;
+
+        var result = await FluxService.JoinWorkspaceViaInviteAsync(Code, _currentUserId);
+        
+        if (result.IsSuccess && result.Value != Guid.Empty)
+        {
+            Navigation.NavigateTo($"/workspace/{result.Value}");
+        }
+        else
+        {
+            _errorMessage = result.Error;
+            _isJoining = false;
+        }
+    }
+}

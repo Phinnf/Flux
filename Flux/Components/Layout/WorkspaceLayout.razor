@@ -8,6 +8,8 @@
 @inject FluxClientService FluxService
 @inject IDialogService DialogService
 @inject AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JS
+@inject IToastService ToastService
 @implements IDisposable
 
 <FluentDesignTheme Mode="DesignThemeModes.Dark" CustomColor="#611f69" />
@@ -35,8 +37,9 @@
             </div>
             <FluentSpacer />
             <div class="activity-bottom">
-                <div class="profile-item">
-                    <FluentPersona Status="PresenceStatus.Available" ImageSize="32px" Initials="JD" />
+                <FluentTooltip Anchor="profile-icon" Position="TooltipPosition.Right">Profile</FluentTooltip>
+                <div id="profile-icon" class="profile-item" style="cursor: pointer;" @onclick='() => Navigation.NavigateTo("/profile")'>
+                    <FluentPersona Status="PresenceStatus.Available" ImageSize="32px" Initials="ME" />
                 </div>
             </div>
         </div>
@@ -49,7 +52,7 @@
                         <FluentLabel Typo="Typography.Body" Style="font-weight: 800; color: white">@(WorkspaceState.CurrentWorkspaceName ?? "Loading...")</FluentLabel>
                     </div>
                     <FluentSpacer />
-                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.ChevronDown())" />
+                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.PersonAdd())" OnClick="OpenInviteDialog" title="Invite People" />
                 </FluentStack>
             </div>
             
@@ -169,6 +172,31 @@
     </div>
 </FluentDialog>
 
+<FluentDialog @bind-Hidden="_hideInviteDialog" Modal="true" TrapFocus="true" @onclick:stopPropagation>
+    <div style="padding: 24px; width: 400px;">
+        <FluentLabel Typo="Typography.H3">Invite People</FluentLabel>
+        <div style="margin-top: 20px;">
+            <FluentSelect TOption="string" Label="Link Expiration" @bind-Value="_inviteExpirationHoursString" Style="width: 100%;">
+                <FluentOption Value="@("1")">1 hour</FluentOption>
+                <FluentOption Value="@("24")">1 day</FluentOption>
+                <FluentOption Value="@("168")">7 days</FluentOption>
+                <FluentOption Value="@("")">Never</FluentOption>
+            </FluentSelect>
+        </div>
+        @if (!string.IsNullOrEmpty(_generatedInviteLink))
+        {
+            <div style="margin-top: 15px; padding: 10px; background: var(--neutral-layer-2); border-radius: 4px; display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-family: monospace; font-size: 12px; word-break: break-all; margin-right: 10px;">@_generatedInviteLink</span>
+                <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.Copy())" OnClick="CopyInviteLink" title="Copy Link" />
+            </div>
+        }
+        <div style="margin-top: 25px; display: flex; justify-content: flex-end; gap: 10px;">
+            <FluentButton OnClick="() => _hideInviteDialog = true">Close</FluentButton>
+            <FluentButton Appearance="Appearance.Accent" OnClick="GenerateInviteLink" Loading="_isGeneratingInvite">Generate Link</FluentButton>
+        </div>
+    </div>
+</FluentDialog>
+
 <style>
     /* Specific workspace layout styles not in app.css can go here if needed */
 </style>
@@ -182,6 +210,12 @@
 
     private bool _hideRenameChannelDialog = true;
     private string _renameChannelName = "";
+
+    // Invite Dialog State
+    private bool _hideInviteDialog = true;
+    private string _inviteExpirationHoursString = "24"; // Default 1 day
+    private string _generatedInviteLink = "";
+    private bool _isGeneratingInvite = false;
 
     // Context Menu State
     private bool _showContextMenu = false;
@@ -219,6 +253,54 @@
     {
         _showContextMenu = false;
         await WorkspaceState.RefreshChannelsAsync(_currentUserId);
+    }
+
+    private void OpenInviteDialog()
+    {
+        _showContextMenu = false;
+        _generatedInviteLink = "";
+        _inviteExpirationHoursString = "24";
+        _hideInviteDialog = false;
+    }
+
+    private async Task GenerateInviteLink()
+    {
+        if (WorkspaceState.CurrentWorkspaceId == null) return;
+
+        _isGeneratingInvite = true;
+        try
+        {
+            int? expiration = string.IsNullOrEmpty(_inviteExpirationHoursString) 
+                ? null 
+                : int.Parse(_inviteExpirationHoursString);
+                
+            var result = await FluxService.CreateInviteAsync(WorkspaceState.CurrentWorkspaceId.Value, _currentUserId, expiration);
+            if (result.IsSuccess && result.Value != null)
+            {
+                var baseUrl = Navigation.BaseUri.TrimEnd('/');
+                _generatedInviteLink = $"{baseUrl}/invite/{result.Value}";
+            }
+        }
+        finally
+        {
+            _isGeneratingInvite = false;
+        }
+    }
+
+    private async Task CopyInviteLink()
+    {
+        if (!string.IsNullOrEmpty(_generatedInviteLink))
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("navigator.clipboard.writeText", _generatedInviteLink);
+                ToastService.ShowSuccess("Link copied to clipboard!");
+            }
+            catch (Exception ex)
+            {
+                ToastService.ShowError($"Failed to copy link: {ex.Message}");
+            }
+        }
     }
 
     private void OpenRenameDialog()

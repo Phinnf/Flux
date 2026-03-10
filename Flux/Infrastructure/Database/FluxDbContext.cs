@@ -12,6 +12,7 @@ namespace Flux.Infrastructure.Database
 
         // DbSets represent the tables in postgreSQL
         public DbSet<Workspace> Workspaces => Set<Workspace>();
+        public DbSet<WorkspaceInvite> WorkspaceInvites => Set<WorkspaceInvite>();
         public DbSet<User> Users => Set<User>();
         public DbSet<Channel> Channels => Set<Channel>();
         public DbSet<Message> Messages => Set<Message>();
@@ -27,6 +28,18 @@ namespace Flux.Infrastructure.Database
                 .WithMany(w => w.Channels)
                 .HasForeignKey(c => c.WorkspaceId)
                 .OnDelete(DeleteBehavior.Cascade); // Xóa Workspace thì xóa luôn các Kênh bên trong
+
+            // Workspace - Invite (1-to-Many)
+            modelBuilder.Entity<WorkspaceInvite>()
+                .HasOne(wi => wi.Workspace)
+                .WithMany(w => w.Invites)
+                .HasForeignKey(wi => wi.WorkspaceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Invite Code - Index
+            modelBuilder.Entity<WorkspaceInvite>()
+                .HasIndex(wi => wi.Code)
+                .IsUnique();
 
             // Workspace - User (Many-to-Many)
             // (Join Table) trong database
