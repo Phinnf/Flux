@@ -4,6 +4,8 @@
 @using System.Security.Claims
 @using Microsoft.AspNetCore.SignalR.Client
 @using Flux.Features.Messages.EditMessage
+@using Flux.Features.Messages.SendMessage
+@using Flux.Features.Messages.GetMessages
 @inject FluxClientService FluxService
 @inject WorkspaceStateService StateService
 @inject NavigationManager Navigation
@@ -14,260 +16,352 @@
 
 <PageTitle>Chat - @(_currentChannelName ?? "Loading...")</PageTitle>
 
-<div class="chat-container">
-    <!-- Chat Header -->
-    <div class="chat-header">
-        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center">
-            <div class="channel-info">
-                <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="4">
-                    <FluentIcon Value="@(new Icons.Regular.Size20.Tag())" Color="Color.Custom" CustomColor="var(--flux-main-text)" />
-                    <FluentLabel Typo="Typography.H6" Style="font-weight: 700; color: var(--flux-main-text);">@(_currentChannelName ?? "channel-name")</FluentLabel>
-                    <FluentIcon Value="@(new Icons.Regular.Size12.ChevronDown())" Color="Color.Custom" CustomColor="var(--flux-main-text)" Style="margin-left: 4px; opacity: 0.6;" />
-                </FluentStack>
-            </div>
-            <FluentSpacer />
-            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8">
-                <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Info())" />
-            </FluentStack>
-        </FluentStack>
-    </div>
-
-    <!-- Messages Viewport -->
-    <div class="messages-viewport" @ref="_messagesViewport">
-        @if (_isLoading)
-        {
-            <div class="loading-container">
-                <FluentProgressRing />
-                <FluentLabel Style="color: var(--flux-main-text);">Loading messages...</FluentLabel>
-            </div>
-        }
-        else if (!_messages.Any())
-        {
-            <div class="empty-chat">
-                <div class="empty-chat-hero">
-                    <FluentIcon Value="@(new Icons.Regular.Size48.Chat())" Color="Color.Custom" CustomColor="var(--flux-primary)" />
-                    <FluentLabel Typo="Typography.H5" Style="color: var(--flux-main-text);">This is the start of the #@_currentChannelName channel</FluentLabel>
-                    <FluentLabel Typo="Typography.Body" Style="color: var(--flux-main-text); opacity: 0.7;">Be the first to send a message!</FluentLabel>
+<div class="chat-main-wrapper">
+    <div class="chat-container">
+        <!-- Chat Header -->
+        <div class="chat-header">
+            <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center">
+                <div class="channel-info">
+                    <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="4">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.Tag())" Color="Color.Custom" CustomColor="var(--flux-main-text)" />
+                        <FluentLabel Typo="Typography.H6" Style="font-weight: 700; color: var(--flux-main-text);">@(_currentChannelName ?? "channel-name")</FluentLabel>
+                        <FluentIcon Value="@(new Icons.Regular.Size12.ChevronDown())" Color="Color.Custom" CustomColor="var(--flux-main-text)" Style="margin-left: 4px; opacity: 0.6;" />
+                    </FluentStack>
                 </div>
-            </div>
-        }
-        else
-        {
-            <div class="message-list">
-                @if (_hasMoreMessages)
-                {
-                    <div class="load-more-container">
-                        <FluentButton Appearance="Appearance.Stealth" 
-                                      OnClick="LoadMoreMessages" 
-                                      Loading="_isLoadingMore"
-                                      IconStart="@(new Icons.Regular.Size16.ArrowClockwise())">
-                            Load older messages
-                        </FluentButton>
-                    </div>
-                }
+                <FluentSpacer />
+                <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8">
+                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Info())" />
+                </FluentStack>
+            </FluentStack>
+        </div>
 
-                @foreach (var msg in _messages)
-                {
-                    bool isSelf = msg.UserId == CurrentUserId;
-                    <div class="message-group @(isSelf ? "self" : "")" @onclick="@(e => ShowMessageMenu(e, msg))">
-                        <FluentPersona Status="PresenceStatus.Available"
-                                      ImageSize="36px" 
-                                      Image="@msg.AvatarUrl"
-                                      Initials="@GetInitials(msg.Username)"
-                                      Title="@msg.Username" />
-                        
-                        <div class="message-content">
-                            <div class="message-meta">
-                                <span class="username">@msg.Username</span>
-                                <span class="timestamp">@msg.CreatedAt.ToString("h:mm tt")</span>
-                            </div>
-                            <div class="message-bubble-wrapper">
-                                <div class="message-bubble">
-                                    @if (msg.Content.Contains("[video: "))
-                                    {
-                                        var startIndex = msg.Content.IndexOf("[video: ");
-                                        var endIndex = msg.Content.IndexOf("]", startIndex);
-                                        if (startIndex >= 0 && endIndex > startIndex)
+        <!-- Messages Viewport -->
+        <div class="messages-viewport" @ref="_messagesViewport">
+            @if (_isLoading)
+            {
+                <div class="loading-container">
+                    <FluentProgressRing />
+                    <FluentLabel Style="color: var(--flux-main-text);">Loading messages...</FluentLabel>
+                </div>
+            }
+            else if (!_messages.Any())
+            {
+                <div class="empty-chat">
+                    <div class="empty-chat-hero">
+                        <FluentIcon Value="@(new Icons.Regular.Size48.Chat())" Color="Color.Custom" CustomColor="var(--flux-primary)" />
+                        <FluentLabel Typo="Typography.H5" Style="color: var(--flux-main-text);">This is the start of the #@_currentChannelName channel</FluentLabel>
+                        <FluentLabel Typo="Typography.Body" Style="color: var(--flux-main-text); opacity: 0.7;">Be the first to send a message!</FluentLabel>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="message-list">
+                    @if (_hasMoreMessages)
+                    {
+                        <div class="load-more-container">
+                            <FluentButton Appearance="Appearance.Stealth" 
+                                          OnClick="LoadMoreMessages" 
+                                          Loading="_isLoadingMore"
+                                          IconStart="@(new Icons.Regular.Size16.ArrowClockwise())">
+                                Load older messages
+                            </FluentButton>
+                        </div>
+                    }
+
+                    @foreach (var msg in _messages.Where(m => m.ParentMessageId == null))
+                    {
+                        bool isSelf = msg.UserId == CurrentUserId;
+                        <div class="message-group @(isSelf ? "self" : "") @(_activeThreadParent?.Id == msg.Id ? "active-thread" : "")" @onclick="@(e => ShowMessageMenu(e, msg))">
+                            <FluentPersona Status="PresenceStatus.Available"
+                                          ImageSize="36px" 
+                                          Image="@msg.AvatarUrl"
+                                          Initials="@GetInitials(msg.Username)"
+                                          Title="@msg.Username" />
+                            
+                            <div class="message-content">
+                                <div class="message-meta">
+                                    <span class="username">@msg.Username</span>
+                                    <span class="timestamp">@msg.CreatedAt.ToString("h:mm tt")</span>
+                                </div>
+                                <div class="message-bubble-wrapper">
+                                    <div class="message-bubble">
+                                        @if (msg.Content.Contains("[video: "))
                                         {
-                                            var before = msg.Content.Substring(0, startIndex);
-                                            var url = msg.Content.Substring(startIndex + 8, endIndex - startIndex - 8);
-                                            var after = msg.Content.Substring(endIndex + 1);
-                                            
-                                            if (!string.IsNullOrWhiteSpace(before))
+                                            var startIndex = msg.Content.IndexOf("[video: ");
+                                            var endIndex = msg.Content.IndexOf("]", startIndex);
+                                            if (startIndex >= 0 && endIndex > startIndex)
                                             {
-                                                <span>@before</span>
+                                                var before = msg.Content.Substring(0, startIndex);
+                                                var url = msg.Content.Substring(startIndex + 8, endIndex - startIndex - 8);
+                                                var after = msg.Content.Substring(endIndex + 1);
+                                                
+                                                if (!string.IsNullOrWhiteSpace(before))
+                                                {
+                                                    <span>@before</span>
+                                                }
+                                                <video src="@url" controls class="message-video" preload="metadata"></video>
+                                                if (!string.IsNullOrWhiteSpace(after))
+                                                {
+                                                    <span>@after</span>
+                                                }
                                             }
-                                            <video src="@url" controls class="message-video" preload="metadata"></video>
-                                            if (!string.IsNullOrWhiteSpace(after))
+                                            else
                                             {
-                                                <span>@after</span>
+                                                @msg.Content
                                             }
                                         }
                                         else
                                         {
                                             @msg.Content
                                         }
-                                    }
-                                    else
+                                    </div>
+                                    
+                                    @if (msg.ReplyCount > 0)
                                     {
-                                        @msg.Content
+                                        <div class="thread-replies-indicator" @onclick:stopPropagation @onclick="@(() => OpenThread(msg))">
+                                            <div class="reply-avatars">
+                                                <FluentPersona ImageSize="20px" Initials="@GetInitials(msg.Username)" />
+                                            </div>
+                                            <span class="reply-count">@msg.ReplyCount replies</span>
+                                            <span class="view-thread-text">View thread</span>
+                                        </div>
                                     }
                                 </div>
                             </div>
                         </div>
-                    </div>
-                }
-            </div>
-        }
-    </div>
-
-    <!-- Message Actions Menu Overlay -->
-    @if (_showMessageMenu)
-    {
-        <div class="menu-overlay" @onclick="CloseMessageMenu" @oncontextmenu:preventDefault="true"></div>
-        <div class="message-context-menu" style="left: @(_menuX)px; top: @(_menuY)px;">
-            <FluentStack Orientation="Orientation.Vertical" VerticalGap="0">
-                <FluentMenuItem Icon="@(new Icons.Regular.Size16.ArrowReply())" OnClick="@(() => HandleAction("Reply"))">Reply</FluentMenuItem>
-                <FluentMenuItem Icon="@(new Icons.Regular.Size16.Edit())" OnClick="@(() => HandleAction("Edit"))">Edit</FluentMenuItem>
-                <FluentDivider />
-                <FluentMenuItem Icon="@(new Icons.Regular.Size16.Delete())" OnClick="@(() => HandleAction("Delete"))">
-                    <FluentLabel Color="Color.Error">Delete</FluentLabel>
-                </FluentMenuItem>
-            </FluentStack>
-        </div>
-    }
-
-    <!-- Edit Message Dialog -->
-    <FluentDialog Hidden="!_showEditDialog" Modal="true" TrapFocus="true" @onclick:stopPropagation>
-        <div class="glass-dialog" style="padding: 20px; width: 500px; max-width: 90vw; background: var(--flux-glass-heavy); backdrop-filter: blur(20px); border-radius: 12px; border: 1px solid var(--flux-glass-white);">
-            <h3 style="color: var(--flux-main-text); margin-top: 0; margin-bottom: 15px;">Edit Message</h3>
-            <FluentTextArea @bind-Value="_editMessageContent" Style="width: 100%; margin-bottom: 20px; background: rgba(255,255,255,0.8); color: var(--flux-main-text); border: 1px solid var(--flux-border);" Rows="4" />
-            <div style="display: flex; justify-content: flex-end; gap: 10px;">
-                <FluentButton Appearance="Appearance.Stealth" OnClick="() => _showEditDialog = false" Style="color: var(--flux-main-text);">Cancel</FluentButton>
-                <FluentButton Appearance="Appearance.Accent" OnClick="SaveEditMessage">Save</FluentButton>
-            </div>
-        </div>
-    </FluentDialog>
-
-    <!-- Video Recorder Dialog -->
-    @if (_showVideoRecorder)
-    {
-        <div class="video-recorder-overlay" @onclick="CloseVideoRecorder">
-            <div class="video-recorder-dialog" @onclick:stopPropagation>
-                <div class="recorder-header">
-                    <h3>Record video clip</h3>
-                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.Dismiss())" OnClick="CloseVideoRecorder" />
-                </div>
-                
-                <div class="recorder-body">
-                    <video id="videoPreview" autoplay playsinline class="video-preview"></video>
-                    @if (_isCameraError)
-                    {
-                        <div class="camera-error-overlay">
-                            <FluentIcon Value="@(new Icons.Regular.Size32.Warning())" Color="Color.Custom" CustomColor="#ffb300" />
-                            <h4>Can't access camera</h4>
-                            <p>Check your browser settings to make sure Flux has permission to access your camera, and try again.</p>
-                        </div>
-                    }
-                </div>
-                
-                <div class="recorder-footer">
-                    @if (_recordedVideoUrl != null)
-                    {
-                        <FluentButton Appearance="Appearance.Stealth" IconStart="@(new Icons.Regular.Size20.ArrowDownload())" OnClick="DownloadVideo">Download Video</FluentButton>
-                        <FluentSpacer />
-                        <FluentButton Appearance="Appearance.Stealth" OnClick="RetakeVideo" Disabled="@_isUploading">Retake</FluentButton>
-                        <FluentButton Appearance="Appearance.Accent" OnClick="UploadVideo" Loading="@_isUploading">Upload Video</FluentButton>
-                    }
-                    else
-                    {
-                        <div class="device-controls">
-                            <FluentButton Appearance="@(_currentCaptureMode == "camera" ? Appearance.Neutral : Appearance.Stealth)" IconEnd="@(new Icons.Regular.Size20.Video())" OnClick='() => SwitchCaptureMode("camera")' Title="Camera" />
-                            <FluentButton Appearance="@(_currentCaptureMode == "screen" ? Appearance.Neutral : Appearance.Stealth)" IconEnd="@(new Icons.Regular.Size20.Desktop())" OnClick='() => SwitchCaptureMode("screen")' Title="Screen Share" />
-                            <FluentButton Appearance="@(_isMicEnabled ? Appearance.Stealth : Appearance.Neutral)" 
-                                          IconEnd="@(_isMicEnabled ? new Icons.Regular.Size20.Mic() : new Icons.Regular.Size20.MicOff())" 
-                                          OnClick="ToggleMic" Title="Toggle Microphone" />
-                        </div>
-                        <FluentSpacer />
-                        @if (_isCountingDown)
-                        {
-                            <FluentButton Appearance="Appearance.Accent" Style="background-color: #e01e5a; opacity: 0.8;" Disabled="true">
-                                Starting in @_countdownSeconds...
-                            </FluentButton>
-                        }
-                        else if (_isRecording)
-                        {
-                            <span style="color: #ff0055; font-family: monospace; font-weight: bold; margin-right: 15px; font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">
-                                <span class="status-dot" style="background-color: #ff0055; box-shadow: 0 0 10px #ff0055;"></span>
-                                @_recordingDurationString
-                            </span>
-                            <FluentButton Appearance="Appearance.Stealth" OnClick="StopRecording" Style="color: white; border: 1px solid rgba(255,255,255,0.2);">Stop Recording</FluentButton>
-                        }
-                        else
-                        {
-                            <FluentButton Appearance="Appearance.Accent" OnClick="StartRecording" Style="background-color: #e01e5a;" Disabled="@_isCameraError">Record</FluentButton>
-                        }
-                    }
-                </div>
-            </div>
-        </div>
-    }
-
-    <!-- Chat Input -->
-    <div class="chat-input-container">
-        <div class="chat-input-box" style="position: relative;">
-            <!-- Mentions Dropdown -->
-            @if (_showMentionsList && _filteredMembers.Any())
-            {
-                <div class="mentions-dropdown">
-                    @foreach (var member in _filteredMembers)
-                    {
-                        <div class="mention-item @(member.Id == _selectedMentionId ? "selected" : "")" 
-                             @onclick="() => InsertMention(member.Username)">
-                            <FluentPersona Status="PresenceStatus.Available" 
-                                          ImageSize="24px" 
-                                          Image="@member.AvatarUrl"
-                                          Initials="@GetInitials(member.Username)" />
-                            <span style="margin-left: 8px;">@member.Username</span>
-                        </div>
                     }
                 </div>
             }
+        </div>
 
-            <FluentTextArea @ref="_textAreaRef"
-                            Value="@_newMessageContent"
-                            ValueChanged="@(EventCallback.Factory.Create<string>(this, OnChatInputChanged))"
-                            ValueExpression="@(() => _newMessageContent)"
-                            Immediate="true"
-                            Placeholder="@($"Message #{(_currentChannelName?.StartsWith("#") == true ? _currentChannelName.Substring(1) : _currentChannelName)}")"
-                            title="Press Enter to send. Press Ctrl+Enter for a new line."
-                            Class="chat-textarea-redesigned"
-                            Rows="1" />
-            <div class="bottom-toolbar">
-                <div class="toolbar-left">
-                    <FluentButton class="add-button" Appearance="Appearance.Accent" IconStart="@(new Icons.Regular.Size20.Add())" />
-                    <FluentDivider Vertical="true" style="height: 20px;" />
-                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Video())" OnClick="OpenVideoRecorder" />
-                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Mic())" />
-                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Emoji())" />
-                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Mention())" />
-                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.TextFont())" />
-                    <FluentDivider Vertical="true" style="height: 20px;" />
-                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.ChatWarning())" />
-                </div>
-                <div class="toolbar-right">
-                    <FluentButton Appearance="@(string.IsNullOrWhiteSpace(_newMessageContent) ? Appearance.Stealth : Appearance.Accent)"
-                                  IconEnd="@(new Icons.Regular.Size16.Send())"
-                                  OnClick="SendMessage"
-                                  Disabled="@(string.IsNullOrWhiteSpace(_newMessageContent))"
-                                  Title="Send message (Enter)" />
-                    <FluentDivider Vertical="true" style="height: 20px;" />
-                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size12.ChevronDown())" />
+        <!-- Chat Input -->
+        <div class="chat-input-container">
+            <div class="chat-input-box" style="position: relative;">
+                <!-- Mentions Dropdown -->
+                @if (_showMentionsList && _filteredMembers.Any())
+                {
+                    <div class="mentions-dropdown">
+                        @foreach (var member in _filteredMembers)
+                        {
+                            <div class="mention-item @(member.Id == _selectedMentionId ? "selected" : "")" 
+                                 @onclick="() => InsertMention(member.Username)">
+                                <FluentPersona Status="PresenceStatus.Available" 
+                                              ImageSize="24px" 
+                                              Image="@member.AvatarUrl"
+                                              Initials="@GetInitials(member.Username)" />
+                                <span style="margin-left: 8px;">@member.Username</span>
+                            </div>
+                        }
+                    </div>
+                }
+
+                <FluentTextArea @ref="_textAreaRef"
+                                Value="@_newMessageContent"
+                                ValueChanged="@(EventCallback.Factory.Create<string>(this, OnChatInputChanged))"
+                                ValueExpression="@(() => _newMessageContent)"
+                                Immediate="true"
+                                Placeholder="@($"Message #{(_currentChannelName?.StartsWith("#") == true ? _currentChannelName.Substring(1) : _currentChannelName)}")"
+                                title="Press Enter to send. Press Ctrl+Enter for a new line."
+                                Class="chat-textarea-redesigned"
+                                Rows="1" />
+                <div class="bottom-toolbar">
+                    <div class="toolbar-left">
+                        <FluentButton class="add-button" Appearance="Appearance.Accent" IconStart="@(new Icons.Regular.Size20.Add())" />
+                        <FluentDivider Vertical="true" style="height: 20px;" />
+                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Video())" OnClick="OpenVideoRecorder" />
+                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Mic())" />
+                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Emoji())" />
+                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Mention())" />
+                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.TextFont())" />
+                        <FluentDivider Vertical="true" style="height: 20px;" />
+                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.ChatWarning())" />
+                    </div>
+                    <div class="toolbar-right">
+                        <FluentButton Appearance="@(string.IsNullOrWhiteSpace(_newMessageContent) ? Appearance.Stealth : Appearance.Accent)"
+                                      IconEnd="@(new Icons.Regular.Size16.Send())"
+                                      OnClick="SendMessage"
+                                      Disabled="@(string.IsNullOrWhiteSpace(_newMessageContent))"
+                                      Title="Send message (Enter)" />
+                        <FluentDivider Vertical="true" style="height: 20px;" />
+                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size12.ChevronDown())" />
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Thread Sidebar -->
+    @if (_activeThreadParent != null)
+    {
+        <div class="thread-sidebar">
+            <div class="thread-header">
+                <div style="display: flex; flex-direction: column;">
+                    <h3 style="margin: 0; color: var(--flux-main-text); font-size: 1.1rem; font-weight: 700;">Thread</h3>
+                    <span style="font-size: 0.8rem; color: rgba(204, 220, 219, 0.6);">#@_currentChannelName</span>
+                </div>
+                <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.Dismiss())" OnClick="CloseThread" />
+            </div>
+
+            <div class="thread-viewport" @ref="_threadViewport">
+                <!-- Parent Message -->
+                <div class="thread-parent-message">
+                    <FluentPersona Status="PresenceStatus.Available"
+                                  ImageSize="36px" 
+                                  Image="@_activeThreadParent.AvatarUrl"
+                                  Initials="@GetInitials(_activeThreadParent.Username)" />
+                    <div class="message-content">
+                        <div class="message-meta">
+                            <span class="username">@_activeThreadParent.Username</span>
+                            <span class="timestamp">@_activeThreadParent.CreatedAt.ToString("h:mm tt")</span>
+                        </div>
+                        <div class="message-bubble">@_activeThreadParent.Content</div>
+                    </div>
+                </div>
+                
+                <div class="thread-divider">
+                    <span>@_messages.Count(m => m.ParentMessageId == _activeThreadParent.Id) replies</span>
+                </div>
+
+                <!-- Child Messages -->
+                @foreach (var msg in _messages.Where(m => m.ParentMessageId == _activeThreadParent.Id).OrderBy(m => m.CreatedAt))
+                {
+                    <div class="message-group">
+                        <FluentPersona Status="PresenceStatus.Available"
+                                      ImageSize="36px" 
+                                      Image="@msg.AvatarUrl"
+                                      Initials="@GetInitials(msg.Username)" />
+                        <div class="message-content">
+                            <div class="message-meta">
+                                <span class="username">@msg.Username</span>
+                                <span class="timestamp">@msg.CreatedAt.ToString("h:mm tt")</span>
+                            </div>
+                            <div class="message-bubble">@msg.Content</div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Thread Input -->
+            <div class="thread-input-container">
+                <div class="chat-input-box">
+                    <FluentTextArea @ref="_threadTextAreaRef"
+                                    Value="@_newThreadMessageContent"
+                                    ValueChanged="@(EventCallback.Factory.Create<string>(this, OnThreadInputChanged))"
+                                    ValueExpression="@(() => _newThreadMessageContent)"
+                                    Immediate="true"
+                                    Placeholder="Reply..."
+                                    Class="chat-textarea-redesigned"
+                                    Rows="1" />
+                    <div class="bottom-toolbar">
+                        <div class="toolbar-left">
+                            <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Add())" />
+                            <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Emoji())" />
+                        </div>
+                        <div class="toolbar-right">
+                            <FluentButton Appearance="@(string.IsNullOrWhiteSpace(_newThreadMessageContent) ? Appearance.Stealth : Appearance.Accent)"
+                                          IconEnd="@(new Icons.Regular.Size16.Send())"
+                                          OnClick="SendThreadMessage"
+                                          Disabled="@(string.IsNullOrWhiteSpace(_newThreadMessageContent))" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
 </div>
+
+<!-- Message Actions Menu Overlay -->
+@if (_showMessageMenu)
+{
+    <div class="menu-overlay" @onclick="CloseMessageMenu" @oncontextmenu:preventDefault="true"></div>
+    <div class="message-context-menu" style="left: @(_menuX)px; top: @(_menuY)px;">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="0">
+            <FluentMenuItem Icon="@(new Icons.Regular.Size16.ArrowReply())" OnClick="@(() => HandleAction("Reply"))">Reply in Thread</FluentMenuItem>
+            <FluentMenuItem Icon="@(new Icons.Regular.Size16.Edit())" OnClick="@(() => HandleAction("Edit"))">Edit</FluentMenuItem>
+            <FluentDivider />
+            <FluentMenuItem Icon="@(new Icons.Regular.Size16.Delete())" OnClick="@(() => HandleAction("Delete"))">
+                <FluentLabel Color="Color.Error">Delete</FluentLabel>
+            </FluentMenuItem>
+        </FluentStack>
+    </div>
+}
+
+<!-- Edit Message Dialog -->
+<FluentDialog Hidden="!_showEditDialog" Modal="true" TrapFocus="true" @onclick:stopPropagation>
+    <div class="glass-dialog" style="padding: 20px; width: 500px; max-width: 90vw; background: var(--flux-glass-heavy); backdrop-filter: blur(20px); border-radius: 12px; border: 1px solid var(--flux-glass-white);">
+        <h3 style="color: var(--flux-main-text); margin-top: 0; margin-bottom: 15px;">Edit Message</h3>
+        <FluentTextArea @bind-Value="_editMessageContent" Style="width: 100%; margin-bottom: 20px; background: rgba(255,255,255,0.8); color: var(--flux-main-text); border: 1px solid var(--flux-border);" Rows="4" />
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+            <FluentButton Appearance="Appearance.Stealth" OnClick="() => _showEditDialog = false" Style="color: var(--flux-main-text);">Cancel</FluentButton>
+            <FluentButton Appearance="Appearance.Accent" OnClick="SaveEditMessage">Save</FluentButton>
+        </div>
+    </div>
+</FluentDialog>
+
+<!-- Video Recorder Dialog -->
+@if (_showVideoRecorder)
+{
+    <div class="video-recorder-overlay" @onclick="CloseVideoRecorder">
+        <div class="video-recorder-dialog" @onclick:stopPropagation>
+            <div class="recorder-header">
+                <h3 style="color: white">Record video clip</h3>
+                <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.Dismiss())" OnClick="CloseVideoRecorder" />
+            </div>
+            
+            <div class="recorder-body">
+                <video id="videoPreview" autoplay playsinline class="video-preview"></video>
+                @if (_isCameraError)
+                {
+                    <div class="camera-error-overlay">
+                        <FluentIcon Value="@(new Icons.Regular.Size32.Warning())" Color="Color.Custom" CustomColor="#ffb300" />
+                        <h4>Can't access camera</h4>
+                        <p>Check your browser settings to make sure Flux has permission to access your camera, and try again.</p>
+                    </div>
+                }
+            </div>
+            
+            <div class="recorder-footer">
+                @if (_recordedVideoUrl != null)
+                {
+                    <FluentButton Appearance="Appearance.Stealth" IconStart="@(new Icons.Regular.Size20.ArrowDownload())" OnClick="DownloadVideo">Download Video</FluentButton>
+                    <FluentSpacer />
+                    <FluentButton Appearance="Appearance.Stealth" OnClick="RetakeVideo" Disabled="@_isUploading">Retake</FluentButton>
+                    <FluentButton Appearance="Appearance.Accent" OnClick="UploadVideo" Loading="@_isUploading">Upload Video</FluentButton>
+                }
+                else
+                {
+                    <div class="device-controls">
+                        <FluentButton Appearance="@(_currentCaptureMode == "camera" ? Appearance.Neutral : Appearance.Stealth)" IconEnd="@(new Icons.Regular.Size20.Video())" OnClick='() => SwitchCaptureMode("camera")' Title="Camera" />
+                        <FluentButton Appearance="@(_currentCaptureMode == "screen" ? Appearance.Neutral : Appearance.Stealth)" IconEnd="@(new Icons.Regular.Size20.Desktop())" OnClick='() => SwitchCaptureMode("screen")' Title="Screen Share" />
+                        <FluentButton Appearance="@(_isMicEnabled ? Appearance.Stealth : Appearance.Neutral)" 
+                                      IconEnd="@(_isMicEnabled ? new Icons.Regular.Size20.Mic() : new Icons.Regular.Size20.MicOff())" 
+                                      OnClick="ToggleMic" Title="Toggle Microphone" />
+                    </div>
+                    <FluentSpacer />
+                    @if (_isCountingDown)
+                    {
+                        <FluentButton Appearance="Appearance.Accent" Style="background-color: #e01e5a; opacity: 0.8;" Disabled="true">
+                            Starting in @_countdownSeconds...
+                        </FluentButton>
+                    }
+                    else if (_isRecording)
+                    {
+                        <span style="color: #ff0055; font-family: monospace; font-weight: bold; margin-right: 15px; font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">
+                            <span class="status-dot" style="background-color: #ff0055; box-shadow: 0 0 10px #ff0055;"></span>
+                            @_recordingDurationString
+                        </span>
+                        <FluentButton Appearance="Appearance.Stealth" OnClick="StopRecording" Style="color: white; border: 1px solid rgba(255,255,255,0.2);">Stop Recording</FluentButton>
+                    }
+                    else
+                    {
+                        <FluentButton Appearance="Appearance.Accent" OnClick="StartRecording" Style="background-color: #e01e5a;" Disabled="@_isCameraError">Record</FluentButton>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     [Parameter] public Guid WorkspaceId { get; set; }
@@ -284,6 +378,52 @@
     private DotNetObjectReference<Chat>? _objRef;
     private bool _shouldScrollToBottom = false;
     private HubConnection? _hubConnection;
+
+    // Thread specific state
+    private MessageDto? _activeThreadParent;
+    private string _newThreadMessageContent = "";
+    private ElementReference _threadViewport;
+    private FluentTextArea _threadTextAreaRef = default!;
+
+    private async Task OpenThread(MessageDto parent)
+    {
+        _activeThreadParent = parent;
+        await InvokeAsync(StateHasChanged);
+        await Task.Delay(100);
+        await JS.InvokeVoidAsync("scrollToBottom", _threadViewport);
+    }
+
+    private void CloseThread()
+    {
+        _activeThreadParent = null;
+    }
+
+    private void OnThreadInputChanged(string value)
+    {
+        _newThreadMessageContent = value;
+    }
+
+    private async Task SendThreadMessage()
+    {
+        if (string.IsNullOrWhiteSpace(_newThreadMessageContent) || _activeThreadParent == null) return;
+
+        var content = _newThreadMessageContent.Trim();
+        _newThreadMessageContent = string.Empty;
+
+        var command = new SendMessageCommand(content, ChannelId, CurrentUserId, _activeThreadParent.Id);
+        var result = await FluxService.SendMessageAsync(command);
+
+        if (!result.IsSuccess)
+        {
+            _newThreadMessageContent = content;
+            ToastService.ShowError($"Failed to send reply: {result.Error}");
+        }
+        else
+        {
+            // The message will be added via SignalR
+            await JS.InvokeVoidAsync("scrollToBottom", _threadViewport);
+        }
+    }
 
     // Mentions logic
     private bool _showMentionsList = false;
@@ -308,12 +448,10 @@
         var lastAtSymbol = _newMessageContent.LastIndexOf('@');
         if (lastAtSymbol >= 0)
         {
-            // Check if it's the start of a word or preceded by a space
             if (lastAtSymbol == 0 || _newMessageContent[lastAtSymbol - 1] == ' ' || _newMessageContent[lastAtSymbol - 1] == '\n')
             {
                 _mentionSearchQuery = _newMessageContent.Substring(lastAtSymbol + 1);
                 
-                // Don't show mentions if there's a space after the @ symbol
                 if (!_mentionSearchQuery.Contains(" "))
                 {
                     _filteredMembers = StateService.Members
@@ -346,7 +484,6 @@
         StateHasChanged();
     }
 
-    // Hardcoded for now, will be replaced by Auth service later
     private Guid CurrentUserId;
     
     // Video Recorder State
@@ -417,7 +554,6 @@
         }
         else
         {
-            // Sync current toggle states
             await JS.InvokeVoidAsync("window.videoRecorder.toggleVideo", _isCameraEnabled);
             await JS.InvokeVoidAsync("window.videoRecorder.toggleAudio", _isMicEnabled);
         }
@@ -441,7 +577,6 @@
         _countdownSeconds = 3;
         StateHasChanged();
 
-        // 3 seconds countdown
         while (_countdownSeconds > 0)
         {
             await Task.Delay(1000);
@@ -546,16 +681,7 @@
             if (idClaim != null && Guid.TryParse(idClaim.Value, out var id))
             {
                 CurrentUserId = id;
-                Console.WriteLine($"[Chat.razor] CurrentUserId set to: {CurrentUserId}");
             }
-            else
-            {
-                Console.WriteLine($"[Chat.razor] Failed to parse idClaim: {idClaim?.Value}");
-            }
-        }
-        else
-        {
-            Console.WriteLine("[Chat.razor] User is not authenticated.");
         }
 
         _hubConnection = new HubConnectionBuilder()
@@ -576,8 +702,21 @@
                         response.Username, 
                         response.CreatedAt, 
                         null,
-                        response.AvatarUrl));
+                        response.AvatarUrl,
+                        response.ParentMessageId,
+                        0));
                     
+                    // Increment parent reply count if this is a reply
+                    if (response.ParentMessageId != null)
+                    {
+                        var parentIndex = _messages.FindIndex(m => m.Id == response.ParentMessageId);
+                        if (parentIndex != -1)
+                        {
+                            var parent = _messages[parentIndex];
+                            _messages[parentIndex] = parent with { ReplyCount = parent.ReplyCount + 1 };
+                        }
+                    }
+
                     _shouldScrollToBottom = true;
                     await InvokeAsync(StateHasChanged);
                 }
@@ -623,7 +762,6 @@
         _hasMoreMessages = true;
         try
         {
-            // Try to find channel name from WorkspaceState
             var channel = StateService.Channels.FirstOrDefault(c => c.Id == ChannelId);
             _currentChannelName = channel?.Name ?? "general"; 
             
@@ -631,7 +769,7 @@
             if (result.IsSuccess)
             {
                 _messages = result.Value ?? new();
-                _hasMoreMessages = _messages.Count >= 50; // Assume there's more if we hit the limit
+                _hasMoreMessages = _messages.Count >= 50;
                 _shouldScrollToBottom = true;
             }
         }
@@ -655,12 +793,7 @@
             {
                 var olderMessages = result.Value;
                 _hasMoreMessages = olderMessages.Count >= 50;
-                
-                // Prepend older messages
                 _messages.InsertRange(0, olderMessages);
-                
-                // We don't want to scroll to bottom when loading older messages
-                // In a real app, we'd preserve the scroll position relative to the current view
             }
             else
             {
@@ -704,9 +837,8 @@
         if (string.IsNullOrWhiteSpace(_newMessageContent)) return;
 
         var content = _newMessageContent.Trim();
-        _newMessageContent = string.Empty; // Clear optimistically
+        _newMessageContent = string.Empty;
 
-        // Force UI update to clear textarea and disable button
         await InvokeAsync(StateHasChanged);
 
         var command = new SendMessageCommand(content, ChannelId, CurrentUserId);
@@ -714,7 +846,6 @@
 
         if (!result.IsSuccess)
         {
-            // On failure, restore the content so the user can retry.
             _newMessageContent = content;
             ToastService.ShowError($"Failed to send message: {result.Error}");
         }
@@ -770,15 +901,13 @@
         
         var messageId = _selectedMessage.Id;
         var content = _selectedMessage.Content;
-        var username = _selectedMessage.Username;
         
         CloseMessageMenu();
 
         switch (action)
         {
             case "Reply":
-                _newMessageContent = $"[Replying to {username}]:\n> {content.Replace("\n", "\n> ")}\n\n" + _newMessageContent;
-                await InvokeAsync(StateHasChanged);
+                await OpenThread(_selectedMessage);
                 break;
             case "Edit":
                 _editingMessageId = messageId;
@@ -837,6 +966,124 @@
 }
 
 <style>
+    /* 3-Panel Layout */
+    .chat-main-wrapper {
+        display: flex;
+        flex: 1;
+        width: 100%;
+        overflow: hidden;
+    }
+
+    .chat-container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        background-color: transparent;
+        transition: flex 0.3s ease;
+    }
+
+    /* Thread Sidebar */
+    .thread-sidebar {
+        width: 400px;
+        background: var(--flux-glass-heavy);
+        backdrop-filter: blur(25px);
+        -webkit-backdrop-filter: blur(25px);
+        border-left: 1px solid var(--flux-border);
+        display: flex;
+        flex-direction: column;
+        z-index: 50;
+        animation: slide-in 0.2s ease-out;
+    }
+
+    @@keyframes slide-in {
+        from { transform: translateX(100%); }
+        to { transform: translateX(0); }
+    }
+
+    .thread-header {
+        height: 60px;
+        padding: 0 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--flux-border);
+    }
+
+    .thread-viewport {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px 0;
+    }
+
+    .thread-parent-message {
+        padding: 0 20px 20px 20px;
+        display: flex;
+        gap: 14px;
+    }
+
+    .thread-divider {
+        display: flex;
+        align-items: center;
+        padding: 0 20px;
+        margin: 10px 0;
+        color: rgba(204, 220, 219, 0.6);
+        font-size: 0.8rem;
+    }
+
+    .thread-divider::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: var(--flux-border);
+        margin-left: 10px;
+    }
+
+    .thread-input-container {
+        padding: 0 20px 20px 20px;
+    }
+
+    /* Thread Replies Indicator */
+    .thread-replies-indicator {
+        margin-top: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 8px;
+        border-radius: 6px;
+        cursor: pointer;
+        width: fit-content;
+        transition: background-color 0.2s;
+        border: 1px solid transparent;
+    }
+
+    .thread-replies-indicator:hover {
+        background-color: var(--flux-glass-white);
+        border-color: var(--flux-border);
+    }
+
+    .reply-count {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--flux-primary);
+    }
+
+    .view-thread-text {
+        font-size: 0.8rem;
+        color: rgba(204, 220, 219, 0.6);
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+
+    .thread-replies-indicator:hover .view-thread-text {
+        opacity: 1;
+    }
+
+    .active-thread {
+        background-color: rgba(19, 94, 75, 0.1) !important;
+        border-left: 3px solid var(--flux-primary) !important;
+    }
+
     /* Message Actions Menu */
     .menu-overlay {
         position: fixed;
@@ -866,24 +1113,6 @@
     @@keyframes fade-in {
         from { opacity: 0; transform: translateY(-5px); }
         to { opacity: 1; transform: translateY(0); }
-    }
-
-    .menu-header {
-        padding: 8px 12px;
-        border-bottom: 1px solid var(--flux-border);
-        margin-bottom: 4px;
-    }
-
-    .load-more-container {
-        display: flex;
-        justify-content: center;
-        padding: 10px 0;
-    }
-    .chat-container {
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-        background-color: transparent;
     }
 
     .chat-header {
@@ -919,11 +1148,7 @@
     }
 
     .message-group:hover {
-        background-color: rgba(19, 94, 75, 0.04);
-    }
-
-    .message-group.self {
-        /* Optional: differentiate self messages */
+        background-color: rgba(255, 255, 255, 0.03);
     }
 
     .message-content {
@@ -947,7 +1172,7 @@
 
     .timestamp {
         font-size: 0.75rem;
-        color: rgba(19, 94, 75, 0.6);
+        color: rgba(204, 220, 219, 0.5) !important; /* Fixed dark timestamp issue */
     }
 
     .message-bubble {
@@ -1036,7 +1261,7 @@
     }
     
     .chat-textarea-redesigned::part(control)::placeholder {
-        color: rgba(19, 94, 75, 0.5);
+        color: rgba(204, 220, 219, 0.4);
     }
 
     .bottom-toolbar {

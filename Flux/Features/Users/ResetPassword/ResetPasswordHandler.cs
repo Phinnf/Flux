@@ -16,10 +16,10 @@ public class ResetPasswordHandler(FluxDbContext context, IPasswordHasher passwor
         if (user == null)
             return Result.Failure("Invalid email or OTP.");
 
-        if (string.IsNullOrEmpty(user.TwoFactorCode) || user.TwoFactorCode != request.Otp)
+        if (string.IsNullOrEmpty(user.ResetPasswordCode) || user.ResetPasswordCode != request.Otp)
             return Result.Failure("Invalid OTP.");
 
-        if (!user.TwoFactorExpiry.HasValue || user.TwoFactorExpiry.Value < DateTime.UtcNow)
+        if (!user.ResetPasswordExpiry.HasValue || user.ResetPasswordExpiry.Value < DateTime.UtcNow)
             return Result.Failure("OTP has expired.");
 
         // Regex Validation for new password
@@ -32,9 +32,9 @@ public class ResetPasswordHandler(FluxDbContext context, IPasswordHasher passwor
         // OTP is valid, change password
         user.PasswordHash = passwordHasher.Hash(request.NewPassword);
         
-        // Clear OTP
-        user.TwoFactorCode = null;
-        user.TwoFactorExpiry = null;
+        // Clear reset fields
+        user.ResetPasswordCode = null;
+        user.ResetPasswordExpiry = null;
 
         await context.SaveChangesAsync(cancellationToken);
 

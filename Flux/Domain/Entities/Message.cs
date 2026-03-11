@@ -11,9 +11,13 @@
         // Foreign Keys
         public Guid UserId { get; set; }
         public Guid ChannelId { get; set; }
+        
+        public Guid? ParentMessageId { get; set; }
 
         // Navigation properties for Entity Framework Core
         public User? User { get; set; }
         public Channel? Channel { get; set; }
+        public Message? ParentMessage { get; set; }
+        public ICollection<Message> Replies { get; set; } = new List<Message>();
     }
 }

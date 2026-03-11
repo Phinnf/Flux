@@ -1,27 +1,27 @@
 /* Flux Global Styles & Theme Variables - Glassmorphism Edition */
 :root {
-    --flux-primary: #4CB572;
-    --flux-primary-hover: #3e9e60;
+    --flux-primary: #3E9E60; /* More muted green, less neon */
+    --flux-primary-hover: #348a52;
     
     /* Solid Colors - Dark Mode */
     --flux-main-bg: #135E4B;
-    --flux-main-text: #CCDCDB;
+    --flux-main-text: #BFCFCF; /* Slightly muted white/grey, less glaring */
     --flux-secondary: #A1D8B5;
 
     /* Glassmorphism Colors - Dark Mode */
-    --flux-glass-heavy: rgba(19, 94, 75, 0.85); /* #135E4B with 85% opacity */
-    --flux-glass-medium: rgba(19, 94, 75, 0.6); /* #135E4B with 60% opacity */
-    --flux-glass-light: rgba(19, 94, 75, 0.3);  /* #135E4B with 30% opacity */
-    --flux-glass-white: rgba(204, 220, 219, 0.1);  /* #CCDCDB with 10% opacity for contrast */
+    --flux-glass-heavy: rgba(19, 94, 75, 0.9); 
+    --flux-glass-medium: rgba(19, 94, 75, 0.7); 
+    --flux-glass-light: rgba(19, 94, 75, 0.4);  
+    --flux-glass-white: rgba(255, 255, 255, 0.05);
 
-    --flux-border: rgba(204, 220, 219, 0.15); /* #CCDCDB with opacity */
+    --flux-border: rgba(204, 220, 219, 0.1); 
 
-    /* Fluent UI Global Overrides for Dark Glass Theme */
-    --neutral-foreground-rest: #CCDCDB;
-    --neutral-foreground-hint: rgba(204, 220, 219, 0.6);
-    --accent-fill-rest: #4CB572;
-    --neutral-fill-rest: rgba(204, 220, 219, 0.1);
-    --neutral-stroke-rest: rgba(204, 220, 219, 0.15);
+    /* Fluent UI Global Overrides */
+    --neutral-foreground-rest: #BFCFCF;
+    --neutral-foreground-hint: rgba(204, 220, 219, 0.5);
+    --accent-fill-rest: #3E9E60;
+    --neutral-fill-rest: rgba(204, 220, 219, 0.05);
+    --neutral-stroke-rest: rgba(204, 220, 219, 0.1);
 }
 
 /* Force global text colors for Fluent components */

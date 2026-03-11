@@ -18,10 +18,10 @@ public class SmtpEmailService(ILogger<SmtpEmailService> logger, IConfiguration c
             var fromEmail = configuration["Smtp:FromEmail"] ?? username;
             var fromName = configuration["Smtp:FromName"] ?? "Flux App";
 
-            // If SMTP is not configured, fallback to logging (simulation)
-            if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+            // If SMTP is not configured or email is invalid, fallback to logging
+            if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(fromEmail) || !fromEmail.Contains("@"))
             {
-                logger.LogWarning("SMTP is not fully configured in appsettings.json. Falling back to simulation.");
+                logger.LogWarning("SMTP is not fully configured or FromEmail is invalid. Falling back to simulation.");
                 logger.LogInformation($"--- EMAIL SIMULATION ---\nTo: {toEmail}\nSubject: {subject}\nBody:\n{body}\n------------------------");
                 return;
             }
