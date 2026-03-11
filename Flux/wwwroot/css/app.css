@@ -1,19 +1,27 @@
-/* Flux Global Styles & Theme Variables - RESTORED */
+/* Flux Global Styles & Theme Variables - Glassmorphism Edition */
 :root {
-    --flux-primary: #611f69;
-    --flux-primary-hover: #7d3085;
-    --flux-activity-bg: #1a1a1a;
-    --flux-sidebar-bg: var(--neutral-layer-2);
-    --flux-chat-bg: var(--neutral-layer-1);
-    --flux-border: var(--neutral-stroke-rest);
-    --flux-accent: #0078d4;
+    --flux-primary: #4CB572;
+    --flux-primary-hover: #3e9e60;
+    
+    /* Solid Colors - Dark Mode */
+    --flux-main-bg: #135E4B;
+    --flux-main-text: #CCDCDB;
+    --flux-secondary: #A1D8B5;
 
-    /* Fluent UI Global Overrides for Dark Theme */
-    --neutral-foreground-rest: rgba(255, 255, 255, 0.9);
-    --neutral-foreground-hint: rgba(255, 255, 255, 0.5);
-    --accent-fill-rest: #7d3085;
-    --neutral-fill-rest: rgba(255, 255, 255, 0.1);
-    --neutral-stroke-rest: rgba(255, 255, 255, 0.1);
+    /* Glassmorphism Colors - Dark Mode */
+    --flux-glass-heavy: rgba(19, 94, 75, 0.85); /* #135E4B with 85% opacity */
+    --flux-glass-medium: rgba(19, 94, 75, 0.6); /* #135E4B with 60% opacity */
+    --flux-glass-light: rgba(19, 94, 75, 0.3);  /* #135E4B with 30% opacity */
+    --flux-glass-white: rgba(204, 220, 219, 0.1);  /* #CCDCDB with 10% opacity for contrast */
+
+    --flux-border: rgba(204, 220, 219, 0.15); /* #CCDCDB with opacity */
+
+    /* Fluent UI Global Overrides for Dark Glass Theme */
+    --neutral-foreground-rest: #CCDCDB;
+    --neutral-foreground-hint: rgba(204, 220, 219, 0.6);
+    --accent-fill-rest: #4CB572;
+    --neutral-fill-rest: rgba(204, 220, 219, 0.1);
+    --neutral-stroke-rest: rgba(204, 220, 219, 0.15);
 }
 
 /* Force global text colors for Fluent components */
@@ -21,33 +29,23 @@
 .fluent-typography,
 fluent-label,
 span, 
-div {
+div,
+h1, h2, h3, h4, h5, h6, p, a {
     color: inherit;
 }
 
 body {
     margin: 0;
     padding: 0;
-    font-family: "Segoe UI", "Inter", -apple-system, sans-serif;
+    font-family: "Inter", "Segoe UI", -apple-system, sans-serif;
     overflow: hidden;
-    /* Professional Matte Dark Theme - Eye Friendly */
-    background-color: #0f0f11;
-    background-image: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop');
+    background-color: var(--flux-main-bg);
+    /* Chill Dark Background Image */
+    background-image: url('https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=2574&auto=format&fit=crop'); 
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
-    color: #e1e1e3;
-}
-
-/* Very subtle background texture - no bright spots */
-body::before {
-    content: '';
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.02) 0%, transparent 80%);
-    pointer-events: none;
-    z-index: -1;
+    color: var(--flux-main-text);
 }
 
 /* Layout Framework */
@@ -65,12 +63,13 @@ body::before {
     background: transparent;
 }
 
-/* 1. Activity Bar - Standard Dark */
+/* 1. Activity Bar - Glass */
 .activity-bar {
     width: 68px;
-    background-color: rgba(26, 26, 28, 0.6);
-    backdrop-filter: blur(10px);
-    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    background-color: var(--flux-glass-heavy);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-right: 1px solid var(--flux-border);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -94,18 +93,20 @@ body::before {
     justify-content: center;
     cursor: pointer;
     border-radius: 12px;
-    transition: all 0.2s;
-    color: #8b8b93;
+    transition: all 0.2s ease;
+    color: var(--flux-main-text);
+    opacity: 0.7;
 }
 
 .activity-item:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-    color: #ffffff;
+    background-color: var(--flux-glass-white);
+    opacity: 1;
 }
 
 .activity-item.active {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: var(--flux-primary);
     color: white;
+    opacity: 1;
 }
 
 .activity-label {
@@ -115,85 +116,52 @@ body::before {
 .workspace-icon-wrapper {
     width: 48px;
     height: 48px;
-    background: #611f69;
+    background: var(--flux-primary);
     border-radius: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     margin-bottom: 12px;
-    transition: all 0.2s;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.2s ease;
+    border: 1px solid var(--flux-border);
+    box-shadow: 0 4px 12px rgba(76, 181, 114, 0.3);
 }
 
 .workspace-icon-wrapper:hover {
-    border-radius: 12px;
+    border-radius: 10px;
+    transform: translateY(-2px);
 }
 
 .workspace-initial {
     color: white;
-    font-weight: 700;
-    font-size: 1.2rem;
+    font-weight: 800;
+    font-size: 1.4rem;
 }
 
-/* 2. Sidebar - Standard Dark */
+/* 2. Sidebar - Glass */
 .workspace-sidebar {
     width: 260px;
-    background-color: rgba(18, 18, 20, 0.6);
-    backdrop-filter: blur(10px);
-    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    background-color: var(--flux-glass-medium);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-right: 1px solid var(--flux-border);
     display: flex;
     flex-direction: column;
 }
 
 .sidebar-header {
     padding: 0 16px;
-    height: 52px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    display: flex;
-    align-items: center;
-}
-
-.sidebar-scrollable {
-    flex: 1;
-    overflow-y: auto;
-    padding: 12px 0;
-}
-
-/* Force subtle icons in sidebar */
-.workspace-sidebar fluent-icon {
-    fill: #8b8b93 !important;
-}
-
-.workspace-sidebar fluent-nav-link[active] fluent-icon {
-    fill: white !important;
-}
-
-.workspace-sidebar fluent-nav-link {
-    margin: 1px 12px;
-    border-radius: 6px;
-    color: #8b8b93 !important;
-    height: 34px !important;
-}
-
-.workspace-sidebar fluent-nav-link[active] {
-    background: #1e1e21 !important;
-    color: white !important;
-}
-
-
-.sidebar-header {
-    padding: 0 16px;
-    height: 52px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    height: 60px;
+    border-bottom: 1px solid var(--flux-border);
     display: flex;
     align-items: center;
 }
 
 .workspace-name fluent-label {
-    font-weight: 700 !important;
-    font-size: 15px !important;
-    color: white !important;
+    font-weight: 800 !important;
+    font-size: 16px !important;
+    color: var(--flux-main-text) !important;
 }
 
 .sidebar-scrollable {
@@ -202,46 +170,59 @@ body::before {
     padding: 12px 0;
 }
 
-/* Force subtle icons in sidebar */
+/* Sidebar Nav Items overriding Fluent UI */
 .workspace-sidebar fluent-icon {
-    fill: rgba(255, 255, 255, 0.5) !important;
-    color: rgba(255, 255, 255, 0.5) !important;
+    fill: var(--flux-main-text) !important;
+    color: var(--flux-main-text) !important;
+    opacity: 0.7;
 }
 
 .workspace-sidebar fluent-nav-link[active] fluent-icon {
+    opacity: 1;
     fill: white !important;
     color: white !important;
 }
 
 .workspace-sidebar fluent-nav-link {
-    margin: 1px 12px;
-    border-radius: 6px;
+    margin: 2px 12px;
+    border-radius: 8px;
     --neutral-fill-stealth-rest: transparent;
-    --neutral-fill-stealth-hover: rgba(255, 255, 255, 0.05);
-    --neutral-fill-stealth-active: rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.6) !important;
-    height: 34px !important;
+    --neutral-fill-stealth-hover: var(--flux-glass-white);
+    --neutral-fill-stealth-active: var(--flux-primary);
+    color: var(--flux-main-text) !important;
+    font-weight: 500;
+    height: 36px !important;
+    transition: all 0.2s ease;
+}
+
+.workspace-sidebar fluent-nav-link:hover {
+    font-weight: 600;
 }
 
 .workspace-sidebar fluent-nav-link[active] {
-    background: rgba(255, 255, 255, 0.1) !important;
+    background: var(--flux-primary) !important;
     color: white !important;
+    font-weight: 600;
+    box-shadow: 0 4px 10px rgba(76, 181, 114, 0.2);
 }
 
 .workspace-sidebar fluent-nav-group::part(expand-collapse-button) {
-    color: rgba(255, 255, 255, 0.4) !important;
+    color: var(--flux-main-text) !important;
+    opacity: 0.7;
 }
 
 .workspace-sidebar fluent-nav-group fluent-icon {
-    fill: rgba(255, 255, 255, 0.4) !important;
+    opacity: 0.7;
 }
 
-/* 3. Main Content Area */
+/* 3. Main Content Area - Glass/Transparent */
 .main-content {
     flex: 1;
     display: flex;
     flex-direction: column;
-    background-color: transparent; /* Let the body gradient show through */
+    background-color: var(--flux-glass-light); /* Let the body chill image show through clearly */
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 }
 
 /* Scrollbar Styling */
@@ -254,10 +235,31 @@ body::before {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.1);
+    background: rgba(19, 94, 75, 0.2);
     border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(19, 94, 75, 0.4);
+}
+
+/* Glass Card Utilities */
+.glass-card {
+    background: var(--flux-glass-heavy);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--flux-glass-white);
+    box-shadow: 0 8px 32px rgba(19, 94, 75, 0.1);
+    border-radius: 16px;
+}
+
+.glass-input {
+    background: var(--flux-glass-white) !important;
+    border: 1px solid var(--flux-border) !important;
+    color: var(--flux-main-text) !important;
+}
+
+.glass-input:focus {
+    border-color: var(--flux-primary) !important;
+    background: white !important;
 }

@@ -23,22 +23,19 @@
                     <div class="workspace-initial">@(string.IsNullOrEmpty(WorkspaceState.CurrentWorkspaceName) ? "F" : WorkspaceState.CurrentWorkspaceName[0].ToString().ToUpper())</div>
                 </div>
 
-                <FluentTooltip Anchor="home-icon" Position="TooltipPosition.Right">Home</FluentTooltip>
-                <div id="home-icon" class="activity-item @(IsActive("/workspace") && !IsActive("/dms") ? "active" : "")" @onclick="NavigateToFirstChannel">
-                    <FluentIcon Value="@(new Icons.Regular.Size24.Home())" Color="@Color.Custom" CustomColor="white" />
+                <div id="home-icon" class="activity-item @(IsActive("/workspace") && !IsActive("/dms") ? "active" : "")" title="Home" @onclick="NavigateToFirstChannel">
+                    <FluentIcon Value="@(new Icons.Regular.Size24.Home())" Color="@Color.Custom" CustomColor="currentColor" />
                     <span class="activity-label">Home</span>
                 </div>
 
-                <FluentTooltip Anchor="dm-icon" Position="TooltipPosition.Right">Direct Messages</FluentTooltip>
-                <div id="dm-icon" class="activity-item @(IsActive("/dms") ? "active" : "")" @onclick='() => Navigation.NavigateTo("/dms")'>
-                    <FluentIcon Value="@(new Icons.Regular.Size24.Chat())" Color="@Color.Custom" CustomColor="white" />
+                <div id="dm-icon" class="activity-item @(IsActive("/dms") ? "active" : "")" title="Direct Messages" @onclick='() => Navigation.NavigateTo("/dms")'>
+                    <FluentIcon Value="@(new Icons.Regular.Size24.Chat())" Color="@Color.Custom" CustomColor="currentColor" />
                     <span class="activity-label">DM</span>
                 </div>
             </div>
             <FluentSpacer />
             <div class="activity-bottom">
-                <FluentTooltip Anchor="profile-icon" Position="TooltipPosition.Right">Profile</FluentTooltip>
-                <div id="profile-icon" class="profile-item" style="cursor: pointer;" @onclick='() => Navigation.NavigateTo("/profile")'>
+                <div id="profile-icon" class="profile-item" title="Profile" style="cursor: pointer;" @onclick='() => Navigation.NavigateTo("/profile")'>
                     <FluentPersona Status="PresenceStatus.Available" ImageSize="32px" Initials="ME" />
                 </div>
             </div>
@@ -49,7 +46,7 @@
             <div class="sidebar-header">
                 <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center">
                     <div class="workspace-name">
-                        <FluentLabel Typo="Typography.Body" Style="font-weight: 800; color: white">@(WorkspaceState.CurrentWorkspaceName ?? "Loading...")</FluentLabel>
+                        <FluentLabel Typo="Typography.Body">@(WorkspaceState.CurrentWorkspaceName ?? "Loading...")</FluentLabel>
                     </div>
                     <FluentSpacer />
                     <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.PersonAdd())" OnClick="OpenInviteDialog" title="Invite People" />
@@ -59,7 +56,7 @@
             <div class="sidebar-scrollable">
                 <FluentNavMenu Width="260">
                     <div @oncontextmenu="@(e => ShowGroupContextMenu(e))" @oncontextmenu:preventDefault="true">
-                        <FluentNavGroup Title="Channels" Icon="@(new Icons.Regular.Size20.CaretDown())" Expanded="true" Style="color: slategray">
+                        <FluentNavGroup Title="Channels" Icon="@(new Icons.Regular.Size20.CaretDown())" Expanded="true">
                             @foreach (var channel in WorkspaceState.Channels.Where(c => c.Type != ChannelType.Direct))
                             {
                                 var icon = channel.Type == ChannelType.Private 
@@ -72,7 +69,7 @@
                                     <FluentNavLink Icon="@icon" 
                                                    Href="@($"/workspace/{WorkspaceState.CurrentWorkspaceId}/chat/{channel.Id}")"
                                                    Match="NavLinkMatch.All">
-                                        <span ># @channel.Name</span>
+                                        <span># @channel.Name</span>
                                     </FluentNavLink>
                                 </div>
                             }
@@ -83,7 +80,7 @@
                             </FluentNavLink>
                         </FluentNavGroup>
                         
-                        <FluentNavGroup Title="Direct Messages" Icon="@(new Icons.Regular.Size20.CaretDown())" Expanded="true" Style="color: slategray; margin-top: 10px;">
+                        <FluentNavGroup Title="Direct Messages" Icon="@(new Icons.Regular.Size20.CaretDown())" Expanded="true" Style="margin-top: 10px;">
                             @foreach (var member in WorkspaceState.Members)
                             {
                                 // Don't show current user in DM list (or show as "Self (You)")

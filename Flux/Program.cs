@@ -55,6 +55,18 @@ builder.Services.AddAuthentication(options =>
         googleOptions.ClientId = string.IsNullOrEmpty(clientId) ? "placeholder-client-id" : clientId;
         googleOptions.ClientSecret = string.IsNullOrEmpty(clientSecret) ? "placeholder-client-secret" : clientSecret;
         googleOptions.SaveTokens = true;
+    })
+    .AddGitHub(githubOptions =>
+    {
+        githubOptions.SignInScheme = "ExternalCookie";
+        var clientId = builder.Configuration["Authentication:GitHub:ClientId"];
+        var clientSecret = builder.Configuration["Authentication:GitHub:ClientSecret"];
+
+        githubOptions.ClientId = string.IsNullOrEmpty(clientId) ? "placeholder-client-id" : clientId;
+        githubOptions.ClientSecret = string.IsNullOrEmpty(clientSecret) ? "placeholder-client-secret" : clientSecret;
+        githubOptions.SaveTokens = true;
+        // GitHub sometimes doesn't return email by default, request it
+        githubOptions.Scope.Add("user:email");
     });
 // ------------------------------
 

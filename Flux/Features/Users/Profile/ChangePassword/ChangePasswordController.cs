@@ -15,7 +15,7 @@ public class ChangePasswordController(IMediator mediator) : ControllerBase
             return Unauthorized(new { Message = "Invalid user identity." });
         }
 
-        var command = new ChangePasswordCommand(request.UserId, request.Otp, request.NewPassword);
+        var command = new ChangePasswordCommand(request.UserId, request.NewPassword);
         var result = await mediator.Send(command, cancellationToken);
 
         if (result.IsFailure)

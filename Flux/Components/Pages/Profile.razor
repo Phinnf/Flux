@@ -2,128 +2,444 @@
 @using Flux.Infrastructure.Client
 @using Microsoft.AspNetCore.Components.Authorization
 @inject FluxClientService FluxService
+@inject WorkspaceStateService WorkspaceState
 @inject NavigationManager Navigation
 @inject IToastService ToastService
 @inject AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JS
+@layout Flux.Components.Layout.EmptyLayout
 
-<PageTitle>Profile - Flux</PageTitle>
+<PageTitle>Edit Profile - Flux</PageTitle>
 
-<div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-    <FluentCard>
-        <div style="display: flex; align-items: center; margin-bottom: 24px; justify-content: space-between;">
-            <div style="display: flex; align-items: center; gap: 16px;">
-                <div style="position: relative; display: inline-block;">
-                    <FluentPersona Status="PresenceStatus.Available" ImageSize="64px" Image="@_model.AvatarUrl" Initials="@_initials" />
-                    <InputFile id="avatarUpload" OnChange="HandleAvatarUpload" style="display: none;" accept="image/*" />
-                    <label for="avatarUpload" style="position: absolute; bottom: -5px; right: -5px; background: var(--accent-fill-rest); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                        <FluentIcon Value="@(new Icons.Regular.Size16.Camera())" />
-                    </label>
-                </div>
-                <div>
-                    <FluentLabel Typo="Typography.H2">My Profile</FluentLabel>
-                    <FluentLabel Typo="Typography.Body" Color="Color.Neutral">Manage your personal information.</FluentLabel>
-                </div>
+<div class="slack-layout" style="font-family: 'Inter', sans-serif;">
+    
+    <!-- 1. Activity Bar (Matches Workspace) -->
+    <div class="activity-bar">
+        <div class="activity-top">
+            <div class="workspace-icon-wrapper" @onclick='() => Navigation.NavigateTo("/workspaces")' title="Go to Workspaces">
+                <div class="workspace-initial">@(string.IsNullOrEmpty(WorkspaceState.CurrentWorkspaceName) ? "F" : WorkspaceState.CurrentWorkspaceName[0].ToString().ToUpper())</div>
             </div>
-            <FluentButton Appearance="Appearance.Outline" IconStart="@(new Icons.Regular.Size16.LockClosed())" OnClick="OpenPasswordDialog">Change Password</FluentButton>
+
+            <div id="home-icon" class="activity-item" title="Home" @onclick="NavigateToFirstChannel">
+                <FluentIcon Value="@(new Icons.Regular.Size24.Home())" Color="@Color.Custom" CustomColor="currentColor" />
+            </div>
+
+            <div id="dm-icon" class="activity-item" title="Direct Messages" @onclick='() => Navigation.NavigateTo("/dms")'>
+                <FluentIcon Value="@(new Icons.Regular.Size24.Chat())" Color="@Color.Custom" CustomColor="currentColor" />
+            </div>
+        </div>
+        
+        <div style="flex-grow: 1;"></div>
+        
+        <div class="activity-bottom">
+            <div id="profile-icon" class="activity-item active" title="Profile" style="margin-bottom: 12px; cursor: pointer;">
+                <FluentPersona Status="PresenceStatus.Available" ImageSize="32px" Image="@_model.AvatarUrl" Initials="@_initials" />
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Profile Sidebar (Matches Workspace Sidebar) -->
+    <div class="workspace-sidebar">
+        <div class="sidebar-header">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <FluentIcon Value="@(new Icons.Filled.Size20.Settings())" Color="Color.Custom" CustomColor="currentColor" />
+                <span style="font-size: 16px; font-weight: 700; color: inherit;">Settings</span>
+            </div>
+        </div>
+        
+        <div class="sidebar-scrollable" style="padding: 12px 8px;">
+            <button class="profile-menu-item active">
+                <FluentIcon Value="@(new Icons.Regular.Size20.Edit())" />
+                <span>Edit profile</span>
+            </button>
+            <button class="profile-menu-item">
+                <FluentIcon Value="@(new Icons.Regular.Size20.Alert())" />
+                <span>Notification</span>
+            </button>
+            <button class="profile-menu-item">
+                <FluentIcon Value="@(new Icons.Regular.Size20.LockClosed())" />
+                <span>Security</span>
+            </button>
+            <button class="profile-menu-item">
+                <FluentIcon Value="@(new Icons.Regular.Size20.Color())" />
+                <span>Appearance</span>
+            </button>
+            <button class="profile-menu-item">
+                <FluentIcon Value="@(new Icons.Regular.Size20.QuestionCircle())" />
+                <span>Help</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 3. Main Content Area -->
+    <div class="main-content profile-main-content">
+        <div class="top-bar">
+            <div class="top-bar-right">
+                <FluentIcon Value="@(new Icons.Regular.Size24.Alert())" Color="Color.Custom" CustomColor="currentColor" />
+                <FluentPersona Status="PresenceStatus.Available" ImageSize="36px" Image="@_model.AvatarUrl" Initials="@_initials" />
+            </div>
         </div>
 
-        @if (_isLoading)
-        {
-            <FluentProgressRing />
-        }
-        else if (_errorMessage != null)
-        {
-            <div style="color: var(--error); margin-bottom: 16px;">@_errorMessage</div>
-        }
-        else
-        {
-            <EditForm Model="@_model" OnValidSubmit="HandleSubmit">
-                <div style="display: flex; flex-direction: column; gap: 16px;">
-                    <div style="display: flex; gap: 16px;">
-                        <FluentTextField Label="Username" @bind-Value="_model.Username" Style="flex: 1;" />
-                        <FluentTextField Label="Email" Value="@_email" ReadOnly="true" Style="flex: 1;" />
+        <div class="profile-container">
+            <div class="content-header">
+                <h1>Edit profile</h1>
+                <div class="avatar-upload">
+                    <FluentPersona Status="PresenceStatus.Available" ImageSize="80px" Image="@_model.AvatarUrl" Initials="@_initials" />
+                    <InputFile id="avatarUpload" OnChange="HandleAvatarUpload" style="display: none;" accept="image/*" />
+                    <label for="avatarUpload" class="upload-btn">
+                        <FluentIcon Value="@(new Icons.Regular.Size16.Camera())" Color="Color.Custom" CustomColor="#fff" />
+                    </label>
+                </div>
+            </div>
+
+            @if (_isLoading)
+            {
+                <div class="loading-container">
+                    <FluentProgressRing />
+                </div>
+            }
+            else
+            {
+                <div class="glass-card profile-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>First Name</label>
+                            <input type="text" @bind="_model.Username" class="glass-input form-input" />
+                        </div>
+                        <div class="form-group">
+                            <label>Last Name</label>
+                            <input type="text" @bind="_model.FullName" class="glass-input form-input" />
+                        </div>
                     </div>
 
-                    <FluentTextField Label="Full Name" @bind-Value="_model.FullName" Style="width: 100%;" />
-                    <FluentTextField Label="Nick Name" @bind-Value="_model.NickName" Style="width: 100%;" />
-                    
-                    <div style="display: flex; gap: 16px;">
-                        <FluentSelect TOption="string" Label="Gender" @bind-Value="_model.Gender" Style="flex: 1;">
-                            <FluentOption Value="@("")">Select...</FluentOption>
-                            <FluentOption Value="@("Male")">Male</FluentOption>
-                            <FluentOption Value="@("Female")">Female</FluentOption>
-                            <FluentOption Value="@("Other")">Other</FluentOption>
-                            <FluentOption Value="@("Prefer not to say")">Prefer not to say</FluentOption>
-                        </FluentSelect>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <div class="input-with-icon">
+                            <input type="email" value="@_email" readonly class="glass-input form-input readonly-input" />
+                            <FluentIcon Value="@(new Icons.Filled.Size20.CheckmarkCircle())" Color="Color.Success" class="input-icon" />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Contact Number</label>
+                        <input type="text" @bind="_model.NickName" class="glass-input form-input" />
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Country</label>
+                            <div class="select-wrapper">
+                                <select @bind="_model.Country" class="glass-input form-input select-input">
+                                    <option value="">Select a country</option>
+                                    <option value="USA">United States</option>
+                                    <option value="UK">United Kingdom</option>
+                                    <option value="Vietnam">Vietnam</option>
+                                    <option value="Japan">Japan</option>
+                                    <option value="Australia">Australia</option>
+                                </select>
+                                <FluentIcon Value="@(new Icons.Regular.Size16.ChevronDown())" class="select-icon" />
+                            </div>
+                        </div>
                         
-                        <FluentTextField Label="Country" @bind-Value="_model.Country" Style="flex: 1;" />
+                        <div class="form-group">
+                            <label>Status</label>
+                            <div class="select-wrapper">
+                                <select @bind="_model.Status" class="glass-input form-input select-input">
+                                    <option value="Online">🟢 Online</option>
+                                    <option value="Working">💻 Working</option>
+                                    <option value="Idle">🌙 Idle</option>
+                                    <option value="Offline">⚫ Offline</option>
+                                </select>
+                                <FluentIcon Value="@(new Icons.Regular.Size16.ChevronDown())" class="select-icon" />
+                            </div>
+                        </div>
                     </div>
 
-                    <div style="margin-top: 16px; display: flex; gap: 12px; justify-content: flex-end;">
-                        <FluentButton OnClick='() => Navigation.NavigateTo("/workspaces")'>Cancel</FluentButton>
-                        <FluentButton Appearance="Appearance.Accent" Type="ButtonType.Submit" Loading="_isSaving">Save Changes</FluentButton>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <div class="input-with-icon">
+                            <input type="password" @bind="_newPassword" placeholder="Enter new password to change..." class="glass-input form-input" />
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button class="btn btn-cancel" @onclick='() => Navigation.NavigateTo("/workspaces")'>Cancel</button>
+                        <button class="btn btn-save" @onclick="HandleSubmit" disabled="@_isSaving">
+                            @if (_isSaving) { <FluentProgressRing Width="16px" Style="margin-right: 8px;" /> } Save
+                        </button>
+                        <button class="btn btn-logout" @onclick="HandleLogout">Logout</button>
                     </div>
                 </div>
-            </EditForm>
-        }
-    </FluentCard>
+            }
+        </div>
+    </div>
 </div>
 
-<FluentDialog @bind-Hidden="_hidePasswordDialog" Modal="true" TrapFocus="true" @onclick:stopPropagation>
-    <div style="padding: 24px; width: 400px;">
-        <FluentLabel Typo="Typography.H3">Change Password</FluentLabel>
-        
-        @if (!_otpSent)
-        {
-            <p style="margin-top: 10px; color: var(--neutral-foreground-rest);">Click below to receive a 6-digit OTP code to your email.</p>
-            <div style="margin-top: 25px; display: flex; justify-content: flex-end; gap: 10px;">
-                <FluentButton OnClick="() => _hidePasswordDialog = true">Cancel</FluentButton>
-                <FluentButton Appearance="Appearance.Accent" OnClick="SendOtp" Loading="_isSendingOtp">Send OTP</FluentButton>
-            </div>
-        }
-        else
-        {
-            <p style="margin-top: 10px; color: var(--neutral-foreground-rest);">An OTP has been sent to your email. It will expire in 5 minutes.</p>
-            <div style="margin-top: 20px;">
-                <FluentTextField Label="OTP Code" @bind-Value="_otpCode" Style="width: 100%;" />
-            </div>
-            <div style="margin-top: 15px;">
-                <FluentTextField TextFieldType="TextFieldType.Password" Label="New Password" @bind-Value="_newPassword" Style="width: 100%;" />
-            </div>
-            <div style="margin-top: 25px; display: flex; justify-content: flex-end; gap: 10px;">
-                <FluentButton OnClick="() => _hidePasswordDialog = true">Cancel</FluentButton>
-                <FluentButton Appearance="Appearance.Accent" OnClick="ChangePassword" Loading="_isChangingPassword">Update Password</FluentButton>
-            </div>
-        }
-    </div>
-</FluentDialog>
+<style>
+    .profile-main-content {
+        overflow-y: auto;
+        padding: 0 40px 60px 40px;
+    }
+
+    .profile-menu-item {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        background: transparent;
+        border: none;
+        color: var(--flux-main-text);
+        opacity: 0.8;
+        font-size: 14px;
+        font-weight: 500;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-align: left;
+        margin-bottom: 4px;
+    }
+
+    .profile-menu-item:hover {
+        background-color: var(--flux-glass-white);
+        opacity: 1;
+    }
+
+    .profile-menu-item.active {
+        color: white;
+        background-color: var(--flux-primary);
+        font-weight: 700;
+        opacity: 1;
+    }
+    
+    .profile-menu-item fluent-icon {
+        color: currentColor;
+        fill: currentColor;
+    }
+
+    .top-bar {
+        display: flex;
+        justify-content: flex-end;
+        padding: 20px 0;
+        margin-bottom: 20px;
+    }
+
+    .top-bar-right {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        color: var(--flux-main-text);
+    }
+
+    .profile-container {
+        max-width: 800px;
+        margin: 0 auto;
+        width: 100%;
+    }
+
+    .content-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 40px;
+    }
+
+    .content-header h1 {
+        font-size: 32px;
+        font-weight: 800;
+        color: var(--flux-main-text);
+        margin: 0;
+    }
+
+    .avatar-upload {
+        position: relative;
+    }
+
+    .upload-btn {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        background-color: var(--flux-primary);
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        border: 2px solid white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+    }
+    
+    .upload-btn:hover {
+        background-color: var(--flux-primary-hover);
+        transform: scale(1.05);
+    }
+
+    /* Form Styles */
+    .profile-form {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        padding: 40px;
+    }
+
+    .form-row {
+        display: flex;
+        gap: 24px;
+    }
+
+    .form-group {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .form-group label {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--flux-main-text);
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 14px 16px;
+        border-radius: 8px;
+        font-size: 15px;
+        outline: none;
+        box-sizing: border-box;
+    }
+    
+    .form-input::placeholder {
+        color: rgba(19, 94, 75, 0.5);
+    }
+
+    .readonly-input {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+
+    .input-with-icon {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .input-icon {
+        position: absolute;
+        right: 16px;
+    }
+
+    .select-wrapper {
+        position: relative;
+    }
+
+    .select-input {
+        appearance: none;
+        -webkit-appearance: none;
+    }
+
+    .select-input option {
+        background: white;
+        color: var(--flux-main-text);
+    }
+
+    .select-icon {
+        position: absolute;
+        right: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+        color: var(--flux-main-text);
+    }
+
+    /* Actions */
+    .form-actions {
+        display: flex;
+        gap: 16px;
+        margin-top: 20px;
+    }
+
+    .btn {
+        padding: 12px 32px;
+        border-radius: 8px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        transition: all 0.2s;
+    }
+
+    .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(19, 94, 75, 0.1);
+    }
+
+    .btn:active {
+        transform: translateY(0);
+    }
+
+    .btn-cancel {
+        background-color: transparent;
+        color: var(--flux-main-text);
+        border: 1px solid var(--flux-main-text);
+    }
+
+    .btn-cancel:hover {
+        background-color: rgba(19, 94, 75, 0.05);
+    }
+
+    .btn-save {
+        background-color: var(--flux-primary);
+        color: white;
+        display: flex;
+        align-items: center;
+    }
+
+    .btn-save:hover {
+        background-color: var(--flux-primary-hover);
+    }
+    
+    .btn-logout {
+        background-color: rgba(220, 53, 69, 0.1);
+        color: #dc3545;
+        margin-left: auto;
+        border: 1px solid rgba(220, 53, 69, 0.2);
+    }
+
+    .btn-logout:hover {
+        background-color: rgba(220, 53, 69, 0.2);
+        color: #c82333;
+    }
+
+    .loading-container {
+        display: flex;
+        justify-content: center;
+        padding: 50px;
+    }
+</style>
 
 @code {
     private Guid _currentUserId;
     private bool _isLoading = true;
     private bool _isSaving = false;
-    private string? _errorMessage;
     
     private string _email = "";
     private string _initials = "U";
+    private string _newPassword = "";
     
     private ProfileModel _model = new();
-
-    private bool _hidePasswordDialog = true;
-    private bool _otpSent = false;
-    private bool _isSendingOtp = false;
-    private bool _isChangingPassword = false;
-    private string _otpCode = "";
-    private string _newPassword = "";
 
     private class ProfileModel
     {
         public string? Username { get; set; }
         public string? FullName { get; set; }
         public string? NickName { get; set; }
-        public string? Gender { get; set; }
         public string? Country { get; set; }
         public string? AvatarUrl { get; set; }
+        public string? Status { get; set; } = "Online";
     }
 
     protected override async Task OnInitializedAsync()
@@ -154,9 +470,9 @@
             _model.Username = result.Value.Username;
             _model.FullName = result.Value.FullName;
             _model.NickName = result.Value.NickName;
-            _model.Gender = result.Value.Gender;
             _model.Country = result.Value.Country;
             _model.AvatarUrl = result.Value.AvatarUrl;
+            _model.Status = result.Value.Status ?? "Online";
 
             _initials = string.IsNullOrEmpty(_model.FullName) 
                 ? (_model.Username?.Length > 0 ? _model.Username[0].ToString().ToUpper() : "U")
@@ -164,25 +480,33 @@
         }
         else
         {
-            _errorMessage = result.Error ?? "Failed to load profile.";
+            ToastService.ShowError("Failed to load profile.");
         }
         
         _isLoading = false;
     }
 
+    private void NavigateToFirstChannel()
+    {
+        if (WorkspaceState.CurrentWorkspaceId != null && WorkspaceState.Channels.Any())
+            Navigation.NavigateTo($"/workspace/{WorkspaceState.CurrentWorkspaceId}/chat/{WorkspaceState.Channels.First().Id}");
+        else
+            Navigation.NavigateTo("/workspaces");
+    }
+
     private async Task HandleSubmit()
     {
         _isSaving = true;
-        _errorMessage = null;
 
         var result = await FluxService.UpdateProfileAsync(
             _currentUserId,
             _model.Username,
             _model.FullName, 
             _model.NickName, 
-            _model.Gender, 
+            null,
             _model.Country, 
-            _model.AvatarUrl);
+            _model.AvatarUrl,
+            _model.Status);
 
         if (result.IsSuccess)
         {
@@ -190,6 +514,20 @@
             _initials = string.IsNullOrEmpty(_model.FullName) 
                 ? (_model.Username?.Length > 0 ? _model.Username[0].ToString().ToUpper() : "U")
                 : _model.FullName[0].ToString().ToUpper();
+
+            if (!string.IsNullOrWhiteSpace(_newPassword))
+            {
+                var pwdResult = await FluxService.ChangePasswordAsync(_currentUserId, _newPassword);
+                if (pwdResult.IsSuccess)
+                {
+                    ToastService.ShowSuccess("Password updated successfully!");
+                    _newPassword = "";
+                }
+                else
+                {
+                    ToastService.ShowError($"Failed to update password: {pwdResult.Error}");
+                }
+            }
         }
         else
         {
@@ -198,53 +536,18 @@
 
         _isSaving = false;
     }
-
-    private void OpenPasswordDialog()
+    
+    private async Task HandleLogout()
     {
-        _otpSent = false;
-        _otpCode = "";
-        _newPassword = "";
-        _hidePasswordDialog = false;
-    }
-
-    private async Task SendOtp()
-    {
-        _isSendingOtp = true;
-        var result = await FluxService.SendOtpAsync(_currentUserId);
-        _isSendingOtp = false;
-
-        if (result.IsSuccess)
+        await JS.InvokeVoidAsync("localStorage.removeItem", "authToken");
+        await JS.InvokeVoidAsync("sessionStorage.removeItem", "authToken");
+        
+        if (AuthStateProvider is Flux.Infrastructure.Identity.FluxAuthStateProvider fluxAuthProvider)
         {
-            _otpSent = true;
-            ToastService.ShowSuccess("OTP sent to your email.");
+            fluxAuthProvider.NotifyUserLogout();
         }
-        else
-        {
-            ToastService.ShowError($"Failed to send OTP: {result.Error}");
-        }
-    }
-
-    private async Task ChangePassword()
-    {
-        if (string.IsNullOrWhiteSpace(_otpCode) || string.IsNullOrWhiteSpace(_newPassword))
-        {
-            ToastService.ShowError("Please fill in both OTP and New Password.");
-            return;
-        }
-
-        _isChangingPassword = true;
-        var result = await FluxService.ChangePasswordAsync(_currentUserId, _otpCode, _newPassword);
-        _isChangingPassword = false;
-
-        if (result.IsSuccess)
-        {
-            ToastService.ShowSuccess("Password changed successfully!");
-            _hidePasswordDialog = true;
-        }
-        else
-        {
-            ToastService.ShowError($"Failed to change password: {result.Error}");
-        }
+        
+        Navigation.NavigateTo("/auth", forceLoad: true);
     }
 
     private async Task HandleAvatarUpload(InputFileChangeEventArgs e)
@@ -252,7 +555,6 @@
         var file = e.File;
         if (file == null) return;
 
-        // Ensure file is an image and limit size (e.g., max 5MB)
         long maxFileSize = 1024 * 1024 * 5;
         if (file.Size > maxFileSize)
         {
@@ -264,7 +566,6 @@
         {
             _isLoading = true;
             using var content = new MultipartFormDataContent();
-            // Read stream
             var streamContent = new StreamContent(file.OpenReadStream(maxFileSize));
             streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
             
@@ -274,7 +575,7 @@
             if (result.IsSuccess)
             {
                 _model.AvatarUrl = result.Value;
-                ToastService.ShowSuccess("Avatar uploaded! Remember to click Save Changes.");
+                ToastService.ShowSuccess("Avatar uploaded! Remember to click Save.");
             }
             else
             {

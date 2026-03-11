@@ -60,7 +60,7 @@ public class GetOrCreateDirectChannelController : ControllerBase
         newChannel.Members.Add(currentUser);
         newChannel.Members.Add(targetUser);
 
-        workspace.Channels.Add(newChannel);
+        _context.Channels.Add(newChannel);
         await _context.SaveChangesAsync();
 
         return Ok(new { newChannel.Id, newChannel.Name, newChannel.Type });

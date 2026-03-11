@@ -21,7 +21,8 @@ public class GetProfileHandler(FluxDbContext context) : IRequestHandler<GetProfi
             user.NickName,
             user.Gender,
             user.Country,
-            user.AvatarUrl
+            user.AvatarUrl,
+            user.Status
         );
 
         return Result<UserProfileDto>.CreateSuccess(dto);

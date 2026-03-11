@@ -378,7 +378,7 @@ public class FluxClientService(HttpClient httpClient)
         }
     }
 
-    public record UserProfileDto(Guid Id, string Username, string Email, string? FullName, string? NickName, string? Gender, string? Country, string? AvatarUrl);
+    public record UserProfileDto(Guid Id, string Username, string Email, string? FullName, string? NickName, string? Gender, string? Country, string? AvatarUrl, string? Status);
 
     public async Task<Result<UserProfileDto>> GetProfileAsync(Guid userId)
     {
@@ -421,11 +421,11 @@ public class FluxClientService(HttpClient httpClient)
         }
     }
 
-    public async Task<Result> UpdateProfileAsync(Guid userId, string? username, string? fullName, string? nickName, string? gender, string? country, string? avatarUrl)
+    public async Task<Result> UpdateProfileAsync(Guid userId, string? username, string? fullName, string? nickName, string? gender, string? country, string? avatarUrl, string? status = null)
     {
         try
         {
-            var request = new { UserId = userId, Username = username, FullName = fullName, NickName = nickName, Gender = gender, Country = country, AvatarUrl = avatarUrl };
+            var request = new { UserId = userId, Username = username, FullName = fullName, NickName = nickName, Gender = gender, Country = country, AvatarUrl = avatarUrl, Status = status };
             var response = await httpClient.PutAsJsonAsync("/api/users/profile", request);
             
             if (response.IsSuccessStatusCode)
@@ -463,12 +463,54 @@ public class FluxClientService(HttpClient httpClient)
         }
     }
 
-    public async Task<Result> ChangePasswordAsync(Guid userId, string otp, string newPassword)
+    public async Task<Result> ChangePasswordAsync(Guid userId, string newPassword)
     {
         try
         {
-            var request = new { UserId = userId, Otp = otp, NewPassword = newPassword };
+            var request = new { UserId = userId, NewPassword = newPassword };
             var response = await httpClient.PostAsJsonAsync("/api/users/profile/change-password", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return Result.Success();
+            }
+            
+            var error = await response.Content.ReadAsStringAsync();
+            return Result.Failure(error);
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure(ex.Message);
+        }
+    }
+
+    public async Task<Result> ForgotPasswordAsync(string email)
+    {
+        try
+        {
+            var request = new { Email = email };
+            var response = await httpClient.PostAsJsonAsync("/api/users/forgot-password", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return Result.Success();
+            }
+            
+            var error = await response.Content.ReadAsStringAsync();
+            return Result.Failure(error);
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure(ex.Message);
+        }
+    }
+
+    public async Task<Result> ResetPasswordAsync(string email, string otp, string newPassword)
+    {
+        try
+        {
+            var request = new { Email = email, Otp = otp, NewPassword = newPassword };
+            var response = await httpClient.PostAsJsonAsync("/api/users/reset-password", request);
             
             if (response.IsSuccessStatusCode)
             {

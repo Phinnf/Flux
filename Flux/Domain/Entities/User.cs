@@ -10,6 +10,7 @@
         public string? Gender { get; set; }
         public string? Country { get; set; }
         public string? AvatarUrl { get; set; }
+        public string? Status { get; set; } // e.g. "Online", "Idle", "Working", "Offline"
         public string PasswordHash { get; set; } = string.Empty;
         public string? ExternalProvider { get; set; }
         public string? ExternalId { get; set; }

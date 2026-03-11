@@ -196,6 +196,18 @@
     [SupplyParameterFromQuery]
     public string? Token { get; set; }
 
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrEmpty(Token))
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            if (authState.User.Identity?.IsAuthenticated == true)
+            {
+                Navigation.NavigateTo("/workspaces", forceLoad: true);
+            }
+        }
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender && !string.IsNullOrEmpty(Token))

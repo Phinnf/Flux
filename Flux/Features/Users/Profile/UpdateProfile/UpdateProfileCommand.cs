@@ -5,18 +5,20 @@ namespace Flux.Features.Users.Profile.UpdateProfile;
 
 public record UpdateProfileCommand(
     Guid UserId, 
-    string? Username,
+    string? Username, 
     string? FullName, 
     string? NickName, 
     string? Gender, 
     string? Country, 
-    string? AvatarUrl) : IRequest<Result>;
+    string? AvatarUrl,
+    string? Status) : IRequest<Result>;
 
 public record UpdateProfileRequest(
-    Guid UserId,
-    string? Username,
+    Guid UserId, 
+    string? Username, 
     string? FullName, 
     string? NickName, 
     string? Gender, 
     string? Country, 
-    string? AvatarUrl);
+    string? AvatarUrl,
+    string? Status);

@@ -14,18 +14,8 @@ public class ChangePasswordHandler(FluxDbContext context, IPasswordHasher passwo
         if (user == null)
             return Result.Failure("User not found.");
 
-        if (string.IsNullOrEmpty(user.TwoFactorCode) || user.TwoFactorCode != request.Otp)
-            return Result.Failure("Invalid OTP.");
-
-        if (!user.TwoFactorExpiry.HasValue || user.TwoFactorExpiry.Value < DateTime.UtcNow)
-            return Result.Failure("OTP has expired.");
-
-        // OTP is valid, change password
+        // Change password directly without OTP
         user.PasswordHash = passwordHasher.Hash(request.NewPassword);
-        
-        // Clear OTP
-        user.TwoFactorCode = null;
-        user.TwoFactorExpiry = null;
 
         await context.SaveChangesAsync(cancellationToken);
 

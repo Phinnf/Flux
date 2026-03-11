@@ -96,12 +96,12 @@
 </FluentDialog>
 
 <style>
-    /* Inherit base scenic styles from empty layout but add workspace specific ones */
+    /* Inherit base styles from empty layout but add workspace specific ones */
     .scenic-workspaces-page {
         min-height: 100vh;
         width: 100%;
         background-color: transparent; /* Assuming Body has the global background image now */
-        color: white;
+        color: var(--flux-main-text);
         display: flex;
         flex-direction: column;
     }
@@ -113,16 +113,16 @@
         padding: 25px 60px;
         position: relative;
         z-index: 10;
-        background: rgba(15, 15, 15, 0.4);
+        background: var(--flux-glass-heavy);
         backdrop-filter: blur(20px);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        border-bottom: 1px solid var(--flux-glass-white);
     }
 
     .logo-text {
         font-size: 24px;
         font-weight: 800;
         letter-spacing: 2px;
-        color: white;
+        color: var(--flux-main-text);
     }
 
     .workspaces-container {
@@ -137,6 +137,7 @@
     .workspaces-header {
         text-align: center;
         margin-bottom: 60px;
+        color: var(--flux-main-text);
     }
 
     .hero-heading {
@@ -145,7 +146,7 @@
     }
 
     .hero-subheading {
-        color: rgba(255, 255, 255, 0.8);
+        color: rgba(19, 94, 75, 0.8);
         font-size: 1.1rem;
     }
 
@@ -157,12 +158,12 @@
 
     /* Glass Cards */
     .glass-card {
-        background: rgba(30, 30, 34, 0.6);
+        background: var(--flux-glass-heavy);
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        border: 1px solid var(--flux-glass-white);
         border-radius: 16px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 10px 30px rgba(19, 94, 75, 0.15);
         transition: all 0.3s ease;
         overflow: hidden;
         display: flex;
@@ -170,12 +171,12 @@
     }
 
     .glass-panel {
-        background: rgba(30, 30, 34, 0.6);
+        background: var(--flux-glass-heavy);
         backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        border: 1px solid var(--flux-glass-white);
         border-radius: 16px;
         padding: 40px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 10px 30px rgba(19, 94, 75, 0.15);
     }
 
     .workspace-card {
@@ -184,9 +185,9 @@
 
     .workspace-card:hover {
         transform: translateY(-5px);
-        background: rgba(40, 40, 45, 0.7);
-        border-color: rgba(255, 255, 255, 0.2);
-        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+        background: white;
+        border-color: var(--flux-primary);
+        box-shadow: 0 15px 40px rgba(76, 181, 114, 0.2);
     }
 
     .workspace-card-content {
@@ -195,7 +196,7 @@
     }
 
     .workspace-avatar {
-        background: linear-gradient(135deg, #611f69, #e14960);
+        background: var(--flux-primary);
         width: 56px;
         height: 56px;
         border-radius: 14px;
@@ -205,13 +206,13 @@
         font-weight: 800;
         font-size: 1.5rem;
         color: white;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        box-shadow: 0 4px 10px rgba(76, 181, 114, 0.3);
     }
 
     .workspace-card-actions {
         padding: 16px 24px;
-        background: rgba(0, 0, 0, 0.2);
-        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        background: var(--flux-glass-white);
+        border-top: 1px solid var(--flux-border);
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -219,15 +220,15 @@
 
     /* Create Card Specifics */
     .create-card {
-        background: rgba(255, 255, 255, 0.03);
-        border: 2px dashed rgba(255, 255, 255, 0.2);
+        background: var(--flux-glass-light);
+        border: 2px dashed var(--flux-border);
         cursor: pointer;
         min-height: 200px;
     }
 
     .create-card:hover {
-        background: rgba(255, 255, 255, 0.08);
-        border-color: rgba(255, 255, 255, 0.4);
+        background: var(--flux-glass-medium);
+        border-color: var(--flux-primary);
         transform: translateY(-5px);
     }
 
@@ -239,30 +240,31 @@
         height: 100%;
         padding: 24px;
         text-align: center;
+        color: var(--flux-main-text);
     }
 
     /* Custom Dialog Styling */
     ::deep fluent-dialog::part(control) {
-        background: rgba(25, 25, 28, 0.85);
+        background: var(--flux-glass-heavy);
         backdrop-filter: blur(25px);
         -webkit-backdrop-filter: blur(25px);
-        border: 1px solid rgba(255, 255, 255, 0.15);
+        border: 1px solid var(--flux-glass-white);
         border-radius: 20px;
-        box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        box-shadow: 0 20px 50px rgba(19, 94, 75, 0.2);
         padding: 0;
     }
 
     .glass-dialog {
         padding: 30px;
         width: 450px;
-        color: white;
+        color: var(--flux-main-text);
     }
 
     /* Buttons from Auth */
     .scenic-btn-outline {
         background: transparent;
-        border: 2px solid rgba(255, 255, 255, 0.6);
-        color: white;
+        border: 2px solid var(--flux-main-text);
+        color: var(--flux-main-text);
         padding: 8px 24px;
         border-radius: 30px;
         font-weight: 600;
@@ -272,13 +274,12 @@
     }
 
     .scenic-btn-outline:hover {
-        border-color: white;
-        background: rgba(255, 255, 255, 0.1);
+        background: rgba(19, 94, 75, 0.05);
     }
 
     .scenic-btn-primary {
-        background: white;
-        color: #4b1d52;
+        background: var(--flux-primary);
+        color: white;
         border: none;
         padding: 10px 24px;
         border-radius: 30px;
@@ -290,7 +291,8 @@
 
     .scenic-btn-primary:hover:not(:disabled) {
         transform: translateY(-2px);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        background: var(--flux-primary-hover);
+        box-shadow: 0 10px 20px rgba(76, 181, 114, 0.3);
     }
     
     .scenic-btn-primary:disabled {

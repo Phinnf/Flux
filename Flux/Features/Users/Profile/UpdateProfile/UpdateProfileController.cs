@@ -17,13 +17,13 @@ public class UpdateProfileController(IMediator mediator) : ControllerBase
 
         var command = new UpdateProfileCommand(
             request.UserId, 
-            request.Username,
+            request.Username, 
             request.FullName, 
             request.NickName, 
             request.Gender, 
             request.Country, 
-            request.AvatarUrl);
-
+            request.AvatarUrl,
+            request.Status);
         var result = await mediator.Send(command, cancellationToken);
 
         if (result.IsFailure)

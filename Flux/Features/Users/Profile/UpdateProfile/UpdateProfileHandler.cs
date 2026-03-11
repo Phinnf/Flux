@@ -28,6 +28,7 @@ public class UpdateProfileHandler(FluxDbContext context) : IRequestHandler<Updat
         user.NickName = request.NickName;
         user.Gender = request.Gender;
         user.Country = request.Country;
+        user.Status = request.Status;
         
         if (!string.IsNullOrEmpty(request.AvatarUrl))
         {
