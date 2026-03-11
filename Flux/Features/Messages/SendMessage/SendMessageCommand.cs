@@ -11,4 +11,5 @@ public record SendMessageResponse(
     Guid UserId, 
     string Username, 
     Guid ChannelId, 
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    string? AvatarUrl);

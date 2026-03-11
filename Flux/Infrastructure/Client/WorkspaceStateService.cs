@@ -16,6 +16,7 @@ public class WorkspaceStateService
     public Guid? CurrentWorkspaceId { get; private set; }
     public string? CurrentWorkspaceName { get; private set; }
     public List<ChannelSummary> Channels { get; private set; } = new();
+    public List<MemberDto> Members { get; private set; } = new();
 
     public event Action? OnStateChanged;
 
@@ -36,6 +37,24 @@ public class WorkspaceStateService
         }
 
         await RefreshChannelsAsync(userId);
+        await RefreshMembersAsync(userId);
+    }
+
+    public async Task RefreshMembersAsync(Guid userId)
+    {
+        if (CurrentWorkspaceId == null) return;
+        
+        var result = await _fluxService.GetWorkspaceMembersAsync(CurrentWorkspaceId.Value, userId);
+        if (result.IsSuccess)
+        {
+            Members = result.Value ?? new();
+        }
+        else
+        {
+            Members = new List<MemberDto>();
+        }
+        
+        NotifyStateChanged();
     }
 
     public async Task RefreshChannelsAsync(Guid userId)

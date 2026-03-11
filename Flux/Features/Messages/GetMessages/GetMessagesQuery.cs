@@ -14,4 +14,5 @@ public record MessageDto(
     Guid UserId, 
     string Username, 
     DateTime CreatedAt, 
-    DateTime? UpdatedAt);
+    DateTime? UpdatedAt,
+    string? AvatarUrl);

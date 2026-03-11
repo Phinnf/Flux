@@ -60,7 +60,7 @@
                 <FluentNavMenu Width="260">
                     <div @oncontextmenu="@(e => ShowGroupContextMenu(e))" @oncontextmenu:preventDefault="true">
                         <FluentNavGroup Title="Channels" Icon="@(new Icons.Regular.Size20.CaretDown())" Expanded="true" Style="color: slategray">
-                            @foreach (var channel in WorkspaceState.Channels)
+                            @foreach (var channel in WorkspaceState.Channels.Where(c => c.Type != ChannelType.Direct))
                             {
                                 var icon = channel.Type == ChannelType.Private 
                                     ? (Icon)new Icons.Regular.Size16.LockClosed() 
@@ -81,6 +81,20 @@
                                            OnClick="OpenCreateDialog">
                                 Add Channels
                             </FluentNavLink>
+                        </FluentNavGroup>
+                        
+                        <FluentNavGroup Title="Direct Messages" Icon="@(new Icons.Regular.Size20.CaretDown())" Expanded="true" Style="color: slategray; margin-top: 10px;">
+                            @foreach (var member in WorkspaceState.Members)
+                            {
+                                // Don't show current user in DM list (or show as "Self (You)")
+                                if (member.Id == _currentUserId) continue;
+
+                                <FluentNavLink Icon="@(new Icons.Regular.Size16.Person())" 
+                                               OnClick="@(() => StartDirectMessage(member.Id))"
+                                               Match="NavLinkMatch.All">
+                                    <span>@member.Username</span>
+                                </FluentNavLink>
+                            }
                         </FluentNavGroup>
                     </div>
                 </FluentNavMenu>
@@ -343,6 +357,23 @@
     }
 
     private void SearchInChannel() => _showContextMenu = false;
+
+    private async Task StartDirectMessage(Guid targetUserId)
+    {
+        if (WorkspaceState.CurrentWorkspaceId == null) return;
+        
+        var result = await FluxService.GetOrCreateDirectChannelAsync(WorkspaceState.CurrentWorkspaceId.Value, _currentUserId, targetUserId);
+        if (result.IsSuccess && result.Value != null)
+        {
+            // Refresh channels to ensure the new DM is in the list
+            await WorkspaceState.RefreshChannelsAsync(_currentUserId);
+            Navigation.NavigateTo($"/workspace/{WorkspaceState.CurrentWorkspaceId}/chat/{result.Value.Id}");
+        }
+        else
+        {
+            ToastService.ShowError($"Failed to start direct message: {result.Error}");
+        }
+    }
 
     private async Task DeleteFromMenu()
     {

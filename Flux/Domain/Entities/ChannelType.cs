@@ -3,5 +3,6 @@ namespace Flux.Domain.Entities;
 public enum ChannelType
 {
     Public = 0,
-    Private = 1
+    Private = 1,
+    Direct = 2
 }

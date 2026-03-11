@@ -30,7 +30,8 @@ public class GetMessagesHandler(FluxDbContext dbContext)
                 m.UserId, 
                 m.User != null ? m.User.Username : "Unknown User", 
                 m.CreatedAt,
-                m.UpdatedAt))
+                m.UpdatedAt,
+                m.AvatarUrl))
             .ToListAsync(cancellationToken);
 
         // Since we ordered descending to get the latest ones easily, 

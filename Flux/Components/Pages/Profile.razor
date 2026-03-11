@@ -12,7 +12,13 @@
     <FluentCard>
         <div style="display: flex; align-items: center; margin-bottom: 24px; justify-content: space-between;">
             <div style="display: flex; align-items: center; gap: 16px;">
-                <FluentPersona Status="PresenceStatus.Available" ImageSize="64px" Initials="@_initials" />
+                <div style="position: relative; display: inline-block;">
+                    <FluentPersona Status="PresenceStatus.Available" ImageSize="64px" Image="@_model.AvatarUrl" Initials="@_initials" />
+                    <InputFile id="avatarUpload" OnChange="HandleAvatarUpload" style="display: none;" accept="image/*" />
+                    <label for="avatarUpload" style="position: absolute; bottom: -5px; right: -5px; background: var(--accent-fill-rest); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                        <FluentIcon Value="@(new Icons.Regular.Size16.Camera())" />
+                    </label>
+                </div>
                 <div>
                     <FluentLabel Typo="Typography.H2">My Profile</FluentLabel>
                     <FluentLabel Typo="Typography.Body" Color="Color.Neutral">Manage your personal information.</FluentLabel>
@@ -238,6 +244,50 @@
         else
         {
             ToastService.ShowError($"Failed to change password: {result.Error}");
+        }
+    }
+
+    private async Task HandleAvatarUpload(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+
+        // Ensure file is an image and limit size (e.g., max 5MB)
+        long maxFileSize = 1024 * 1024 * 5;
+        if (file.Size > maxFileSize)
+        {
+            ToastService.ShowError("Image size must be less than 5MB.");
+            return;
+        }
+
+        try
+        {
+            _isLoading = true;
+            using var content = new MultipartFormDataContent();
+            // Read stream
+            var streamContent = new StreamContent(file.OpenReadStream(maxFileSize));
+            streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+            
+            content.Add(streamContent, "file", file.Name);
+
+            var result = await FluxService.UploadImageAsync(content);
+            if (result.IsSuccess)
+            {
+                _model.AvatarUrl = result.Value;
+                ToastService.ShowSuccess("Avatar uploaded! Remember to click Save Changes.");
+            }
+            else
+            {
+                ToastService.ShowError($"Failed to upload avatar: {result.Error}");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Upload error: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
         }
     }
 }

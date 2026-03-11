@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Text.Json;
 using Flux.Domain.Common;
 using Flux.Features.Messages.GetMessages;
 using Flux.Features.Messages.SendMessage;
@@ -12,8 +13,45 @@ public record WorkspaceSummary(Guid Id, string Name, string? Description, DateTi
 
 public record ChannelSummary(Guid Id, string Name, string? Description, ChannelType Type);
 
+public record MemberDto(Guid Id, string Username, string? FullName, string? AvatarUrl);
+
 public class FluxClientService(HttpClient httpClient)
 {
+    public async Task<Result<List<MemberDto>>> GetWorkspaceMembersAsync(Guid workspaceId, Guid userId)
+    {
+        try
+        {
+            var response = await httpClient.GetFromJsonAsync<List<MemberDto>>($"/api/workspaces/{workspaceId}/members?userId={userId}");
+            return response != null ? Result<List<MemberDto>>.CreateSuccess(response) : Result<List<MemberDto>>.CreateFailure("Failed to load members.");
+        }
+        catch (Exception ex)
+        {
+            return Result<List<MemberDto>>.CreateFailure(ex.Message);
+        }
+    }
+
+    public async Task<Result<ChannelSummary>> GetOrCreateDirectChannelAsync(Guid workspaceId, Guid currentUserId, Guid targetUserId)
+    {
+        try
+        {
+            var request = new { TargetUserId = targetUserId, CurrentUserId = currentUserId };
+            var response = await httpClient.PostAsJsonAsync($"/api/workspaces/{workspaceId}/channels/direct", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ChannelSummary>();
+                return result != null ? Result<ChannelSummary>.CreateSuccess(result) : Result<ChannelSummary>.CreateFailure("Failed to load direct channel.");
+            }
+            
+            var error = await response.Content.ReadAsStringAsync();
+            return Result<ChannelSummary>.CreateFailure(error);
+        }
+        catch (Exception ex)
+        {
+            return Result<ChannelSummary>.CreateFailure(ex.Message);
+        }
+    }
+
     public async Task<Result<string>> LoginAsync(string email, string password)
     {
         try
@@ -361,6 +399,25 @@ public class FluxClientService(HttpClient httpClient)
         catch (Exception ex)
         {
             return Result<UserProfileDto>.CreateFailure(ex.Message);
+        }
+    }
+
+    public async Task<Result<string>> UploadImageAsync(MultipartFormDataContent content)
+    {
+        try
+        {
+            var response = await httpClient.PostAsync("/api/uploads/image", content);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+                return Result<string>.CreateSuccess(result.GetProperty("url").GetString()!);
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return Result<string>.CreateFailure(error);
+        }
+        catch (Exception ex)
+        {
+            return Result<string>.CreateFailure(ex.Message);
         }
     }
 

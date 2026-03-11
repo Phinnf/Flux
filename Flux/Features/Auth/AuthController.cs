@@ -66,21 +66,7 @@ public class AuthController : ControllerBase
         // Sign out of the temporary cookie
         await HttpContext.SignOutAsync("ExternalCookie");
 
-        // Return a small script to save the token in localStorage and redirect to workspaces
-        var html = $@"
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Logging in...</title>
-        </head>
-        <body>
-            <script>
-                localStorage.setItem('authToken', '{token}');
-                window.location.href = '/workspaces';
-            </script>
-        </body>
-        </html>";
-
-        return Content(html, "text/html");
+        // Redirect to auth page with token so Blazor can process it interactively
+        return Redirect($"/auth?token={token}");
     }
 }

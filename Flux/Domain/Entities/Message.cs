@@ -6,6 +6,7 @@
         public string Content { get; set; } = string.Empty;
         public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
+        public string? AvatarUrl { get; set; }
 
         // Foreign Keys
         public Guid UserId { get; set; }

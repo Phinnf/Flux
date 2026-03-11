@@ -73,6 +73,7 @@
                     <div class="message-group @(isSelf ? "self" : "")" @onclick="@(e => ShowMessageMenu(e, msg))">
                         <FluentPersona Status="PresenceStatus.Available"
                                       ImageSize="36px" 
+                                      Image="@msg.AvatarUrl"
                                       Initials="@GetInitials(msg.Username)"
                                       Title="@msg.Username" />
                         
@@ -215,9 +216,29 @@
 
     <!-- Chat Input -->
     <div class="chat-input-container">
-        <div class="chat-input-box">
+        <div class="chat-input-box" style="position: relative;">
+            <!-- Mentions Dropdown -->
+            @if (_showMentionsList && _filteredMembers.Any())
+            {
+                <div class="mentions-dropdown">
+                    @foreach (var member in _filteredMembers)
+                    {
+                        <div class="mention-item @(member.Id == _selectedMentionId ? "selected" : "")" 
+                             @onclick="() => InsertMention(member.Username)">
+                            <FluentPersona Status="PresenceStatus.Available" 
+                                          ImageSize="24px" 
+                                          Image="@member.AvatarUrl"
+                                          Initials="@GetInitials(member.Username)" />
+                            <span style="margin-left: 8px;">@member.Username</span>
+                        </div>
+                    }
+                </div>
+            }
+
             <FluentTextArea @ref="_textAreaRef"
-                            @bind-Value="_newMessageContent"
+                            Value="@_newMessageContent"
+                            ValueChanged="@(EventCallback.Factory.Create<string>(this, OnChatInputChanged))"
+                            ValueExpression="@(() => _newMessageContent)"
                             Immediate="true"
                             Placeholder="@($"Message #{(_currentChannelName?.StartsWith("#") == true ? _currentChannelName.Substring(1) : _currentChannelName)}")"
                             title="Press Enter to send. Press Ctrl+Enter for a new line."
@@ -264,6 +285,67 @@
     private DotNetObjectReference<Chat>? _objRef;
     private bool _shouldScrollToBottom = false;
     private HubConnection? _hubConnection;
+
+    // Mentions logic
+    private bool _showMentionsList = false;
+    private List<MemberDto> _filteredMembers = new();
+    private Guid _selectedMentionId;
+    private string _mentionSearchQuery = "";
+    
+    private void OnChatInputChanged(string value)
+    {
+        _newMessageContent = value;
+        CheckForMentions();
+    }
+
+    private void CheckForMentions()
+    {
+        if (string.IsNullOrEmpty(_newMessageContent))
+        {
+            _showMentionsList = false;
+            return;
+        }
+
+        var lastAtSymbol = _newMessageContent.LastIndexOf('@');
+        if (lastAtSymbol >= 0)
+        {
+            // Check if it's the start of a word or preceded by a space
+            if (lastAtSymbol == 0 || _newMessageContent[lastAtSymbol - 1] == ' ' || _newMessageContent[lastAtSymbol - 1] == '\n')
+            {
+                _mentionSearchQuery = _newMessageContent.Substring(lastAtSymbol + 1);
+                
+                // Don't show mentions if there's a space after the @ symbol
+                if (!_mentionSearchQuery.Contains(" "))
+                {
+                    _filteredMembers = StateService.Members
+                        .Where(m => m.Username.Contains(_mentionSearchQuery, StringComparison.OrdinalIgnoreCase))
+                        .Take(5)
+                        .ToList();
+
+                    if (_filteredMembers.Any())
+                    {
+                        _showMentionsList = true;
+                        _selectedMentionId = _filteredMembers.First().Id;
+                        return;
+                    }
+                }
+            }
+        }
+        
+        _showMentionsList = false;
+    }
+
+    private void InsertMention(string username)
+    {
+        var lastAtSymbol = _newMessageContent.LastIndexOf('@');
+        if (lastAtSymbol >= 0)
+        {
+            var beforeMention = _newMessageContent.Substring(0, lastAtSymbol);
+            _newMessageContent = $"{beforeMention}@{username} ";
+        }
+        _showMentionsList = false;
+        StateHasChanged();
+    }
 
     // Hardcoded for now, will be replaced by Auth service later
     private Guid CurrentUserId;
@@ -494,7 +576,8 @@
                         response.UserId, 
                         response.Username, 
                         response.CreatedAt, 
-                        null));
+                        null,
+                        response.AvatarUrl));
                     
                     _shouldScrollToBottom = true;
                     await InvokeAsync(StateHasChanged);
@@ -892,6 +975,34 @@
     .chat-input-container {
         padding: 0 24px 24px 24px;
         background-color: transparent;
+    }
+
+    /* Mentions */
+    .mentions-dropdown {
+        position: absolute;
+        bottom: 100%;
+        left: 0;
+        width: 300px;
+        background: #1a1a1d;
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 8px;
+        box-shadow: 0 -4px 12px rgba(0,0,0,0.5);
+        margin-bottom: 8px;
+        z-index: 100;
+        overflow: hidden;
+    }
+
+    .mention-item {
+        display: flex;
+        align-items: center;
+        padding: 10px 16px;
+        cursor: pointer;
+        color: white;
+        transition: background-color 0.2s;
+    }
+
+    .mention-item:hover, .mention-item.selected {
+        background-color: rgba(255,255,255,0.1);
     }
 
     .chat-input-box {
