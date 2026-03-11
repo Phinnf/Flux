@@ -1,0 +1,327 @@
+@page "/auth"
+@layout Flux.Components.Layout.EmptyLayout
+@using Microsoft.AspNetCore.Components.Authorization
+@using Flux.Infrastructure.Identity
+@inject NavigationManager Navigation
+@inject FluxClientService FluxService
+@inject IJSRuntime JS
+@inject IToastService ToastService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>@( _isRegister ? "Register" : "Login" ) - Flux</PageTitle>
+
+<div class="scenic-auth-page">
+    <!-- Navbar (Optional, to match landing page) -->
+    <nav class="scenic-nav">
+        <div class="logo-container" style="cursor: pointer;" @onclick='() => Navigation.NavigateTo("/")'>
+            <span class="logo-text">FLUX</span>
+        </div>
+        <div class="nav-links">
+            <a href="/">Home</a>
+        </div>
+    </nav>
+
+    <!-- Centered Glassmorphism Auth Modal -->
+    <div class="auth-modal-container">
+        <div class="glass-modal @(_isRegister && !_isVerifyingEmail ? "show-register" : (_isVerifyingEmail ? "show-verify" : "show-login"))">
+            
+            <!-- Login View -->
+            <div class="auth-view login-view" style="display: @(!_isRegister && !_isVerifyingEmail ? "block" : "none")">
+                <h2 class="auth-title">Login</h2>
+
+                <button type="button" class="scenic-submit-btn google-btn" @onclick="LoginWithGoogle" style="margin-bottom: 15px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20px" height="20px">
+                        <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+                        <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
+                        <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
+                        <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+                    </svg>
+                    Continue with Google
+                </button>
+
+                <div style="margin: 0 0 15px 0; text-align: center; color: rgba(255,255,255,0.5); font-size: 12px; position: relative;">
+                    <span style="background: rgba(30, 30, 34, 0.9); padding: 0 10px; position: relative; z-index: 1;">OR</span>
+                    <div style="position: absolute; top: 50%; left: 0; width: 100%; height: 1px; background: rgba(255,255,255,0.1); z-index: 0;"></div>
+                </div>
+
+                <form @onsubmit="HandleLogin" class="scenic-form">
+                    <div class="input-group">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.Mail())" class="input-icon" />
+                        <input type="email" placeholder="Email" @bind="_loginEmail" required />
+                    </div>
+                    <div class="input-group">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.LockClosed())" class="input-icon" />
+                        <input type="@(_showLoginPassword ? "text" : "password")" placeholder="Password" @bind="_loginPassword" required />
+                        <FluentIcon Value="@( (Icon)(_showLoginPassword ? new Icons.Regular.Size20.Eye() : new Icons.Regular.Size20.EyeOff()) )" 
+                                   class="password-toggle-icon" 
+                                   Style="cursor: pointer; position: absolute; right: 15px;"
+                                   @onclick="() => _showLoginPassword = !_showLoginPassword" />
+                    </div>
+                    
+                    @if (!string.IsNullOrEmpty(_loginError))
+                    {
+                        <div class="auth-error">@_loginError</div>
+                    }
+
+                    <div class="form-actions">
+                        <label class="remember-me">
+                            <input type="checkbox" @bind="_rememberMe" /> Remember me
+                        </label>
+                        <a href="#" class="forgot-link">Forgot Password?</a>
+                    </div>
+                    
+                    <button type="submit" class="scenic-submit-btn" disabled="@_isLoading">
+                        @if (_isLoading) { <FluentProgressRing Width="20px" Style="margin-right: 8px;" /> }
+                        Login
+                    </button>
+                    
+                    <p class="switch-mode">
+                        Don't have an account? <a href="javascript:void(0)" @onclick="() => { _isRegister = true; _isVerifyingEmail = false; _successMessage = null; _loginError = null; }">Register</a>
+                    </p>
+                </form>
+            </div>
+
+            <!-- Register View -->
+            <div class="auth-view register-view" style="display: @(_isRegister && !_isVerifyingEmail ? "block" : "none")">
+                <h2 class="auth-title">Registration</h2>
+
+                <button type="button" class="scenic-submit-btn google-btn" @onclick="LoginWithGoogle" style="margin-bottom: 15px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20px" height="20px">
+                        <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+                        <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
+                        <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
+                        <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+                    </svg>
+                    Continue with Google
+                </button>
+
+                <div style="margin: 0 0 15px 0; text-align: center; color: rgba(255,255,255,0.5); font-size: 12px; position: relative;">
+                    <span style="background: rgba(30, 30, 34, 0.9); padding: 0 10px; position: relative; z-index: 1;">OR</span>
+                    <div style="position: absolute; top: 50%; left: 0; width: 100%; height: 1px; background: rgba(255,255,255,0.1); z-index: 0;"></div>
+                </div>
+
+                <form @onsubmit="HandleRegister" class="scenic-form">
+                    <div class="input-group">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.Person())" class="input-icon" />
+                        <input type="text" placeholder="Name" @bind="_registerUsername" required />
+                    </div>
+                    <div class="input-group">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.Mail())" class="input-icon" />
+                        <input type="email" placeholder="Email" @bind="_registerEmail" required />
+                    </div>
+                    <div class="input-group">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.LockClosed())" class="input-icon" />
+                        <input type="@(_showRegisterPassword ? "text" : "password")" placeholder="Password" @bind="_registerPassword" required />
+                        <FluentIcon Value="@( (Icon)(_showRegisterPassword ? new Icons.Regular.Size20.Eye() : new Icons.Regular.Size20.EyeOff()) )" 
+                                   class="password-toggle-icon" 
+                                   Style="cursor: pointer; position: absolute; right: 15px;"
+                                   @onclick="() => _showRegisterPassword = !_showRegisterPassword" />
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(_registerError))
+                    {
+                        <div class="auth-error">@_registerError</div>
+                    }
+
+                    <div class="form-actions">
+                        <label class="remember-me">
+                            <input type="checkbox" required /> I agree to the terms & conditions
+                        </label>
+                    </div>
+                    
+                    <button type="submit" class="scenic-submit-btn" disabled="@_isLoading">
+                        @if (_isLoading) { <FluentProgressRing Width="20px" Style="margin-right: 8px;" /> }
+                        Register
+                    </button>
+                    
+                    <p class="switch-mode">
+                        Already have an account? <a href="javascript:void(0)" @onclick="() => { _isRegister = false; _isVerifyingEmail = false; _successMessage = null; _registerError = null; }">Login</a>
+                    </p>
+                </form>
+            </div>
+
+            <!-- Verify Email View -->
+            <div class="auth-view verify-view" style="display: @(_isVerifyingEmail ? "block" : "none")">
+                <h2 class="auth-title">Verify Email</h2>
+                <p style="color: var(--neutral-foreground-rest); text-align: center; margin-bottom: 20px; font-size: 14px;">
+                    We've sent a 6-digit code to <strong>@_registerEmail</strong>. Please enter it below.
+                </p>
+                <form @onsubmit="HandleVerifyEmail" class="scenic-form">
+                    <div class="input-group">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.Key())" class="input-icon" />
+                        <input type="text" placeholder="6-digit OTP" @bind="_verifyOtp" required maxlength="6" />
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(_verifyError))
+                    {
+                        <div class="auth-error">@_verifyError</div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(_successMessage))
+                    {
+                        <div class="auth-success">@_successMessage</div>
+                    }
+                    
+                    <button type="submit" class="scenic-submit-btn" disabled="@_isLoading">
+                        @if (_isLoading) { <FluentProgressRing Width="20px" Style="margin-right: 8px;" /> }
+                        Verify
+                    </button>
+                    
+                    <p class="switch-mode">
+                        <a href="javascript:void(0)" @onclick="() => { _isVerifyingEmail = false; _isRegister = true; }">Back to Registration</a>
+                    </p>
+                </form>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? Token { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !string.IsNullOrEmpty(Token))
+        {
+            _isLoading = true;
+            StateHasChanged();
+
+            await JS.InvokeVoidAsync("localStorage.setItem", "authToken", Token);
+            
+            if (AuthStateProvider is FluxAuthStateProvider fluxAuthProvider)
+            {
+                fluxAuthProvider.NotifyUserAuthentication(Token);
+            }
+            
+            ToastService.ShowSuccess("Login successful!");
+            Navigation.NavigateTo("/workspaces");
+        }
+    }
+
+    private bool _isRegister = false;
+    private bool _isVerifyingEmail = false;
+    private bool _isLoading = false;
+    private string? _successMessage;
+    private bool _showLoginPassword = false;
+    private bool _showRegisterPassword = false;
+
+    // Login
+    private string _loginEmail = "";
+    private string _loginPassword = "";
+    private string? _loginError;
+    private bool _rememberMe = false;
+
+    // Register
+    private string _registerUsername = "";
+    private string _registerEmail = "";
+    private string _registerPassword = "";
+    private string? _registerError;
+
+    // Verify Email
+    private string _verifyOtp = "";
+    private string? _verifyError;
+
+    private async Task HandleLogin()
+    {
+        _loginError = null;
+        _successMessage = null;
+        _isLoading = true;
+        StateHasChanged();
+        
+        var result = await FluxService.LoginAsync(_loginEmail, _loginPassword);
+        
+        if (result.IsSuccess)
+        {
+            if (_rememberMe)
+            {
+                await JS.InvokeVoidAsync("localStorage.setItem", "authToken", result.Value);
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("sessionStorage.setItem", "authToken", result.Value);
+            }
+            
+            // Notify the authentication state provider
+            if (AuthStateProvider is FluxAuthStateProvider fluxAuthProvider)
+            {
+                fluxAuthProvider.NotifyUserAuthentication(result.Value!);
+            }
+            
+            ToastService.ShowSuccess("Login successful!");
+            ToastService.ShowInfo("Redirecting to workspaces...");
+            
+            await Task.Delay(1500); // 1.5s delay so the user can see the popup
+            
+            // Redirect to workspace selection page
+            Navigation.NavigateTo("/workspaces");
+        }
+        else
+        {
+            _loginError = result.Error ?? "Login failed. Please check your credentials.";
+        }
+        
+        _isLoading = false;
+        StateHasChanged();
+    }
+
+    private async Task HandleRegister()
+    {
+        _registerError = null;
+        _successMessage = null;
+        _isLoading = true;
+        StateHasChanged();
+        
+        var result = await FluxService.RegisterAsync(_registerUsername, _registerEmail, _registerPassword);
+        
+        if (result.IsSuccess)
+        {
+            ToastService.ShowSuccess("OTP sent to your email.");
+            _isVerifyingEmail = true;
+        }
+        else
+        {
+            _registerError = result.Error ?? "Registration failed. Please try again.";
+        }
+
+        _isLoading = false;
+        StateHasChanged();
+    }
+
+    private async Task HandleVerifyEmail()
+    {
+        _verifyError = null;
+        _isLoading = true;
+        StateHasChanged();
+
+        var result = await FluxService.VerifyEmailAsync(_registerEmail, _verifyOtp);
+
+        if (result.IsSuccess)
+        {
+            ToastService.ShowSuccess("Email verified successfully! You can now login.");
+            _isVerifyingEmail = false;
+            _isRegister = false;
+            _loginEmail = _registerEmail;
+            
+            // Clear register form
+            _registerUsername = "";
+            _registerEmail = "";
+            _registerPassword = "";
+            _verifyOtp = "";
+        }
+        else
+        {
+            _verifyError = result.Error ?? "Invalid or expired OTP.";
+        }
+
+        _isLoading = false;
+        StateHasChanged();
+    }
+
+    private void LoginWithGoogle()
+    {
+        // Navigate to the backend endpoint that triggers Google OAuth challenge
+        Navigation.NavigateTo("/api/auth/google", forceLoad: true);
+    }
+}

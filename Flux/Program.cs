@@ -2,9 +2,15 @@ using FluentValidation;
 using FluentValidation.AspNetCore;
 using Flux.Components;
 using Flux.Infrastructure.Database;
+using Flux.Infrastructure.Identity;
 using Flux.Infrastructure.SignalR;
+using Flux.Infrastructure.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.FluentUI.AspNetCore.Components;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,10 +22,48 @@ builder.Services.AddFluentValidationAutoValidation()
     .AddFluentValidationClientsideAdapters()
     .AddValidatorsFromAssemblyContaining<Program>();
 
+// --- IDENTITY & JWT SERVICES ---
+builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
+builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+
+builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddCookie("ExternalCookie")
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+        };
+    })
+    .AddGoogle(googleOptions =>
+    {
+        googleOptions.SignInScheme = "ExternalCookie";
+        var clientId = builder.Configuration["Authentication:Google:ClientId"];
+        var clientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
+
+        googleOptions.ClientId = string.IsNullOrEmpty(clientId) ? "placeholder-client-id" : clientId;
+        googleOptions.ClientSecret = string.IsNullOrEmpty(clientSecret) ? "placeholder-client-secret" : clientSecret;
+        googleOptions.SaveTokens = true;
+    });
+// ------------------------------
+
 // Add Blazor and Fluent UI
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddFluentUIComponents();
+
+builder.Services.AddScoped<AuthenticationStateProvider, FluxAuthStateProvider>();
 
 // Register our Flux API client service
 builder.Services.AddHttpClient<Flux.Infrastructure.Client.FluxClientService>((sp, client) =>
@@ -27,7 +71,7 @@ builder.Services.AddHttpClient<Flux.Infrastructure.Client.FluxClientService>((sp
     // Point to the local server address
     var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
     var httpContext = httpContextAccessor.HttpContext;
-    
+
     if (httpContext != null)
     {
         var request = httpContext.Request;
@@ -38,7 +82,7 @@ builder.Services.AddHttpClient<Flux.Infrastructure.Client.FluxClientService>((sp
         // Fallback for cases where HttpContext is not available (common in Blazor Server interactive mode)
         // You can also get this from appsettings.json
         var config = sp.GetRequiredService<IConfiguration>();
-        var baseUrl = config["ApiSettings:BaseUrl"] ?? "https://localhost:7274"; 
+        var baseUrl = config["ApiSettings:BaseUrl"] ?? "https://localhost:7274";
         client.BaseAddress = new Uri(baseUrl);
     }
 });
@@ -77,6 +121,8 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAntiforgery();
+
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

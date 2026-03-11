@@ -1,0 +1,293 @@
+@page "/profile"
+@using Flux.Infrastructure.Client
+@using Microsoft.AspNetCore.Components.Authorization
+@inject FluxClientService FluxService
+@inject NavigationManager Navigation
+@inject IToastService ToastService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Profile - Flux</PageTitle>
+
+<div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+    <FluentCard>
+        <div style="display: flex; align-items: center; margin-bottom: 24px; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <div style="position: relative; display: inline-block;">
+                    <FluentPersona Status="PresenceStatus.Available" ImageSize="64px" Image="@_model.AvatarUrl" Initials="@_initials" />
+                    <InputFile id="avatarUpload" OnChange="HandleAvatarUpload" style="display: none;" accept="image/*" />
+                    <label for="avatarUpload" style="position: absolute; bottom: -5px; right: -5px; background: var(--accent-fill-rest); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                        <FluentIcon Value="@(new Icons.Regular.Size16.Camera())" />
+                    </label>
+                </div>
+                <div>
+                    <FluentLabel Typo="Typography.H2">My Profile</FluentLabel>
+                    <FluentLabel Typo="Typography.Body" Color="Color.Neutral">Manage your personal information.</FluentLabel>
+                </div>
+            </div>
+            <FluentButton Appearance="Appearance.Outline" IconStart="@(new Icons.Regular.Size16.LockClosed())" OnClick="OpenPasswordDialog">Change Password</FluentButton>
+        </div>
+
+        @if (_isLoading)
+        {
+            <FluentProgressRing />
+        }
+        else if (_errorMessage != null)
+        {
+            <div style="color: var(--error); margin-bottom: 16px;">@_errorMessage</div>
+        }
+        else
+        {
+            <EditForm Model="@_model" OnValidSubmit="HandleSubmit">
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <div style="display: flex; gap: 16px;">
+                        <FluentTextField Label="Username" @bind-Value="_model.Username" Style="flex: 1;" />
+                        <FluentTextField Label="Email" Value="@_email" ReadOnly="true" Style="flex: 1;" />
+                    </div>
+
+                    <FluentTextField Label="Full Name" @bind-Value="_model.FullName" Style="width: 100%;" />
+                    <FluentTextField Label="Nick Name" @bind-Value="_model.NickName" Style="width: 100%;" />
+                    
+                    <div style="display: flex; gap: 16px;">
+                        <FluentSelect TOption="string" Label="Gender" @bind-Value="_model.Gender" Style="flex: 1;">
+                            <FluentOption Value="@("")">Select...</FluentOption>
+                            <FluentOption Value="@("Male")">Male</FluentOption>
+                            <FluentOption Value="@("Female")">Female</FluentOption>
+                            <FluentOption Value="@("Other")">Other</FluentOption>
+                            <FluentOption Value="@("Prefer not to say")">Prefer not to say</FluentOption>
+                        </FluentSelect>
+                        
+                        <FluentTextField Label="Country" @bind-Value="_model.Country" Style="flex: 1;" />
+                    </div>
+
+                    <div style="margin-top: 16px; display: flex; gap: 12px; justify-content: flex-end;">
+                        <FluentButton OnClick='() => Navigation.NavigateTo("/workspaces")'>Cancel</FluentButton>
+                        <FluentButton Appearance="Appearance.Accent" Type="ButtonType.Submit" Loading="_isSaving">Save Changes</FluentButton>
+                    </div>
+                </div>
+            </EditForm>
+        }
+    </FluentCard>
+</div>
+
+<FluentDialog @bind-Hidden="_hidePasswordDialog" Modal="true" TrapFocus="true" @onclick:stopPropagation>
+    <div style="padding: 24px; width: 400px;">
+        <FluentLabel Typo="Typography.H3">Change Password</FluentLabel>
+        
+        @if (!_otpSent)
+        {
+            <p style="margin-top: 10px; color: var(--neutral-foreground-rest);">Click below to receive a 6-digit OTP code to your email.</p>
+            <div style="margin-top: 25px; display: flex; justify-content: flex-end; gap: 10px;">
+                <FluentButton OnClick="() => _hidePasswordDialog = true">Cancel</FluentButton>
+                <FluentButton Appearance="Appearance.Accent" OnClick="SendOtp" Loading="_isSendingOtp">Send OTP</FluentButton>
+            </div>
+        }
+        else
+        {
+            <p style="margin-top: 10px; color: var(--neutral-foreground-rest);">An OTP has been sent to your email. It will expire in 5 minutes.</p>
+            <div style="margin-top: 20px;">
+                <FluentTextField Label="OTP Code" @bind-Value="_otpCode" Style="width: 100%;" />
+            </div>
+            <div style="margin-top: 15px;">
+                <FluentTextField TextFieldType="TextFieldType.Password" Label="New Password" @bind-Value="_newPassword" Style="width: 100%;" />
+            </div>
+            <div style="margin-top: 25px; display: flex; justify-content: flex-end; gap: 10px;">
+                <FluentButton OnClick="() => _hidePasswordDialog = true">Cancel</FluentButton>
+                <FluentButton Appearance="Appearance.Accent" OnClick="ChangePassword" Loading="_isChangingPassword">Update Password</FluentButton>
+            </div>
+        }
+    </div>
+</FluentDialog>
+
+@code {
+    private Guid _currentUserId;
+    private bool _isLoading = true;
+    private bool _isSaving = false;
+    private string? _errorMessage;
+    
+    private string _email = "";
+    private string _initials = "U";
+    
+    private ProfileModel _model = new();
+
+    private bool _hidePasswordDialog = true;
+    private bool _otpSent = false;
+    private bool _isSendingOtp = false;
+    private bool _isChangingPassword = false;
+    private string _otpCode = "";
+    private string _newPassword = "";
+
+    private class ProfileModel
+    {
+        public string? Username { get; set; }
+        public string? FullName { get; set; }
+        public string? NickName { get; set; }
+        public string? Gender { get; set; }
+        public string? Country { get; set; }
+        public string? AvatarUrl { get; set; }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (user.Identity is { IsAuthenticated: true })
+        {
+            var idClaim = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier) ?? user.FindFirst("sub");
+            if (idClaim != null && Guid.TryParse(idClaim.Value, out var id))
+            {
+                _currentUserId = id;
+            }
+        }
+
+        if (_currentUserId == Guid.Empty)
+        {
+            Navigation.NavigateTo("/auth");
+            return;
+        }
+
+        var result = await FluxService.GetProfileAsync(_currentUserId);
+        
+        if (result.IsSuccess && result.Value != null)
+        {
+            _email = result.Value.Email;
+            
+            _model.Username = result.Value.Username;
+            _model.FullName = result.Value.FullName;
+            _model.NickName = result.Value.NickName;
+            _model.Gender = result.Value.Gender;
+            _model.Country = result.Value.Country;
+            _model.AvatarUrl = result.Value.AvatarUrl;
+
+            _initials = string.IsNullOrEmpty(_model.FullName) 
+                ? (_model.Username?.Length > 0 ? _model.Username[0].ToString().ToUpper() : "U")
+                : _model.FullName[0].ToString().ToUpper();
+        }
+        else
+        {
+            _errorMessage = result.Error ?? "Failed to load profile.";
+        }
+        
+        _isLoading = false;
+    }
+
+    private async Task HandleSubmit()
+    {
+        _isSaving = true;
+        _errorMessage = null;
+
+        var result = await FluxService.UpdateProfileAsync(
+            _currentUserId,
+            _model.Username,
+            _model.FullName, 
+            _model.NickName, 
+            _model.Gender, 
+            _model.Country, 
+            _model.AvatarUrl);
+
+        if (result.IsSuccess)
+        {
+            ToastService.ShowSuccess("Profile updated successfully!");
+            _initials = string.IsNullOrEmpty(_model.FullName) 
+                ? (_model.Username?.Length > 0 ? _model.Username[0].ToString().ToUpper() : "U")
+                : _model.FullName[0].ToString().ToUpper();
+        }
+        else
+        {
+            ToastService.ShowError($"Error: {result.Error}");
+        }
+
+        _isSaving = false;
+    }
+
+    private void OpenPasswordDialog()
+    {
+        _otpSent = false;
+        _otpCode = "";
+        _newPassword = "";
+        _hidePasswordDialog = false;
+    }
+
+    private async Task SendOtp()
+    {
+        _isSendingOtp = true;
+        var result = await FluxService.SendOtpAsync(_currentUserId);
+        _isSendingOtp = false;
+
+        if (result.IsSuccess)
+        {
+            _otpSent = true;
+            ToastService.ShowSuccess("OTP sent to your email.");
+        }
+        else
+        {
+            ToastService.ShowError($"Failed to send OTP: {result.Error}");
+        }
+    }
+
+    private async Task ChangePassword()
+    {
+        if (string.IsNullOrWhiteSpace(_otpCode) || string.IsNullOrWhiteSpace(_newPassword))
+        {
+            ToastService.ShowError("Please fill in both OTP and New Password.");
+            return;
+        }
+
+        _isChangingPassword = true;
+        var result = await FluxService.ChangePasswordAsync(_currentUserId, _otpCode, _newPassword);
+        _isChangingPassword = false;
+
+        if (result.IsSuccess)
+        {
+            ToastService.ShowSuccess("Password changed successfully!");
+            _hidePasswordDialog = true;
+        }
+        else
+        {
+            ToastService.ShowError($"Failed to change password: {result.Error}");
+        }
+    }
+
+    private async Task HandleAvatarUpload(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+
+        // Ensure file is an image and limit size (e.g., max 5MB)
+        long maxFileSize = 1024 * 1024 * 5;
+        if (file.Size > maxFileSize)
+        {
+            ToastService.ShowError("Image size must be less than 5MB.");
+            return;
+        }
+
+        try
+        {
+            _isLoading = true;
+            using var content = new MultipartFormDataContent();
+            // Read stream
+            var streamContent = new StreamContent(file.OpenReadStream(maxFileSize));
+            streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+            
+            content.Add(streamContent, "file", file.Name);
+
+            var result = await FluxService.UploadImageAsync(content);
+            if (result.IsSuccess)
+            {
+                _model.AvatarUrl = result.Value;
+                ToastService.ShowSuccess("Avatar uploaded! Remember to click Save Changes.");
+            }
+            else
+            {
+                ToastService.ShowError($"Failed to upload avatar: {result.Error}");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Upload error: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

@@ -53,7 +53,8 @@ public class SendMessageHandler(
             Content = request.Content,
             ChannelId = request.ChannelId,
             UserId = request.UserId,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            AvatarUrl = user.AvatarUrl
         };
 
         context.Messages.Add(message);
@@ -65,7 +66,8 @@ public class SendMessageHandler(
             message.UserId,
             user.Username,
             message.ChannelId,
-            message.CreatedAt);
+            message.CreatedAt,
+            message.AvatarUrl);
 
         // 4. Notify clients via SignalR (Real-time update)
         await hubContext.Clients.Group(request.ChannelId.ToString())
