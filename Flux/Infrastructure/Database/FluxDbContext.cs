@@ -64,7 +64,7 @@ namespace Flux.Infrastructure.Database
                 .HasOne(m => m.User)
                 .WithMany(u => u.Messages)
                 .HasForeignKey(m => m.UserId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             // Message - Indexes for optimization (Chat performance)
             modelBuilder.Entity<Message>()

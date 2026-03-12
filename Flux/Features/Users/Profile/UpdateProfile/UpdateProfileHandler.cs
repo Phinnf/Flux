@@ -1,11 +1,12 @@
 using Flux.Domain.Common;
 using Flux.Infrastructure.Database;
+using Flux.Infrastructure.Identity;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Flux.Features.Users.Profile.UpdateProfile;
 
-public class UpdateProfileHandler(FluxDbContext context) : IRequestHandler<UpdateProfileCommand, Result>
+public class UpdateProfileHandler(FluxDbContext context, IPasswordHasher passwordHasher) : IRequestHandler<UpdateProfileCommand, Result>
 {
     public async Task<Result> Handle(UpdateProfileCommand request, CancellationToken cancellationToken)
     {
@@ -29,12 +30,20 @@ public class UpdateProfileHandler(FluxDbContext context) : IRequestHandler<Updat
         user.Gender = request.Gender;
         user.Country = request.Country;
         user.Status = request.Status;
-        
+
         if (!string.IsNullOrEmpty(request.AvatarUrl))
         {
             user.AvatarUrl = request.AvatarUrl;
         }
 
+        // --- PASSWORD CHANGE INTEGRATION ---
+        if (!string.IsNullOrWhiteSpace(request.NewPassword))
+        {
+            user.PasswordHash = passwordHasher.Hash(request.NewPassword);
+        }
+        // ------------------------------------
+
+        context.Users.Update(user);
         await context.SaveChangesAsync(cancellationToken);
 
         return Result.Success();

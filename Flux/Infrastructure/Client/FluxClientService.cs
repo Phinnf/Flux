@@ -80,15 +80,14 @@ public class FluxClientService(HttpClient httpClient)
             var request = new { Username = username, Email = email, Password = password };
             var response = await httpClient.PostAsJsonAsync("/api/users/register", request);
             
+            var content = await response.Content.ReadAsStringAsync();
+
             if (response.IsSuccessStatusCode)
             {
-                // Note: The backend currently returns string token directly if successful, but usually it returns a JSON object.
-                // Depending on the exact RegisterController implementation, let's assume it returns a raw string or we can read it.
-                var content = await response.Content.ReadAsStringAsync();
                 return Result<string>.CreateSuccess(content); 
             }
             
-            return Result<string>.CreateFailure("Registration failed.");
+            return Result<string>.CreateFailure(content ?? "Registration failed.");
         }
         catch (Exception ex)
         {
@@ -421,11 +420,11 @@ public class FluxClientService(HttpClient httpClient)
         }
     }
 
-    public async Task<Result> UpdateProfileAsync(Guid userId, string? username, string? fullName, string? nickName, string? gender, string? country, string? avatarUrl, string? status = null)
+    public async Task<Result> UpdateProfileAsync(Guid userId, string? username, string? fullName, string? nickName, string? gender, string? country, string? avatarUrl, string? status = null, string? newPassword = null)
     {
         try
         {
-            var request = new { UserId = userId, Username = username, FullName = fullName, NickName = nickName, Gender = gender, Country = country, AvatarUrl = avatarUrl, Status = status };
+            var request = new { UserId = userId, Username = username, FullName = fullName, NickName = nickName, Gender = gender, Country = country, AvatarUrl = avatarUrl, Status = status, NewPassword = newPassword };
             var response = await httpClient.PutAsJsonAsync("/api/users/profile", request);
             
             if (response.IsSuccessStatusCode)
@@ -469,6 +468,26 @@ public class FluxClientService(HttpClient httpClient)
         {
             var request = new { UserId = userId, NewPassword = newPassword };
             var response = await httpClient.PostAsJsonAsync("/api/users/profile/change-password", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return Result.Success();
+            }
+            
+            var error = await response.Content.ReadAsStringAsync();
+            return Result.Failure(error);
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure(ex.Message);
+        }
+    }
+
+    public async Task<Result> DeleteAccountAsync(Guid userId)
+    {
+        try
+        {
+            var response = await httpClient.DeleteAsync($"/api/users/profile/delete?userId={userId}");
             
             if (response.IsSuccessStatusCode)
             {

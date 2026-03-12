@@ -36,6 +36,7 @@ public class ResetPasswordHandler(FluxDbContext context, IPasswordHasher passwor
         user.ResetPasswordCode = null;
         user.ResetPasswordExpiry = null;
 
+        context.Users.Update(user);
         await context.SaveChangesAsync(cancellationToken);
 
         return Result.Success();

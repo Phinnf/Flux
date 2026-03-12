@@ -300,6 +300,16 @@
         _isLoading = true;
         StateHasChanged();
         
+        // Client-side Regex Validation
+        var passwordRegex = new System.Text.RegularExpressions.Regex(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$");
+        if (!passwordRegex.IsMatch(_registerPassword))
+        {
+            _registerError = "Password must be at least 8 characters long, contain at least one uppercase letter, one lowercase letter, one number, and one special character.";
+            ToastService.ShowWarning(_registerError);
+            _isLoading = false;
+            return;
+        }
+
         var result = await FluxService.RegisterAsync(_registerUsername, _registerEmail, _registerPassword);
         
         if (result.IsSuccess)

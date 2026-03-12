@@ -168,6 +168,7 @@
                             @if (_isSaving) { <FluentProgressRing Width="16px" Style="margin-right: 8px;" /> } Save
                         </button>
                         <button class="btn btn-logout" @onclick="HandleLogout">Logout</button>
+                        <button class="btn btn-delete" @onclick="HandleDeleteAccount">Delete Account</button>
                     </div>
                 </div>
             }
@@ -414,6 +415,15 @@
         color: #c82333;
     }
 
+    .btn-delete {
+        background-color: #dc3545;
+        color: white;
+    }
+
+    .btn-delete:hover {
+        background-color: #c82333;
+    }
+
     .loading-container {
         display: flex;
         justify-content: center;
@@ -498,6 +508,20 @@
     {
         _isSaving = true;
 
+        string? validatedPassword = null;
+        if (!string.IsNullOrWhiteSpace(_newPassword))
+        {
+            // Password validation
+            var passwordRegex = new System.Text.RegularExpressions.Regex(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$");
+            if (!passwordRegex.IsMatch(_newPassword))
+            {
+                ToastService.ShowWarning("Password must be at least 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char.");
+                _isSaving = false;
+                return;
+            }
+            validatedPassword = _newPassword;
+        }
+
         var result = await FluxService.UpdateProfileAsync(
             _currentUserId,
             _model.Username,
@@ -506,28 +530,21 @@
             null,
             _model.Country, 
             _model.AvatarUrl,
-            _model.Status);
+            _model.Status,
+            validatedPassword);
 
         if (result.IsSuccess)
         {
             ToastService.ShowSuccess("Profile updated successfully!");
+            if (!string.IsNullOrEmpty(validatedPassword))
+            {
+                ToastService.ShowSuccess("Password updated successfully!");
+                _newPassword = "";
+            }
+
             _initials = string.IsNullOrEmpty(_model.FullName) 
                 ? (_model.Username?.Length > 0 ? _model.Username[0].ToString().ToUpper() : "U")
                 : _model.FullName[0].ToString().ToUpper();
-
-            if (!string.IsNullOrWhiteSpace(_newPassword))
-            {
-                var pwdResult = await FluxService.ChangePasswordAsync(_currentUserId, _newPassword);
-                if (pwdResult.IsSuccess)
-                {
-                    ToastService.ShowSuccess("Password updated successfully!");
-                    _newPassword = "";
-                }
-                else
-                {
-                    ToastService.ShowError($"Failed to update password: {pwdResult.Error}");
-                }
-            }
         }
         else
         {
@@ -548,6 +565,26 @@
         }
         
         Navigation.NavigateTo("/auth", forceLoad: true);
+    }
+
+    private async Task HandleDeleteAccount()
+    {
+        var confirmed = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete your account? This action is permanent and all your data will be lost.");
+        if (!confirmed) return;
+
+        _isSaving = true;
+        var result = await FluxService.DeleteAccountAsync(_currentUserId);
+        _isSaving = false;
+
+        if (result.IsSuccess)
+        {
+            ToastService.ShowSuccess("Your account has been deleted.");
+            await HandleLogout();
+        }
+        else
+        {
+            ToastService.ShowError($"Failed to delete account: {result.Error}");
+        }
     }
 
     private async Task HandleAvatarUpload(InputFileChangeEventArgs e)

@@ -17,6 +17,7 @@ public class ChangePasswordHandler(FluxDbContext context, IPasswordHasher passwo
         // Change password directly without OTP
         user.PasswordHash = passwordHasher.Hash(request.NewPassword);
 
+        context.Users.Update(user);
         await context.SaveChangesAsync(cancellationToken);
 
         return Result.Success();

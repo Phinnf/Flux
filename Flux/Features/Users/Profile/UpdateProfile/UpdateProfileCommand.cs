@@ -4,14 +4,16 @@ using MediatR;
 namespace Flux.Features.Users.Profile.UpdateProfile;
 
 public record UpdateProfileCommand(
-    Guid UserId, 
-    string? Username, 
-    string? FullName, 
-    string? NickName, 
-    string? Gender, 
-    string? Country, 
+    Guid UserId,
+    string? Username,
+    string? FullName,
+    string? NickName,
+    string? Gender,
+    string? Country,
     string? AvatarUrl,
-    string? Status) : IRequest<Result>;
+    string? Status,
+    string? NewPassword = null
+) : IRequest<Result>;
 
 public record UpdateProfileRequest(
     Guid UserId, 
@@ -21,4 +23,5 @@ public record UpdateProfileRequest(
     string? Gender, 
     string? Country, 
     string? AvatarUrl,
-    string? Status);
+    string? Status,
+    string? NewPassword = null);

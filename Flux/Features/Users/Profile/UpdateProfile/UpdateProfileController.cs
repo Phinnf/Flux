@@ -23,7 +23,8 @@ public class UpdateProfileController(IMediator mediator) : ControllerBase
             request.Gender, 
             request.Country, 
             request.AvatarUrl,
-            request.Status);
+            request.Status,
+            request.NewPassword);
         var result = await mediator.Send(command, cancellationToken);
 
         if (result.IsFailure)
