@@ -1,12 +1,13 @@
 ﻿using Flux.Domain.Common;
 using Flux.Domain.Entities;
 using Flux.Infrastructure.Database;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace Flux.Features.Workspaces.CreateWorkspace
 {
     public record CreateWorkspaceRequest(string Name, string? Description);
-    public record CreateWorkspaceResponse(Guid Id, string Name, string? Description, DateTime CreatedAt);
 
     [ApiController]
     [Route("api/workspaces")]
@@ -19,9 +20,14 @@ namespace Flux.Features.Workspaces.CreateWorkspace
             _dbContext = dbContext;
         }
 
+        [Authorize]
         [HttpPost]
-        public async Task<IActionResult> HandleAsync([FromBody] CreateWorkspaceRequest request, [FromQuery] Guid userId, CancellationToken cancellationToken)
+        public async Task<IActionResult> HandleAsync([FromBody] CreateWorkspaceRequest request, CancellationToken cancellationToken)
         {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+                return Unauthorized();
+
             // Map request to domain entity
             var workspace = new Workspace
             {
@@ -29,26 +35,28 @@ namespace Flux.Features.Workspaces.CreateWorkspace
                 Description = request.Description
             };
 
-            // Save to database
             _dbContext.Workspaces.Add(workspace);
             
-            // In a real app, we'd add the user as a member here too
             var user = await _dbContext.Users.FindAsync(new object[] { userId }, cancellationToken);
             if (user != null)
             {
                 workspace.Members.Add(user);
             }
 
+            // Create default 'general' channel
+            var generalChannel = new Channel
+            {
+                Name = "general",
+                Type = ChannelType.Public,
+                Workspace = workspace,
+                Members = user != null ? new List<User> { user } : new List<User>()
+            };
+            _dbContext.Channels.Add(generalChannel);
+
             await _dbContext.SaveChangesAsync(cancellationToken);
 
-            // Return response
-            var response = new CreateWorkspaceResponse(
-                workspace.Id,
-                workspace.Name,
-                workspace.Description,
-                workspace.CreatedAt);
-
-            return Ok(Result<CreateWorkspaceResponse>.CreateSuccess(response));
+            // Return response matching frontend expectations
+            return Ok(workspace.Id);
         }
     }
 }

@@ -1,5 +1,6 @@
 using Flux.Domain.Common;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Flux.Features.Messages.GetMessages;
@@ -8,8 +9,9 @@ namespace Flux.Features.Messages.GetMessages;
 [Route("api/channels/{channelId:guid}/messages")]
 public class GetMessagesController(IMediator mediator) : ControllerBase
 {
+    [Authorize]
     [HttpGet]
-    public async Task<ActionResult<Result<List<MessageDto>>>> GetMessages(
+    public async Task<IActionResult> GetMessages(
         [FromRoute] Guid channelId, 
         [FromQuery] DateTime? before = null, 
         [FromQuery] int limit = 50, 
@@ -18,8 +20,8 @@ public class GetMessagesController(IMediator mediator) : ControllerBase
         var result = await mediator.Send(new GetMessagesQuery(channelId, before, limit), cancellationToken);
         
         if (!result.IsSuccess)
-            return BadRequest(result);
+            return BadRequest(result.Error);
 
-        return Ok(result);
+        return Ok(result.Value);
     }
 }

@@ -1,14 +1,11 @@
 using FluentValidation;
 using FluentValidation.AspNetCore;
-using Flux.Components;
 using Flux.Infrastructure.Database;
 using Flux.Infrastructure.Identity;
-using Flux.Infrastructure.SignalR;
 using Flux.Infrastructure.Services;
+using Flux.Infrastructure.SignalR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.FluentUI.AspNetCore.Components;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
@@ -21,6 +18,19 @@ builder.Services.AddSignalR();
 builder.Services.AddFluentValidationAutoValidation()
     .AddFluentValidationClientsideAdapters()
     .AddValidatorsFromAssemblyContaining<Program>();
+
+// CORS Configuration for Next.js Frontend
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("FrontendPolicy",
+        policy =>
+        {
+            policy.WithOrigins("http://localhost:3000") // Next.js frontend
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials(); // Important for SignalR and Cookies
+        });
+});
 
 // --- IDENTITY & JWT SERVICES ---
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
@@ -45,6 +55,21 @@ builder.Services.AddAuthentication(options =>
             ValidAudience = builder.Configuration["Jwt:Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
         };
+
+        // Configuration for SignalR to use JWT via query string
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/chatHub"))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
+        };
     })
     .AddGoogle(googleOptions =>
     {
@@ -65,44 +90,13 @@ builder.Services.AddAuthentication(options =>
         githubOptions.ClientId = string.IsNullOrEmpty(clientId) ? "placeholder-client-id" : clientId;
         githubOptions.ClientSecret = string.IsNullOrEmpty(clientSecret) ? "placeholder-client-secret" : clientSecret;
         githubOptions.SaveTokens = true;
-        // GitHub sometimes doesn't return email by default, request it
         githubOptions.Scope.Add("user:email");
     });
 // ------------------------------
 
-// Add Blazor and Fluent UI
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
-builder.Services.AddFluentUIComponents();
-
-builder.Services.AddScoped<AuthenticationStateProvider, FluxAuthStateProvider>();
-
-// Register our Flux API client service
-builder.Services.AddHttpClient<Flux.Infrastructure.Client.FluxClientService>((sp, client) =>
-{
-    // Point to the local server address
-    var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
-    var httpContext = httpContextAccessor.HttpContext;
-
-    if (httpContext != null)
-    {
-        var request = httpContext.Request;
-        client.BaseAddress = new Uri($"{request.Scheme}://{request.Host}");
-    }
-    else
-    {
-        // Fallback for cases where HttpContext is not available (common in Blazor Server interactive mode)
-        // You can also get this from appsettings.json
-        var config = sp.GetRequiredService<IConfiguration>();
-        var baseUrl = config["ApiSettings:BaseUrl"] ?? "https://localhost:7274";
-        client.BaseAddress = new Uri(baseUrl);
-    }
-});
-
-builder.Services.AddScoped<Flux.Infrastructure.Client.WorkspaceStateService>(); // State management service
 builder.Services.AddHttpContextAccessor(); // Required to get the base address dynamically
 
-// Swagger is a great tool for testing our APIs before connecting the Blazor frontend
+// Swagger is a great tool for testing our APIs
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -132,14 +126,14 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
-app.UseAntiforgery();
+
+// Enable CORS
+app.UseCors("FrontendPolicy");
 
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<ChatHub>("/chatHub");
-app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
 
 app.Run();
