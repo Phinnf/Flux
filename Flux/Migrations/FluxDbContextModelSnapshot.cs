@@ -86,6 +86,9 @@ namespace Flux.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("ParentMessageId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -93,6 +96,8 @@ namespace Flux.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ParentMessageId");
 
                     b.HasIndex("UserId");
 
@@ -140,6 +145,15 @@ namespace Flux.Migrations
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ResetPasswordCode")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ResetPasswordExpiry")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
                         .HasColumnType("text");
 
                     b.Property<string>("TwoFactorCode")
@@ -261,13 +275,19 @@ namespace Flux.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Flux.Domain.Entities.Message", "ParentMessage")
+                        .WithMany("Replies")
+                        .HasForeignKey("ParentMessageId");
+
                     b.HasOne("Flux.Domain.Entities.User", "User")
                         .WithMany("Messages")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Channel");
+
+                    b.Navigation("ParentMessage");
 
                     b.Navigation("User");
                 });
@@ -301,6 +321,11 @@ namespace Flux.Migrations
             modelBuilder.Entity("Flux.Domain.Entities.Channel", b =>
                 {
                     b.Navigation("Messages");
+                });
+
+            modelBuilder.Entity("Flux.Domain.Entities.Message", b =>
+                {
+                    b.Navigation("Replies");
                 });
 
             modelBuilder.Entity("Flux.Domain.Entities.User", b =>

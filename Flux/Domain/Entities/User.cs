@@ -10,6 +10,7 @@
         public string? Gender { get; set; }
         public string? Country { get; set; }
         public string? AvatarUrl { get; set; }
+        public string? Status { get; set; } // e.g. "Online", "Idle", "Working", "Offline"
         public string PasswordHash { get; set; } = string.Empty;
         public string? ExternalProvider { get; set; }
         public string? ExternalId { get; set; }
@@ -17,6 +18,8 @@
         public bool TwoFactorEnabled { get; set; } = false;
         public string? TwoFactorCode { get; set; }
         public DateTime? TwoFactorExpiry { get; set; }
+        public string? ResetPasswordCode { get; set; }
+        public DateTime? ResetPasswordExpiry { get; set; }
         public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
 
         // Navigation property: A user can send many messages

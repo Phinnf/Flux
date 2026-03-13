@@ -3,7 +3,7 @@ using MediatR;
 
 namespace Flux.Features.Messages.SendMessage;
 
-public record SendMessageCommand(string Content, Guid ChannelId, Guid UserId) : IRequest<Result<SendMessageResponse>>;
+public record SendMessageCommand(string Content, Guid ChannelId, Guid UserId, Guid? ParentMessageId = null) : IRequest<Result<SendMessageResponse>>;
 
 public record SendMessageResponse(
     Guid Id, 
@@ -12,4 +12,5 @@ public record SendMessageResponse(
     string Username, 
     Guid ChannelId, 
     DateTime CreatedAt,
-    string? AvatarUrl);
+    string? AvatarUrl,
+    Guid? ParentMessageId = null);

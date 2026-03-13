@@ -15,4 +15,6 @@ public record MessageDto(
     string Username, 
     DateTime CreatedAt, 
     DateTime? UpdatedAt,
-    string? AvatarUrl);
+    string? AvatarUrl,
+    Guid? ParentMessageId = null,
+    int ReplyCount = 0);

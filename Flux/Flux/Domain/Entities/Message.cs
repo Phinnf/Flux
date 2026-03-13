@@ -1,0 +1,25 @@
+namespace Flux.Domain.Entities
+{
+    public class Message
+    {
+        public Guid Id { get; init; } = Guid.NewGuid();
+        public string Content { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+        public DateTime? UpdatedAt { get; set; }
+        public string? AvatarUrl { get; set; }
+        public string? ImageUrl { get; set; }
+
+        // Foreign Keys
+        public Guid UserId { get; set; }
+        public Guid ChannelId { get; set; }
+
+        public Guid? ParentMessageId { get; set; }
+
+        // Navigation properties for Entity Framework Core
+        public User? User { get; set; }
+        public Channel? Channel { get; set; }
+        public Message? ParentMessage { get; set; }
+        public ICollection<Message> Replies { get; set; } = new List<Message>();
+        public ICollection<Reaction> Reactions { get; set; } = new List<Reaction>();
+    }
+}

@@ -1,13 +1,14 @@
 ﻿using Flux.Domain.Entities;
 using Flux.Infrastructure.Database;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace Flux.Features.Channels.CreateChannel;
 
-// Request DTO now includes Type and the UserId of the creator
-public record CreateChannelRequest(string Name, string? Description, ChannelType Type, Guid CreatorUserId);
-public record CreateChannelResponse(Guid Id, string Name, string? Description, ChannelType Type, Guid WorkspaceId, DateTime CreatedAt);
+// Request DTO
+public record CreateChannelRequest(string Name, string? Description, ChannelType Type);
 
 [ApiController]
 // UPDATE: Nested route design
@@ -21,9 +22,14 @@ public class CreateChannelController : ControllerBase
         _dbContext = dbContext;
     }
 
+    [Authorize]
     [HttpPost]
     public async Task<IActionResult> HandleAsync([FromRoute] Guid workspaceId, [FromBody] CreateChannelRequest request, CancellationToken cancellationToken)
     {
+        var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+            return Unauthorized();
+
         // 1. Check if the Workspace exists
         bool workspaceExists = await _dbContext.Workspaces.AnyAsync(w => w.Id == workspaceId, cancellationToken);
         if (!workspaceExists)
@@ -34,7 +40,7 @@ public class CreateChannelController : ControllerBase
         // 2. Check if the creator exists and is a member of the workspace
         var creator = await _dbContext.Users
             .Include(u => u.Workspaces)
-            .FirstOrDefaultAsync(u => u.Id == request.CreatorUserId, cancellationToken);
+            .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
 
         if (creator == null || !creator.Workspaces.Any(w => w.Id == workspaceId))
         {
@@ -63,7 +69,6 @@ public class CreateChannelController : ControllerBase
         _dbContext.Channels.Add(channel);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        var response = new CreateChannelResponse(channel.Id, channel.Name, channel.Description, channel.Type, workspaceId, channel.CreatedAt);
-        return Created($"/api/workspaces/{workspaceId}/channels/{channel.Id}", response);
+        return Ok(channel.Id);
     }
 }

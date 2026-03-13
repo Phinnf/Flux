@@ -1,8 +1,10 @@
 ﻿using Flux.Domain.Common;
 using Flux.Domain.Entities;
 using Flux.Infrastructure.Database;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace Flux.Features.Channels.GetChannels;
 
@@ -20,9 +22,14 @@ public class GetChannelsController : ControllerBase
         _dbContext = dbContext;
     }
 
+    [Authorize]
     [HttpGet]
-    public async Task<IActionResult> HandleAsync([FromRoute] Guid workspaceId, [FromQuery] Guid userId, CancellationToken cancellationToken)
+    public async Task<IActionResult> HandleAsync([FromRoute] Guid workspaceId, CancellationToken cancellationToken)
     {
+        var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+            return Unauthorized();
+
         // 1. Check if user is a member of the workspace
         bool isWorkspaceMember = await _dbContext.Workspaces
             .AnyAsync(w => w.Id == workspaceId && w.Members.Any(u => u.Id == userId), cancellationToken);
@@ -39,9 +46,15 @@ public class GetChannelsController : ControllerBase
             .Where(c => c.WorkspaceId == workspaceId && 
                         (c.Type == ChannelType.Public || c.Members.Any(u => u.Id == userId)))
             .OrderBy(c => c.Name)
-            .Select(c => new ChannelDto(c.Id, c.Name, c.Description, c.Type))
+            .Select(c => new
+            {
+                _id = c.Id,
+                name = c.Name,
+                description = c.Description,
+                type = c.Type
+            })
             .ToListAsync(cancellationToken);
 
-        return Ok(Result<List<ChannelDto>>.CreateSuccess(channels));
+        return Ok(channels);
     }
 }
