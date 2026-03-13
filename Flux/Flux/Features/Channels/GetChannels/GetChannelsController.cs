@@ -11,7 +11,6 @@ namespace Flux.Features.Channels.GetChannels;
 public record ChannelDto(Guid Id, string Name, string? Description, ChannelType Type);
 
 [ApiController]
-// UPDATE: Nested route design
 [Route("api/workspaces/{workspaceId:guid}/channels")]
 public class GetChannelsController : ControllerBase
 {
@@ -30,20 +29,17 @@ public class GetChannelsController : ControllerBase
         if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
             return Unauthorized();
 
-        // 1. Check if user is a member of the workspace
-        bool isWorkspaceMember = await _dbContext.Workspaces
-            .AnyAsync(w => w.Id == workspaceId && w.WorkspaceMembers.Any(wm => wm.UserId == userId), cancellationToken);
+        // 1. Check if user is a member
+        bool isWorkspaceMember = await _dbContext.WorkspaceMembers
+            .AnyAsync(w => w.WorkspaceId == workspaceId && w.UserId == userId, cancellationToken);
 
-        if (!isWorkspaceMember)
-        {
-            return Forbid();
-        }
+        if (!isWorkspaceMember) return Forbid();
 
-        // 2. Fetch channels:
-        // - All Public channels in the workspace
-        // - Private channels in the workspace where the user is a member
+        // 2. Chỉ lấy các kênh Public hoặc Private (LOẠI BỎ Direct Messages)
         var channels = await _dbContext.Channels
+            .AsNoTracking()
             .Where(c => c.WorkspaceId == workspaceId && 
+                        c.Type != ChannelType.Direct && // QUAN TRỌNG: Không lấy DMs
                         (c.Type == ChannelType.Public || c.Members.Any(u => u.Id == userId)))
             .OrderBy(c => c.Name)
             .Select(c => new

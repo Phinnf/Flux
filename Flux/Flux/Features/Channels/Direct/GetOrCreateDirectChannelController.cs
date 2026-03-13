@@ -27,11 +27,13 @@ public class GetOrCreateDirectChannelController : ControllerBase
         var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdString, out var currentUserId)) return Unauthorized();
 
+        // Không cho phép nhắn tin với chính mình (tùy nhu cầu, nhưng thường DM là 2 người khác nhau)
+        if (currentUserId == request.TargetUserId) 
+            return BadRequest("You cannot start a direct message with yourself.");
+
         var workspace = await _context.Workspaces
+            .AsNoTracking()
             .Include(w => w.WorkspaceMembers)
-            .Include(w => w.Channels)
-            .ThenInclude(c => c.Members)
-            .AsSplitQuery()
             .FirstOrDefaultAsync(w => w.Id == workspaceId);
 
         if (workspace == null)
@@ -41,19 +43,24 @@ public class GetOrCreateDirectChannelController : ControllerBase
             !workspace.WorkspaceMembers.Any(wm => wm.UserId == request.TargetUserId))
             return BadRequest("Both users must be members of the workspace.");
 
-        // Tìm kênh DM hiện có giữa 2 người này
-        var existingChannel = workspace.Channels.FirstOrDefault(c =>
-            c.Type == ChannelType.Direct &&
-            c.Members.Count == 2 &&
-            c.Members.Any(m => m.Id == currentUserId) &&
-            c.Members.Any(m => m.Id == request.TargetUserId));
+        // 1. Tìm kênh DM hiện có (Dựa trên thành viên, không dựa trên tên)
+        var existingChannel = await _context.Channels
+            .Include(c => c.Members)
+            .Where(c => c.WorkspaceId == workspaceId && c.Type == ChannelType.Direct)
+            .Where(c => c.Members.Any(m => m.Id == currentUserId) && c.Members.Any(m => m.Id == request.TargetUserId))
+            .FirstOrDefaultAsync();
 
         if (existingChannel != null)
         {
             return Ok(new { _id = existingChannel.Id, name = existingChannel.Name, type = existingChannel.Type });
         }
 
-        // Tạo kênh DM mới
+        // 2. Nếu chưa có, tạo mới. 
+        // QUAN TRỌNG: Đặt tên kênh theo thứ tự ID cố định để tránh lỗi Unique Constraint
+        var ids = new List<Guid> { currentUserId, request.TargetUserId };
+        ids.Sort();
+        string uniqueName = $"dm-{ids[0]}-{ids[1]}";
+
         var targetUser = await _context.Users.FindAsync(request.TargetUserId);
         var currentUser = await _context.Users.FindAsync(currentUserId);
 
@@ -62,16 +69,33 @@ public class GetOrCreateDirectChannelController : ControllerBase
 
         var newChannel = new Channel
         {
-            Name = $"dm-{currentUser.Username}-{targetUser.Username}",
+            Name = uniqueName,
             Type = ChannelType.Direct,
-            WorkspaceId = workspaceId
+            WorkspaceId = workspaceId,
+            CreatedAt = DateTime.UtcNow
         };
 
         newChannel.Members.Add(currentUser);
         newChannel.Members.Add(targetUser);
 
         _context.Channels.Add(newChannel);
-        await _context.SaveChangesAsync();
+        
+        try 
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            // Trong trường hợp có 2 request cùng lúc, truy vấn lại một lần nữa
+            var raceConditionChannel = await _context.Channels
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.WorkspaceId == workspaceId && c.Name == uniqueName);
+            
+            if (raceConditionChannel != null)
+                return Ok(new { _id = raceConditionChannel.Id, name = raceConditionChannel.Name, type = raceConditionChannel.Type });
+            
+            throw;
+        }
 
         return Ok(new { _id = newChannel.Id, name = newChannel.Name, type = newChannel.Type });
     }

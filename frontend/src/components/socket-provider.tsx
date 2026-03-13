@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useRef } from 'react';
 import * as signalR from '@microsoft/signalr';
 
 import { API_URL, getAuthToken } from '@/lib/api';
@@ -23,28 +23,51 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   const [isConnected, setIsConnected] = useState(false);
   const { data: userData } = useCurrentUser();
   const userId = userData?.value?.id;
+  
+  // Dùng ref để đảm bảo không tạo nhiều connection dư thừa
+  const connectionRef = useRef<signalR.HubConnection | null>(null);
 
   useEffect(() => {
-    if (!userId) return;
+    // Nếu không có userId hoặc đang có connection rồi thì không làm gì
+    if (!userId || connectionRef.current) return;
 
     const token = getAuthToken();
     const connection = new signalR.HubConnectionBuilder()
       .withUrl(`${API_URL}/chatHub?userId=${userId}`, {
         accessTokenFactory: () => token || '',
+        skipNegotiation: true,
+        transport: signalR.HttpTransportType.WebSockets
       })
       .withAutomaticReconnect()
+      .configureLogging(signalR.LogLevel.Warning) // Chỉ hiện cảnh báo, bớt rác console
       .build();
 
-    connection
-      .start()
-      .then(() => {
-        setIsConnected(true);
-        setSocket(connection);
-      })
-      .catch((err) => console.error('SignalR Connection Error: ', err));
+    const startConnection = async () => {
+        try {
+            await connection.start();
+            connectionRef.current = connection;
+            setSocket(connection);
+            setIsConnected(true);
+            console.log('SignalR Connected.');
+        } catch (err) {
+            console.error('SignalR Connection Error: ', err);
+            // Thử lại sau 5s nếu lỗi
+            setTimeout(startConnection, 5000);
+        }
+    };
 
+    startConnection();
+
+    // Cleanup khi component unmount hoặc userId thay đổi
     return () => {
-      connection.stop();
+      if (connectionRef.current) {
+        connectionRef.current.stop().then(() => {
+            console.log('SignalR Disconnected.');
+            connectionRef.current = null;
+            setSocket(null);
+            setIsConnected(false);
+        });
+      }
     };
   }, [userId]);
 

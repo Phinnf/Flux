@@ -25,24 +25,23 @@ public class GetWorkspaceMembersController : ControllerBase
         if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
             return Unauthorized();
 
-        var workspace = await _context.Workspaces
-            .Include(w => w.WorkspaceMembers)
-            .ThenInclude(wm => wm.User)
-            .FirstOrDefaultAsync(w => w.Id == workspaceId);
+        // Thêm AsNoTracking() để tăng tốc độ truy vấn
+        var workspaceMembers = await _context.WorkspaceMembers
+            .AsNoTracking()
+            .Include(wm => wm.User)
+            .Where(wm => wm.WorkspaceId == workspaceId)
+            .ToListAsync();
 
-        if (workspace == null)
-            return NotFound("Workspace not found.");
-
-        if (!workspace.WorkspaceMembers.Any(wm => wm.UserId == userId))
+        if (workspaceMembers == null || !workspaceMembers.Any(wm => wm.UserId == userId))
             return Forbid();
 
-        var members = workspace.WorkspaceMembers.Select(wm => new
+        var members = workspaceMembers.Select(wm => new
         {
             _id = wm.UserId,
             user = new {
                 _id = wm.UserId,
-                name = wm.User!.Username,
-                image = wm.User.AvatarUrl ?? ""
+                name = wm.User?.Username ?? "Unknown",
+                image = wm.User?.AvatarUrl ?? ""
             },
             role = wm.Role.ToString().ToLower()
         }).ToList();

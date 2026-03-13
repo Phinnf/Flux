@@ -10,13 +10,11 @@ public class GetMessagesHandler(FluxDbContext dbContext)
 {
     public async Task<Result<List<MessageDto>>> Handle(GetMessagesQuery request, CancellationToken cancellationToken)
     {
+        // Sử dụng một query duy nhất để lấy tin nhắn và đếm số lượng reply
         var query = dbContext.Messages
             .AsNoTracking()
-            .Include(m => m.Reactions)
-            .Include(m => m.User)
             .Where(m => m.ChannelId == request.ChannelId && m.ParentMessageId == request.ParentMessageId);
 
-        // Keyset Pagination logic:
         if (request.Before.HasValue)
         {
             query = query.Where(m => m.CreatedAt < request.Before.Value);
@@ -25,20 +23,27 @@ public class GetMessagesHandler(FluxDbContext dbContext)
         var messages = await query
             .OrderByDescending(m => m.CreatedAt)
             .Take(request.Limit)
+            .Select(m => new
+            {
+                Message = m,
+                User = m.User,
+                ReplyCount = m.Replies.Count(),
+                Reactions = m.Reactions
+            })
             .ToListAsync(cancellationToken);
 
-        var result = messages.Select(m => new MessageDto(
-            m.Id, 
-            m.Content, 
-            m.UserId, 
-            m.User?.Username ?? "Unknown User", 
-            m.CreatedAt,
-            m.UpdatedAt,
-            m.AvatarUrl,
-            m.ImageUrl,
-            m.ParentMessageId,
-            m.Replies.Count, // Note: This might need another include or count query if needed
-            m.Reactions
+        var result = messages.Select(x => new MessageDto(
+            x.Message.Id, 
+            x.Message.Content, 
+            x.Message.UserId, 
+            x.User?.Username ?? "Unknown User", 
+            x.Message.CreatedAt,
+            x.Message.UpdatedAt,
+            x.Message.AvatarUrl,
+            x.Message.ImageUrl,
+            x.Message.ParentMessageId,
+            x.ReplyCount,
+            x.Reactions
                 .GroupBy(r => r.Emoji)
                 .Select(g => new ReactionDto(g.Key, g.Count(), g.Select(r => r.UserId).ToList()))
                 .ToList()
