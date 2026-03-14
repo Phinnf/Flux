@@ -73,6 +73,27 @@
                     {
                         bool isSelf = msg.UserId == CurrentUserId;
                         <div class="message-group @(isSelf ? "self" : "") @(_activeThreadParent?.Id == msg.Id ? "active-thread" : "")" @onclick="@(e => ShowMessageMenu(e, msg))">
+                            <!-- Hover Toolbar -->
+                            <div class="message-hover-toolbar" @onclick:stopPropagation>
+                                <div class="toolbar-container">
+                                    <button class="toolbar-btn" title="Add Reaction">
+                                        <FluentIcon Value="@(new Icons.Regular.Size16.Emoji())" Color="Color.Custom" CustomColor="var(--flux-main-text)" />
+                                    </button>
+                                    <button class="toolbar-btn" title="Reply in thread" @onclick="@(() => OpenThread(msg))">
+                                        <FluentIcon Value="@(new Icons.Regular.Size16.ArrowReply())" Color="Color.Custom" CustomColor="var(--flux-main-text)" />
+                                    </button>
+                                    @if (isSelf)
+                                    {
+                                        <button class="toolbar-btn" title="Edit message" @onclick="@(() => HandleQuickAction(msg, "Edit"))">
+                                            <FluentIcon Value="@(new Icons.Regular.Size16.Edit())" Color="Color.Custom" CustomColor="var(--flux-main-text)" />
+                                        </button>
+                                        <button class="toolbar-btn delete" title="Delete message" @onclick="@(() => HandleQuickAction(msg, "Delete"))">
+                                            <FluentIcon Value="@(new Icons.Regular.Size16.Delete())" Color="Color.Error" />
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+
                             <FluentPersona Status="PresenceStatus.Available"
                                           ImageSize="36px" 
                                           Image="@msg.AvatarUrl"
@@ -895,6 +916,12 @@
         _selectedMessage = null;
     }
 
+    private async Task HandleQuickAction(MessageDto msg, string action)
+    {
+        _selectedMessage = msg;
+        await HandleAction(action);
+    }
+
     private async Task HandleAction(string action)
     {
         if (_selectedMessage == null) return;
@@ -1139,6 +1166,7 @@
     }
 
     .message-group {
+        position: relative;
         display: flex;
         align-items: flex-start;
         padding: 10px 24px;
@@ -1149,6 +1177,57 @@
 
     .message-group:hover {
         background-color: rgba(255, 255, 255, 0.03);
+    }
+
+    /* Message Hover Toolbar */
+    .message-hover-toolbar {
+        position: absolute;
+        right: 24px;
+        top: -12px;
+        z-index: 20;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.1s ease-in-out, transform 0.1s ease-in-out;
+        transform: translateY(4px);
+    }
+
+    .message-group:hover .message-hover-toolbar {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0);
+    }
+
+    .toolbar-container {
+        display: flex;
+        background: var(--flux-glass-heavy);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid var(--flux-border);
+        border-radius: 8px;
+        padding: 2px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    .toolbar-btn {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        color: var(--flux-main-text);
+    }
+
+    .toolbar-btn:hover {
+        background-color: var(--flux-glass-white);
+    }
+
+    .toolbar-btn.delete:hover {
+        background-color: rgba(220, 53, 69, 0.1);
     }
 
     .message-content {
