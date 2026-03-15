@@ -17,4 +17,7 @@ public record MessageDto(
     DateTime? UpdatedAt,
     string? AvatarUrl,
     Guid? ParentMessageId = null,
-    int ReplyCount = 0);
+    int ReplyCount = 0,
+    List<ReactionDto>? Reactions = null);
+
+public record ReactionDto(Guid UserId, string Emoji);

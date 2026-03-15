@@ -44,113 +44,212 @@
                     <FluentLabel Style="color: var(--flux-main-text);">Loading messages...</FluentLabel>
                 </div>
             }
-            else if (!_messages.Any())
-            {
-                <div class="empty-chat">
-                    <div class="empty-chat-hero">
-                        <FluentIcon Value="@(new Icons.Regular.Size48.Chat())" Color="Color.Custom" CustomColor="var(--flux-primary)" />
-                        <FluentLabel Typo="Typography.H5" Style="color: var(--flux-main-text);">This is the start of the #@_currentChannelName channel</FluentLabel>
-                        <FluentLabel Typo="Typography.Body" Style="color: var(--flux-main-text); opacity: 0.7;">Be the first to send a message!</FluentLabel>
-                    </div>
-                </div>
-            }
             else
             {
                 <div class="message-list">
-                    @if (_hasMoreMessages)
+                    @if (!_messages.Any())
                     {
-                        <div class="load-more-container">
-                            <FluentButton Appearance="Appearance.Stealth" 
-                                          OnClick="LoadMoreMessages" 
-                                          Loading="_isLoadingMore"
-                                          IconStart="@(new Icons.Regular.Size16.ArrowClockwise())">
-                                Load older messages
-                            </FluentButton>
+                        <div class="channel-hero">
+                            <p class="hero-title"># @(_currentChannelName ?? "channel-name")</p>
+                            <p class="hero-desc">This is the very beginning of the <strong>@(_currentChannelName ?? "channel-name")</strong> channel.</p>
                         </div>
                     }
-
-                    @foreach (var msg in _messages.Where(m => m.ParentMessageId == null))
+                    else
                     {
-                        bool isSelf = msg.UserId == CurrentUserId;
-                        <div class="message-group @(isSelf ? "self" : "") @(_activeThreadParent?.Id == msg.Id ? "active-thread" : "")" @onclick="@(e => ShowMessageMenu(e, msg))">
-                            <!-- Hover Toolbar -->
-                            <div class="message-hover-toolbar" @onclick:stopPropagation>
-                                <div class="toolbar-container">
-                                    <button class="toolbar-btn" title="Add Reaction">
-                                        <FluentIcon Value="@(new Icons.Regular.Size16.Emoji())" Color="Color.Custom" CustomColor="var(--flux-main-text)" />
-                                    </button>
-                                    <button class="toolbar-btn" title="Reply in thread" @onclick="@(() => OpenThread(msg))">
-                                        <FluentIcon Value="@(new Icons.Regular.Size16.ArrowReply())" Color="Color.Custom" CustomColor="var(--flux-main-text)" />
-                                    </button>
-                                    @if (isSelf)
-                                    {
-                                        <button class="toolbar-btn" title="Edit message" @onclick="@(() => HandleQuickAction(msg, "Edit"))">
-                                            <FluentIcon Value="@(new Icons.Regular.Size16.Edit())" Color="Color.Custom" CustomColor="var(--flux-main-text)" />
-                                        </button>
-                                        <button class="toolbar-btn delete" title="Delete message" @onclick="@(() => HandleQuickAction(msg, "Delete"))">
-                                            <FluentIcon Value="@(new Icons.Regular.Size16.Delete())" Color="Color.Error" />
-                                        </button>
-                                    }
-                                </div>
+                        @if (_hasMoreMessages)
+                        {
+                            <div class="load-more-container">
+                                <FluentButton Appearance="Appearance.Stealth" 
+                                              OnClick="LoadMoreMessages" 
+                                              Loading="_isLoadingMore"
+                                              IconStart="@(new Icons.Regular.Size16.ArrowClockwise())">
+                                    Load older messages
+                                </FluentButton>
+                            </div>
+                        }
+
+                        <div class="channel-hero">
+                            <p class="hero-title"># @(_currentChannelName ?? "channel-name")</p>
+                            <p class="hero-desc">This is the very beginning of the <strong>@(_currentChannelName ?? "channel-name")</strong> channel.</p>
+                        </div>
+
+                        @foreach (var group in _messages.Where(m => m.ParentMessageId == null).OrderBy(m => m.CreatedAt).GroupBy(m => m.CreatedAt.Date))
+                        {
+                            var dateLabel = group.Key.Date == DateTime.Today ? "Today" : 
+                                            group.Key.Date == DateTime.Today.AddDays(-1) ? "Yesterday" : 
+                                            group.Key.ToString("dddd, MMMM d");
+                                            
+                            <div class="date-divider">
+                                <hr />
+                                <span>@dateLabel</span>
                             </div>
 
-                            <FluentPersona Status="PresenceStatus.Available"
-                                          ImageSize="36px" 
-                                          Image="@msg.AvatarUrl"
-                                          Initials="@GetInitials(msg.Username)"
-                                          Title="@msg.Username" />
-                            
-                            <div class="message-content">
-                                <div class="message-meta">
-                                    <span class="username">@msg.Username</span>
-                                    <span class="timestamp">@msg.CreatedAt.ToString("h:mm tt")</span>
-                                </div>
-                                <div class="message-bubble-wrapper">
-                                    <div class="message-bubble">
-                                        @if (msg.Content.Contains("[video: "))
-                                        {
-                                            var startIndex = msg.Content.IndexOf("[video: ");
-                                            var endIndex = msg.Content.IndexOf("]", startIndex);
-                                            if (startIndex >= 0 && endIndex > startIndex)
+                            var messagesInGroup = group.ToList();
+                            for (int i = 0; i < messagesInGroup.Count; i++)
+                            {
+                                var msg = messagesInGroup[i];
+                                var prevMsg = i > 0 ? messagesInGroup[i - 1] : null;
+                                bool isCompact = prevMsg != null && prevMsg.UserId == msg.UserId && (msg.CreatedAt - prevMsg.CreatedAt).TotalMinutes < 5;
+                                bool isSelf = msg.UserId == CurrentUserId;
+
+                                <div class="message-group @(isSelf ? "self" : "") @(_activeThreadParent?.Id == msg.Id ? "active-thread" : "") @(isCompact ? "compact" : "")">
+                                    <!-- Hover Toolbar -->
+                                    <div class="message-hover-toolbar" @onclick:stopPropagation>
+                                        <div class="toolbar-container">
+                                            <button class="toolbar-btn" title="Add Reaction" @onclick="@((e) => OpenEmojiPicker(e, msg.Id))">
+                                                <FluentIcon Value="@(new Icons.Regular.Size16.Emoji())" Color="Color.Custom" CustomColor="var(--flux-main-text)" />
+                                            </button>
+                                            <button class="toolbar-btn" title="Reply in thread" @onclick="@(() => OpenThread(msg))">
+                                                <FluentIcon Value="@(new Icons.Regular.Size16.ArrowReply())" Color="Color.Custom" CustomColor="var(--flux-main-text)" />
+                                            </button>
+                                            @if (isSelf)
                                             {
-                                                var before = msg.Content.Substring(0, startIndex);
-                                                var url = msg.Content.Substring(startIndex + 8, endIndex - startIndex - 8);
-                                                var after = msg.Content.Substring(endIndex + 1);
-                                                
-                                                if (!string.IsNullOrWhiteSpace(before))
-                                                {
-                                                    <span>@before</span>
-                                                }
-                                                <video src="@url" controls class="message-video" preload="metadata"></video>
-                                                if (!string.IsNullOrWhiteSpace(after))
-                                                {
-                                                    <span>@after</span>
-                                                }
+                                                <button class="toolbar-btn" title="Edit message" @onclick="@(() => HandleQuickAction(msg, "Edit"))">
+                                                    <FluentIcon Value="@(new Icons.Regular.Size16.Edit())" Color="Color.Custom" CustomColor="var(--flux-main-text)" />
+                                                </button>
+                                                <button class="toolbar-btn delete" title="Delete message" @onclick="@(() => HandleQuickAction(msg, "Delete"))">
+                                                    <FluentIcon Value="@(new Icons.Regular.Size16.Delete())" Color="Color.Error" />
+                                                </button>
+                                            }
+                                        </div>
+                                    </div>
+
+                                    @if (!isCompact)
+                                    {
+                                        <div class="avatar-wrapper" style="cursor: pointer;" @onclick="@(() => OpenProfile(msg.UserId))">
+                                            <FluentPersona Status="PresenceStatus.Available"
+                                                          ImageSize="36px" 
+                                                          Image="@msg.AvatarUrl"
+                                                          Initials="@GetInitials(msg.Username)"
+                                                          Title="@msg.Username" />
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="compact-time">@msg.CreatedAt.ToString("hh:mm")</div>
+                                    }
+                                    
+                                    <div class="message-content">
+                                        @if (!isCompact)
+                                        {
+                                            <div class="message-meta">
+                                                <span class="username" style="cursor: pointer;" @onclick="@(() => OpenProfile(msg.UserId))">@msg.Username</span>
+                                                <span class="timestamp">@msg.CreatedAt.ToString("h:mm tt")</span>
+                                            </div>
+                                        }
+                                        <div class="message-bubble-wrapper">
+                                            @if (_editingMessageId == msg.Id)
+                                            {
+                                                <div class="inline-editor">
+                                                    <FluentTextArea @bind-Value="_editMessageContent" Class="inline-editor-textarea" Rows="2" />
+                                                    <div class="inline-editor-actions">
+                                                        <FluentButton Appearance="Appearance.Stealth" OnClick="CancelEdit">Cancel</FluentButton>
+                                                        <FluentButton Appearance="Appearance.Accent" OnClick="SaveEditMessage" Style="background-color: #007a5a;">Save</FluentButton>
+                                                    </div>
+                                                </div>
                                             }
                                             else
                                             {
-                                                @msg.Content
+                                                <div class="message-bubble">
+                                                    @if (msg.Content.Contains("[video: "))
+                                                    {
+                                                        var startIndex = msg.Content.IndexOf("[video: ");
+                                                        var endIndex = msg.Content.IndexOf("]", startIndex);
+                                                        if (startIndex >= 0 && endIndex > startIndex)
+                                                        {
+                                                            var before = msg.Content.Substring(0, startIndex);
+                                                            var url = msg.Content.Substring(startIndex + 8, endIndex - startIndex - 8);
+                                                            var after = msg.Content.Substring(endIndex + 1);
+                                                            
+                                                            if (!string.IsNullOrWhiteSpace(before))
+                                                            {
+                                                                <span>@before</span>
+                                                            }
+                                                            <video src="@url" controls class="message-video" preload="metadata"></video>
+                                                            if (!string.IsNullOrWhiteSpace(after))
+                                                            {
+                                                                <span>@after</span>
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            @msg.Content
+                                                        }
+                                                    }
+                                                    else if (msg.Content.Contains("[image: "))
+                                                    {
+                                                        var startIndex = msg.Content.IndexOf("[image: ");
+                                                        var endIndex = msg.Content.IndexOf("]", startIndex);
+                                                        if (startIndex >= 0 && endIndex > startIndex)
+                                                        {
+                                                            var before = msg.Content.Substring(0, startIndex);
+                                                            var url = msg.Content.Substring(startIndex + 8, endIndex - startIndex - 8);
+                                                            var after = msg.Content.Substring(endIndex + 1);
+                                                            
+                                                            if (!string.IsNullOrWhiteSpace(before))
+                                                            {
+                                                                <span>@before</span>
+                                                            }
+                                                            <img src="@url" class="message-image" alt="Uploaded image" />
+                                                            if (!string.IsNullOrWhiteSpace(after))
+                                                            {
+                                                                <span>@after</span>
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            @msg.Content
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        @if (msg.Content.StartsWith("IMPORTANT: "))
+                                                        {
+                                                            <span style="color: #e01e5a; font-weight: bold;">@msg.Content</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            @msg.Content
+                                                        }
+                                                    }
+
+                                                    @if (msg.UpdatedAt.HasValue)
+                                                    {
+                                                        <span class="edited-badge">(edited)</span>
+                                                    }
+                                                </div>
                                             }
-                                        }
-                                        else
-                                        {
-                                            @msg.Content
-                                        }
-                                    </div>
-                                    
-                                    @if (msg.ReplyCount > 0)
-                                    {
-                                        <div class="thread-replies-indicator" @onclick:stopPropagation @onclick="@(() => OpenThread(msg))">
-                                            <div class="reply-avatars">
-                                                <FluentPersona ImageSize="20px" Initials="@GetInitials(msg.Username)" />
+                                            
+                                            <div class="message-reactions">
+                                                @if (msg.Reactions != null && msg.Reactions.Any())
+                                                {
+                                                    var groupedReactions = msg.Reactions.GroupBy(r => r.Emoji);
+                                                    foreach (var reactionGroup in groupedReactions)
+                                                    {
+                                                        var hasReacted = reactionGroup.Any(r => r.UserId == CurrentUserId);
+                                                        <button class="reaction-badge @(hasReacted ? "reacted" : "")" @onclick="@(() => ToggleReaction(msg.Id, reactionGroup.Key))">
+                                                            <span class="emoji">@reactionGroup.Key</span>
+                                                            <span class="count">@reactionGroup.Count()</span>
+                                                        </button>
+                                                    }
+                                                }
                                             </div>
-                                            <span class="reply-count">@msg.ReplyCount replies</span>
-                                            <span class="view-thread-text">View thread</span>
+
+                                            @if (msg.ReplyCount > 0)
+                                            {
+                                                <div class="thread-replies-indicator" @onclick:stopPropagation @onclick="@(() => OpenThread(msg))">
+                                                    <div class="reply-avatars">
+                                                        <FluentPersona ImageSize="20px" Initials="@GetInitials(msg.Username)" />
+                                                    </div>
+                                                    <span class="reply-count">@msg.ReplyCount @(msg.ReplyCount > 1 ? "replies" : "reply")</span>
+                                                    <span class="view-thread-text">View thread</span>
+                                                </div>
+                                            }
                                         </div>
-                                    }
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
+                            }
+                        }
                     }
                 </div>
             }
@@ -188,15 +287,20 @@
                                 Rows="1" />
                 <div class="bottom-toolbar">
                     <div class="toolbar-left">
-                        <FluentButton class="add-button" Appearance="Appearance.Accent" IconStart="@(new Icons.Regular.Size20.Add())" />
-                        <FluentDivider Vertical="true" style="height: 20px;" />
-                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Video())" OnClick="OpenVideoRecorder" />
-                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Mic())" />
-                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Emoji())" />
-                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Mention())" />
-                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.TextFont())" />
-                        <FluentDivider Vertical="true" style="height: 20px;" />
-                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.ChatWarning())" />
+                        <InputFile id="chat-file-upload" OnChange="HandleFileUpload" accept="image/*" style="display: none;" />
+                        <label for="chat-file-upload" style="margin: 0; display: flex;">
+                            <span class="add-button" title="Upload image" style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background-color: var(--flux-primary); color: white; cursor: pointer;">
+                                <FluentIcon Value="@(new Icons.Regular.Size20.Add())" Color="Color.Custom" CustomColor="white" />
+                            </span>
+                        </label>
+                        <FluentDivider Vertical="true" style="height: 20px; margin: 0 4px;" />
+                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Video())" OnClick="OpenVideoRecorder" Title="Record video" />
+                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Mic())" OnClick="StartAudioRecording" Title="Record audio" />
+                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Emoji())" OnClick="@((e) => OpenEmojiPicker(e, default))" Title="Add emoji" />
+                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Mention())" OnClick="TriggerMention" Title="Mention someone" />
+                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.TextFont())" OnClick="ToggleFormatting" Title="Formatting" />
+                        <FluentDivider Vertical="true" style="height: 20px; margin: 0 4px;" />
+                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.ChatWarning())" OnClick="FlagAsImportant" Title="Important" />
                     </div>
                     <div class="toolbar-right">
                         <FluentButton Appearance="@(string.IsNullOrWhiteSpace(_newMessageContent) ? Appearance.Stealth : Appearance.Accent)"
@@ -245,7 +349,7 @@
                 </div>
 
                 <!-- Child Messages -->
-                @foreach (var msg in _messages.Where(m => m.ParentMessageId == _activeThreadParent.Id).OrderBy(m => m.CreatedAt))
+                @foreach (var msg in _messages.Where(m => m.ParentMessageId == _activeThreadParent.Id).OrderBy(m => m.CreatedAt).ToList())
                 {
                     <div class="message-group">
                         <FluentPersona Status="PresenceStatus.Available"
@@ -290,7 +394,65 @@
             </div>
         </div>
     }
+
+    <!-- Profile Sidebar -->
+    @if (_activeProfile != null)
+    {
+        <div class="profile-sidebar">
+            <div class="profile-header">
+                <div style="display: flex; flex-direction: column;">
+                    <h3 style="margin: 0; color: var(--flux-main-text); font-size: 1.1rem; font-weight: 700;">Profile</h3>
+                </div>
+                <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.Dismiss())" OnClick="CloseProfile" />
+            </div>
+
+            <div class="profile-body">
+                <div class="profile-avatar-container">
+                    @if (!string.IsNullOrEmpty(_activeProfile.AvatarUrl))
+                    {
+                        <img src="@_activeProfile.AvatarUrl" class="profile-avatar-large" alt="@_activeProfile.Username" />
+                    }
+                    else
+                    {
+                        <div class="profile-avatar-large profile-avatar-placeholder">
+                            @GetInitials(_activeProfile.Username)
+                        </div>
+                    }
+                </div>
+                
+                <div class="profile-info-section">
+                    <h2 class="profile-name">@(_activeProfile.FullName ?? _activeProfile.Username)</h2>
+                    <p class="profile-username">@_activeProfile.Username</p>
+                    
+                    @if (_activeProfile.Id != CurrentUserId)
+                    {
+                        <div class="profile-actions">
+                            <FluentButton Appearance="Appearance.Outline" Style="width: 100%;">Message</FluentButton>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
 </div>
+
+<!-- Emoji Picker Overlay -->
+@if (_showEmojiPicker)
+{
+    <div class="menu-overlay" @onclick="CloseEmojiPicker" @oncontextmenu:preventDefault="true"></div>
+    <div class="emoji-picker" style="left: @(_emojiPickerX - 100)px; top: @(_emojiPickerY - 50)px;" @onclick:stopPropagation>
+        <div class="emoji-grid-scroll">
+            @foreach (var emoji in new[] { 
+                "😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "🥲", "☺️", "😊", "😇", "🙂", "🙃", "😉", "😌", "😍", "🥰", "😘", "😗", "😙", "😚", "😋", "😛", "😝", "😜", "🤪", "🤨", "🧐", "🤓", "😎", "🥸", "🤩", "🥳", "😏", "😒", "😞", "😔", "😟", "😕", "🙁", "☹️", "😣", "😖", "😫", "😩", "🥺", "😢", "😭", "😤", "😠", "😡", "🤬", "🤯", "😳", "🥵", "🥶", "😱", "😨", "😰", "😥", "😓", "🤗", "🤔", "🫣", "🤭", "🫢", "🫡", "🤫", "🫠", "🤥", "😶", "🫥", "😐", "🫤", "😑", "😬", "🙄", "😯", "😦", "😧", "😮", "😲", "🥱", "😴", "🤤", "😪", "😮‍💨", "😵", "😵‍💫", "🤐", "🥴", "🤢", "🤮", "🤧", "😷", "🤒", "🤕", "🤑", "🤠", "😈", "👿", "👹", "👺", "🤡", "💩", "👻", "💀", "☠️", "👽", "👾", "🤖", "🎃", "😺", "😸", "😹", "😻", "😼", "😽", "🙀", "😿", "😾",
+                "👋", "🤚", "🖐", "✋", "🖖", "👌", "🤌", "🤏", "✌️", "🤞", "🤟", "🤘", "🤙", "👈", "👉", "👆", "🖕", "👇", "☝️", "👍", "👎", "✊", "👊", "🤛", "🤜", "👏", "🙌", "🫶", "👐", "🤲", "🤝", "🙏", "✍️", "💅", "🤳", "💪", "🦾", "🦿", "🦵", "🦶", "👂", "🦻", "👃", "🫀", "🧠", "🦷", "🦴", "👀", "👁", "👅", "👄", "🫦", "💋", "🩸",
+                "❤️", "🩷", "🧡", "💛", "💚", "💙", "𩵠", "💜", "🤎", "🖤", "🩶", "🤍", "💔", "❤️‍🔥", "❤️‍🩹", "❣️", "💕", "💞", "💓", "💗", "💖", "💘", "💝", "💟"
+            })
+            {
+                <button class="emoji-btn" @onclick="@(() => SelectEmoji(emoji))">@emoji</button>
+            }
+        </div>
+    </div>
+}
 
 <!-- Message Actions Menu Overlay -->
 @if (_showMessageMenu)
@@ -308,14 +470,14 @@
     </div>
 }
 
-<!-- Edit Message Dialog -->
-<FluentDialog Hidden="!_showEditDialog" Modal="true" TrapFocus="true" @onclick:stopPropagation>
-    <div class="glass-dialog" style="padding: 20px; width: 500px; max-width: 90vw; background: var(--flux-glass-heavy); backdrop-filter: blur(20px); border-radius: 12px; border: 1px solid var(--flux-glass-white);">
-        <h3 style="color: var(--flux-main-text); margin-top: 0; margin-bottom: 15px;">Edit Message</h3>
-        <FluentTextArea @bind-Value="_editMessageContent" Style="width: 100%; margin-bottom: 20px; background: rgba(255,255,255,0.8); color: var(--flux-main-text); border: 1px solid var(--flux-border);" Rows="4" />
-        <div style="display: flex; justify-content: flex-end; gap: 10px;">
-            <FluentButton Appearance="Appearance.Stealth" OnClick="() => _showEditDialog = false" Style="color: var(--flux-main-text);">Cancel</FluentButton>
-            <FluentButton Appearance="Appearance.Accent" OnClick="SaveEditMessage">Save</FluentButton>
+<!-- Delete Confirm Dialog -->
+<FluentDialog Hidden="!_showDeleteDialog" Modal="true" TrapFocus="true" @onclick:stopPropagation>
+    <div class="glass-dialog" style="padding: 24px; width: 400px; max-width: 90vw; background: var(--flux-glass-heavy); backdrop-filter: blur(25px); border-radius: 12px; border: 1px solid var(--flux-glass-white);">
+        <h3 style="color: var(--flux-main-text); margin-top: 0; margin-bottom: 8px; font-weight: 700;">Delete Message</h3>
+        <p style="color: var(--flux-main-text); opacity: 0.8; margin-bottom: 24px; line-height: 1.5;">Are you sure you want to delete this message? This cannot be undone.</p>
+        <div style="display: flex; justify-content: flex-end; gap: 12px;">
+            <FluentButton Appearance="Appearance.Stealth" OnClick="() => _showDeleteDialog = false" Style="color: var(--flux-main-text);">Cancel</FluentButton>
+            <FluentButton Appearance="Appearance.Accent" Style="background-color: #e01e5a; color: white;" OnClick="ExecuteDeleteMessage">Delete</FluentButton>
         </div>
     </div>
 </FluentDialog>
@@ -406,8 +568,12 @@
     private ElementReference _threadViewport;
     private FluentTextArea _threadTextAreaRef = default!;
 
+    // Profile specific state
+    private MemberDto? _activeProfile;
+
     private async Task OpenThread(MessageDto parent)
     {
+        _activeProfile = null;
         _activeThreadParent = parent;
         await InvokeAsync(StateHasChanged);
         await Task.Delay(100);
@@ -417,6 +583,18 @@
     private void CloseThread()
     {
         _activeThreadParent = null;
+    }
+
+    private void OpenProfile(Guid userId)
+    {
+        _activeThreadParent = null;
+        _activeProfile = StateService.Members.FirstOrDefault(m => m.Id == userId);
+        StateHasChanged();
+    }
+
+    private void CloseProfile()
+    {
+        _activeProfile = null;
     }
 
     private void OnThreadInputChanged(string value)
@@ -506,6 +684,71 @@
     }
 
     private Guid CurrentUserId;
+    
+    // --- Toolbar Actions ---
+    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+        
+        ToastService.ShowInfo("Uploading image...");
+        try 
+        {
+            using var stream = file.OpenReadStream(10 * 1024 * 1024); // 10MB max
+            using var memoryStream = new MemoryStream();
+            await stream.CopyToAsync(memoryStream);
+            memoryStream.Position = 0;
+
+            using var content = new MultipartFormDataContent();
+            using var streamContent = new StreamContent(memoryStream);
+            streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+            content.Add(streamContent, "file", file.Name);
+
+            var result = await FluxService.UploadImageAsync(content);
+            if (result.IsSuccess)
+            {
+                _newMessageContent += (string.IsNullOrEmpty(_newMessageContent) ? "" : "\n") + $"[image: {result.Value}]";
+                ToastService.ShowSuccess("Image attached.");
+                StateHasChanged();
+            }
+            else
+            {
+                ToastService.ShowError("Upload failed: " + result.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Upload error: " + ex.Message);
+        }
+    }
+
+    private void StartAudioRecording()
+    {
+        ToastService.ShowInfo("Audio recording coming soon! Use the Video icon to record with audio for now.");
+    }
+
+    private void TriggerMention()
+    {
+        _newMessageContent += "@";
+        CheckForMentions();
+        _textAreaRef.FocusAsync();
+        StateHasChanged();
+    }
+
+    private void ToggleFormatting()
+    {
+        ToastService.ShowInfo("Rich text formatting coming soon!");
+    }
+
+    private void FlagAsImportant()
+    {
+        if (!_newMessageContent.StartsWith("IMPORTANT: "))
+        {
+            _newMessageContent = "IMPORTANT: " + _newMessageContent;
+        }
+        ToastService.ShowInfo("Message flagged as important");
+        StateHasChanged();
+    }
     
     // Video Recorder State
     private bool _showVideoRecorder = false;
@@ -706,7 +949,25 @@
         }
 
         _hubConnection = new HubConnectionBuilder()
-            .WithUrl(Navigation.ToAbsoluteUri("/chatHub"))
+            .WithUrl(Navigation.ToAbsoluteUri("/chatHub"), options =>
+            {
+                options.AccessTokenProvider = async () =>
+                {
+                    try
+                    {
+                        var token = await JS.InvokeAsync<string>("sessionStorage.getItem", "authToken");
+                        if (string.IsNullOrWhiteSpace(token))
+                        {
+                            token = await JS.InvokeAsync<string>("localStorage.getItem", "authToken");
+                        }
+                        return token;
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                };
+            })
             .WithAutomaticReconnect()
             .Build();
 
@@ -760,6 +1021,40 @@
             if (index != -1)
             {
                 _messages.RemoveAt(index);
+                await InvokeAsync(StateHasChanged);
+            }
+        });
+
+        _hubConnection.On<ToggleReactionResponseDto>("ReactionToggled", async (response) =>
+        {
+            var msg = _messages.FirstOrDefault(m => m.Id == response.MessageId);
+            if (msg != null)
+            {
+                var newReactions = msg.Reactions != null ? new List<ReactionDto>(msg.Reactions) : new List<ReactionDto>();
+                if (response.IsAdded)
+                {
+                    if (!newReactions.Any(r => r.Emoji == response.Emoji && r.UserId == response.UserId))
+                    {
+                        newReactions.Add(new ReactionDto(response.UserId, response.Emoji));
+                    }
+                }
+                else
+                {
+                    newReactions.RemoveAll(r => r.Emoji == response.Emoji && r.UserId == response.UserId);
+                }
+                
+                var index = _messages.IndexOf(msg);
+                _messages[index] = msg with { Reactions = newReactions };
+                
+                await InvokeAsync(StateHasChanged);
+            }
+        });
+
+        _hubConnection.On<string, string>("UserPresenceChanged", async (userId, status) =>
+        {
+            if (Guid.TryParse(userId, out var uid))
+            {
+                StateService.UpdateMemberPresence(uid, status);
                 await InvokeAsync(StateHasChanged);
             }
         });
@@ -898,9 +1193,8 @@
     private double _menuY = 0;
     private MessageDto? _selectedMessage;
 
-    private bool _showEditDialog = false;
-    private string _editMessageContent = "";
     private Guid _editingMessageId;
+    private string _editMessageContent = "";
 
     private void ShowMessageMenu(MouseEventArgs e, MessageDto message)
     {
@@ -939,12 +1233,18 @@
             case "Edit":
                 _editingMessageId = messageId;
                 _editMessageContent = content;
-                _showEditDialog = true;
                 break;
             case "Delete":
                 await ConfirmDeleteMessage(messageId);
                 break;
         }
+    }
+
+    private void CancelEdit()
+    {
+        _editingMessageId = Guid.Empty;
+        _editMessageContent = "";
+        StateHasChanged();
     }
 
     private async Task SaveEditMessage()
@@ -968,28 +1268,79 @@
             ToastService.ShowError($"Failed to edit message: {result.Error}");
         }
         
-        _showEditDialog = false;
+        _editingMessageId = Guid.Empty;
         await InvokeAsync(StateHasChanged);
     }
 
+    private bool _showDeleteDialog = false;
+    private Guid _messageToDeleteId;
+
     private async Task ConfirmDeleteMessage(Guid messageId)
     {
-        var confirmed = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this message?");
-        if (confirmed)
+        _messageToDeleteId = messageId;
+        _showDeleteDialog = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ExecuteDeleteMessage()
+    {
+        var result = await FluxService.DeleteMessageAsync(_messageToDeleteId, CurrentUserId);
+        if (result.IsSuccess)
         {
-            var result = await FluxService.DeleteMessageAsync(messageId, CurrentUserId);
-            if (result.IsSuccess)
-            {
-                _messages.RemoveAll(m => m.Id == messageId);
-                ToastService.ShowSuccess("Message deleted.");
-                await InvokeAsync(StateHasChanged);
-            }
-            else
-            {
-                ToastService.ShowError($"Failed to delete message: {result.Error}");
-            }
+            _messages.RemoveAll(m => m.Id == _messageToDeleteId);
+            ToastService.ShowSuccess("Message deleted.");
+        }
+        else
+        {
+            ToastService.ShowError($"Failed to delete message: {result.Error}");
+        }
+        
+        _showDeleteDialog = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private bool _showEmojiPicker = false;
+    private double _emojiPickerX = 0;
+    private double _emojiPickerY = 0;
+    private Guid _emojiTargetMessageId;
+
+    private void OpenEmojiPicker(MouseEventArgs e, Guid messageId = default)
+    {
+        _emojiTargetMessageId = messageId;
+        _emojiPickerX = e.ClientX;
+        _emojiPickerY = e.ClientY;
+        _showEmojiPicker = true;
+    }
+
+    private void CloseEmojiPicker()
+    {
+        _showEmojiPicker = false;
+    }
+
+    private async Task SelectEmoji(string emoji)
+    {
+        CloseEmojiPicker();
+        if (_emojiTargetMessageId != default)
+        {
+            await ToggleReaction(_emojiTargetMessageId, emoji);
+        }
+        else
+        {
+            _newMessageContent += emoji;
+            StateHasChanged();
         }
     }
+
+    private async Task ToggleReaction(Guid messageId, string emoji)
+    {
+        var result = await FluxService.ToggleReactionAsync(messageId, CurrentUserId, emoji);
+        if (!result.IsSuccess)
+        {
+            ToastService.ShowError("Failed to toggle reaction.");
+        }
+    }
+
+    public record ToggleReactionResponseDto(Guid MessageId, string Emoji, Guid UserId, bool IsAdded);
 }
 
 <style>
@@ -1111,6 +1462,107 @@
         border-left: 3px solid var(--flux-primary) !important;
     }
 
+    /* Profile Sidebar */
+    .profile-sidebar {
+        width: 400px;
+        background: var(--flux-glass-heavy);
+        backdrop-filter: blur(25px);
+        -webkit-backdrop-filter: blur(25px);
+        border-left: 1px solid var(--flux-border);
+        display: flex;
+        flex-direction: column;
+        z-index: 50;
+        animation: slide-in 0.2s ease-out;
+    }
+    
+    .profile-header {
+        height: 60px;
+        padding: 0 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--flux-border);
+    }
+    
+    .profile-body {
+        flex: 1;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 24px;
+    }
+    
+    .profile-avatar-container {
+        width: 256px;
+        height: 256px;
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 16px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    }
+    
+    .profile-avatar-large {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .profile-avatar-placeholder {
+        background-color: var(--flux-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 4rem;
+        font-weight: 700;
+        color: white;
+    }
+    
+    .profile-info-section {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .profile-name {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--flux-main-text);
+        margin: 0;
+    }
+    
+    .profile-username {
+        font-size: 0.9rem;
+        color: rgba(204, 220, 219, 0.7);
+        margin: 4px 0 16px 0;
+    }
+    
+    .profile-actions {
+        width: 100%;
+        margin-top: 16px;
+    }
+
+    /* Channel Hero */
+    .channel-hero {
+        margin: 88px 20px 16px 20px;
+    }
+    
+    .hero-title {
+        display: flex;
+        align-items: center;
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 8px;
+        color: var(--flux-main-text);
+    }
+    
+    .hero-desc {
+        font-size: 1rem;
+        font-weight: 400;
+        color: rgba(204, 220, 219, 0.8);
+        margin-bottom: 16px;
+    }
+
     /* Message Actions Menu */
     .menu-overlay {
         position: fixed;
@@ -1142,6 +1594,35 @@
         to { opacity: 1; transform: translateY(0); }
     }
 
+    /* Date Divider */
+    .date-divider {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 20px 0;
+        position: relative;
+    }
+
+    .date-divider hr {
+        width: 100%;
+        border: none;
+        border-top: 1px solid var(--flux-border);
+        position: absolute;
+        top: 50%;
+        z-index: 1;
+    }
+
+    .date-divider span {
+        background: var(--flux-glass-heavy);
+        padding: 4px 16px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--flux-main-text);
+        z-index: 2;
+        border: 1px solid var(--flux-border);
+    }
+
     .chat-header {
         padding: 0 20px;
         height: 60px;
@@ -1165,14 +1646,40 @@
         padding: 24px 0;
     }
 
+    /* Message Grouping & Compact View */
     .message-group {
         position: relative;
         display: flex;
         align-items: flex-start;
-        padding: 10px 24px;
+        padding: 8px 24px;
         gap: 14px;
         transition: background-color 0.15s;
         border-left: 3px solid transparent;
+    }
+
+    .message-group.compact {
+        padding-top: 4px;
+        padding-bottom: 4px;
+    }
+
+    .avatar-wrapper {
+        width: 36px;
+        flex-shrink: 0;
+    }
+
+    .compact-time {
+        width: 36px;
+        flex-shrink: 0;
+        font-size: 0.7rem;
+        color: rgba(204, 220, 219, 0.5);
+        text-align: right;
+        opacity: 0;
+        transition: opacity 0.2s;
+        padding-top: 2px;
+    }
+
+    .message-group.compact:hover .compact-time {
+        opacity: 1;
     }
 
     .message-group:hover {
@@ -1244,22 +1751,60 @@
     }
 
     .username {
-        font-weight: 800;
-        font-size: 0.95rem;
+        font-weight: 700;
+        font-size: 15px;
         color: var(--flux-main-text);
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     }
 
     .timestamp {
         font-size: 0.75rem;
-        color: rgba(204, 220, 219, 0.5) !important; /* Fixed dark timestamp issue */
+        color: rgba(204, 220, 219, 0.5) !important;
     }
 
     .message-bubble {
-        line-height: 1.6;
-        font-size: 1rem;
+        line-height: 1.5;
+        font-size: 15px;
         color: var(--flux-main-text);
         white-space: pre-wrap;
         word-break: break-word;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    /* Inline Editor */
+    .inline-editor {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        width: 100%;
+        max-width: 600px;
+    }
+
+    .inline-editor-textarea::part(control) {
+        background-color: var(--flux-glass-medium);
+        border: 1px solid var(--flux-primary);
+        color: var(--flux-main-text);
+        border-radius: 8px;
+        padding: 8px 12px;
+    }
+
+    .inline-editor-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    .edited-badge {
+        font-size: 0.7rem;
+        color: rgba(204, 220, 219, 0.5);
+        margin-left: 6px;
+    }
+
+    .message-image {
+        max-width: 360px;
+        border-radius: 8px;
+        border: 1px solid var(--flux-border);
+        margin-top: 6px;
     }
     
     .message-video {
@@ -1376,14 +1921,85 @@
         gap: 12px;
     }
 
-    .empty-chat {
-        padding: 40px 20px;
+    .message-reactions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 4px;
     }
 
-    .empty-chat-hero {
+    .reaction-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: var(--flux-glass-medium);
+        border: 1px solid var(--flux-border);
+        border-radius: 12px;
+        padding: 2px 8px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        color: var(--flux-main-text);
+        transition: all 0.2s ease;
+    }
+
+    .reaction-badge:hover {
+        background: var(--flux-glass-heavy);
+        border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .reaction-badge.reacted {
+        background: rgba(43, 172, 118, 0.2);
+        border-color: var(--flux-primary);
+        color: var(--flux-primary);
+    }
+
+    .emoji-picker {
+        position: fixed;
+        z-index: 1002;
+        background: var(--flux-glass-heavy);
+        backdrop-filter: blur(25px);
+        -webkit-backdrop-filter: blur(25px);
+        border: 1px solid var(--flux-glass-white);
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+        padding: 8px;
+        animation: fade-in 0.15s ease-out;
+    }
+    
+    .emoji-grid-scroll {
+        display: grid;
+        grid-template-columns: repeat(8, 1fr);
+        gap: 4px;
+        max-height: 250px;
+        overflow-y: auto;
+        padding-right: 4px;
+    }
+    
+    /* Scrollbar for emoji picker */
+    .emoji-grid-scroll::-webkit-scrollbar {
+        width: 6px;
+    }
+    .emoji-grid-scroll::-webkit-scrollbar-thumb {
+        background-color: var(--flux-glass-white);
+        border-radius: 4px;
+    }
+
+    .emoji-btn {
+        background: transparent;
+        border: none;
+        font-size: 1.25rem;
+        cursor: pointer;
+        padding: 6px;
+        border-radius: 6px;
+        transition: background-color 0.2s, transform 0.1s;
         display: flex;
-        flex-direction: column;
-        gap: 8px;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .emoji-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+        transform: scale(1.2);
     }
     
     /* Video Recorder */

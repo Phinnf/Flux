@@ -74,5 +74,16 @@ public class WorkspaceStateService
         NotifyStateChanged();
     }
 
+    public void UpdateMemberPresence(Guid userId, string status)
+    {
+        var memberIndex = Members.FindIndex(m => m.Id == userId);
+        if (memberIndex >= 0)
+        {
+            var member = Members[memberIndex];
+            Members[memberIndex] = member with { Status = status };
+            NotifyStateChanged();
+        }
+    }
+
     private void NotifyStateChanged() => OnStateChanged?.Invoke();
 }

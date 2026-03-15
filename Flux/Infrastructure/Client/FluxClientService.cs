@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Net.Http.Headers;
 using System.Text.Json;
 using Flux.Domain.Common;
 using Flux.Features.Messages.GetMessages;
@@ -6,6 +7,7 @@ using Flux.Features.Messages.SendMessage;
 using Flux.Features.Messages.EditMessage;
 using Flux.Features.Channels.CreateChannel;
 using Flux.Domain.Entities;
+using Microsoft.JSInterop;
 
 namespace Flux.Infrastructure.Client;
 
@@ -13,14 +15,36 @@ public record WorkspaceSummary(Guid Id, string Name, string? Description, DateTi
 
 public record ChannelSummary(Guid Id, string Name, string? Description, ChannelType Type);
 
-public record MemberDto(Guid Id, string Username, string? FullName, string? AvatarUrl);
+public record MemberDto(Guid Id, string Username, string? FullName, string? AvatarUrl, string? Status);
 
-public class FluxClientService(HttpClient httpClient)
+public class FluxClientService(HttpClient httpClient, IJSRuntime jsRuntime)
 {
+    private async Task SetAuthHeaderAsync()
+    {
+        try
+        {
+            var token = await jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "authToken");
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                token = await jsRuntime.InvokeAsync<string>("localStorage.getItem", "authToken");
+            }
+
+            if (!string.IsNullOrWhiteSpace(token))
+            {
+                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            }
+        }
+        catch
+        {
+            // Ignore JS interop errors (e.g. during prerendering)
+        }
+    }
+
     public async Task<Result<List<MemberDto>>> GetWorkspaceMembersAsync(Guid workspaceId, Guid userId)
     {
         try
         {
+            await SetAuthHeaderAsync();
             var response = await httpClient.GetFromJsonAsync<List<MemberDto>>($"/api/workspaces/{workspaceId}/members?userId={userId}");
             return response != null ? Result<List<MemberDto>>.CreateSuccess(response) : Result<List<MemberDto>>.CreateFailure("Failed to load members.");
         }
@@ -34,6 +58,7 @@ public class FluxClientService(HttpClient httpClient)
     {
         try
         {
+            await SetAuthHeaderAsync();
             var request = new { TargetUserId = targetUserId, CurrentUserId = currentUserId };
             var response = await httpClient.PostAsJsonAsync($"/api/workspaces/{workspaceId}/channels/direct", request);
             
@@ -122,6 +147,7 @@ public class FluxClientService(HttpClient httpClient)
     {
         try
         {
+            await SetAuthHeaderAsync();
             var request = new { Name = name, Description = description };
             var response = await httpClient.PostAsJsonAsync($"/api/workspaces?userId={userId}", request);
             
@@ -143,6 +169,7 @@ public class FluxClientService(HttpClient httpClient)
     {
         try
         {
+            await SetAuthHeaderAsync();
             var response = await httpClient.GetFromJsonAsync<Result<List<WorkspaceSummary>>>($"/api/workspaces?userId={userId}");
             return response ?? Result<List<WorkspaceSummary>>.CreateFailure("Failed to load workspaces.");
         }
@@ -156,6 +183,7 @@ public class FluxClientService(HttpClient httpClient)
     {
         try
         {
+            await SetAuthHeaderAsync();
             var response = await httpClient.DeleteAsync($"/api/workspaces/{workspaceId}?userId={userId}");
             
             if (response.IsSuccessStatusCode)
@@ -176,6 +204,7 @@ public class FluxClientService(HttpClient httpClient)
     {
         try
         {
+            await SetAuthHeaderAsync();
             var response = await httpClient.GetFromJsonAsync<Result<List<ChannelSummary>>>($"/api/workspaces/{workspaceId}/channels?userId={userId}");
             return response ?? Result<List<ChannelSummary>>.CreateFailure("Failed to load channels.");
         }
@@ -189,6 +218,7 @@ public class FluxClientService(HttpClient httpClient)
     {
         try
         {
+            await SetAuthHeaderAsync();
             var url = $"/api/channels/{channelId}/messages";
             if (before.HasValue)
             {
@@ -208,6 +238,7 @@ public class FluxClientService(HttpClient httpClient)
     {
         try
         {
+            await SetAuthHeaderAsync();
             var response = await httpClient.PostAsJsonAsync("/api/messages", command);
             var result = await response.Content.ReadFromJsonAsync<Result<SendMessageResponse>>();
             return result ?? Result<SendMessageResponse>.CreateFailure("Failed to send message.");
@@ -222,6 +253,7 @@ public class FluxClientService(HttpClient httpClient)
     {
         try
         {
+            await SetAuthHeaderAsync();
             var response = await httpClient.PutAsJsonAsync($"/api/messages/{messageId}", request);
             var result = await response.Content.ReadFromJsonAsync<Result<EditMessageResponse>>();
             return result ?? Result<EditMessageResponse>.CreateFailure("Failed to edit message.");
@@ -236,9 +268,32 @@ public class FluxClientService(HttpClient httpClient)
     {
         try
         {
+            await SetAuthHeaderAsync();
             var response = await httpClient.DeleteAsync($"/api/messages/{messageId}?userId={userId}");
             var result = await response.Content.ReadFromJsonAsync<Result>();
             return result ?? Result.Failure("Failed to delete message.");
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure(ex.Message);
+        }
+    }
+
+    public async Task<Result> ToggleReactionAsync(Guid messageId, Guid userId, string emoji)
+    {
+        try
+        {
+            await SetAuthHeaderAsync();
+            var request = new { UserId = userId, Emoji = emoji };
+            var response = await httpClient.PostAsJsonAsync($"/api/messages/{messageId}/reactions", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return Result.Success();
+            }
+            
+            var error = await response.Content.ReadAsStringAsync();
+            return Result.Failure(error);
         }
         catch (Exception ex)
         {
@@ -250,6 +305,7 @@ public class FluxClientService(HttpClient httpClient)
     {
         try
         {
+            await SetAuthHeaderAsync();
             var response = await httpClient.PostAsJsonAsync($"/api/workspaces/{workspaceId}/channels", request);
             if (response.IsSuccessStatusCode)
             {
@@ -270,6 +326,7 @@ public class FluxClientService(HttpClient httpClient)
     {
         try
         {
+            await SetAuthHeaderAsync();
             var response = await httpClient.DeleteAsync($"/api/workspaces/{workspaceId}/channels/{channelId}?userId={userId}");
             if (response.IsSuccessStatusCode)
             {
@@ -289,6 +346,7 @@ public class FluxClientService(HttpClient httpClient)
     {
         try
         {
+            await SetAuthHeaderAsync();
             var request = new { NewName = newName, UserId = userId };
             var response = await httpClient.PutAsJsonAsync($"/api/workspaces/{workspaceId}/channels/{channelId}/rename", request);
             
@@ -310,6 +368,7 @@ public class FluxClientService(HttpClient httpClient)
     {
         try
         {
+            await SetAuthHeaderAsync();
             var request = new { ExpiresInHours = expiresInHours, UserId = userId };
             var response = await httpClient.PostAsJsonAsync($"/api/workspaces/{workspaceId}/invites", request);
             
@@ -336,6 +395,7 @@ public class FluxClientService(HttpClient httpClient)
     {
         try
         {
+            await SetAuthHeaderAsync();
             var response = await httpClient.GetAsync($"/api/invites/{code}");
             if (response.IsSuccessStatusCode)
             {
@@ -358,6 +418,7 @@ public class FluxClientService(HttpClient httpClient)
     {
         try
         {
+            await SetAuthHeaderAsync();
             var request = new { UserId = userId };
             var response = await httpClient.PostAsJsonAsync($"/api/invites/{code}/join", request);
             if (response.IsSuccessStatusCode)
@@ -383,6 +444,7 @@ public class FluxClientService(HttpClient httpClient)
     {
         try
         {
+            await SetAuthHeaderAsync();
             var response = await httpClient.GetAsync($"/api/users/profile?userId={userId}");
             if (response.IsSuccessStatusCode)
             {
@@ -405,6 +467,7 @@ public class FluxClientService(HttpClient httpClient)
     {
         try
         {
+            await SetAuthHeaderAsync();
             var response = await httpClient.PostAsync("/api/uploads/image", content);
             if (response.IsSuccessStatusCode)
             {
@@ -424,6 +487,7 @@ public class FluxClientService(HttpClient httpClient)
     {
         try
         {
+            await SetAuthHeaderAsync();
             var request = new { UserId = userId, Username = username, FullName = fullName, NickName = nickName, Gender = gender, Country = country, AvatarUrl = avatarUrl, Status = status, NewPassword = newPassword };
             var response = await httpClient.PutAsJsonAsync("/api/users/profile", request);
             
@@ -445,6 +509,7 @@ public class FluxClientService(HttpClient httpClient)
     {
         try
         {
+            await SetAuthHeaderAsync();
             var request = new { UserId = userId };
             var response = await httpClient.PostAsJsonAsync("/api/users/profile/send-otp", request);
             
@@ -466,6 +531,7 @@ public class FluxClientService(HttpClient httpClient)
     {
         try
         {
+            await SetAuthHeaderAsync();
             var request = new { UserId = userId, NewPassword = newPassword };
             var response = await httpClient.PostAsJsonAsync("/api/users/profile/change-password", request);
             
@@ -487,6 +553,7 @@ public class FluxClientService(HttpClient httpClient)
     {
         try
         {
+            await SetAuthHeaderAsync();
             var response = await httpClient.DeleteAsync($"/api/users/profile/delete?userId={userId}");
             
             if (response.IsSuccessStatusCode)

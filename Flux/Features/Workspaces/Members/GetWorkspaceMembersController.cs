@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Flux.Features.Workspaces.Members;
 
-public record MemberDto(Guid Id, string Username, string? FullName, string? AvatarUrl);
+public record MemberDto(Guid Id, string Username, string? FullName, string? AvatarUrl, string? Status);
 
 [ApiController]
 [Route("api/workspaces/{workspaceId:guid}/members")]
@@ -34,7 +34,8 @@ public class GetWorkspaceMembersController : ControllerBase
             m.Id,
             m.Username,
             m.FullName,
-            m.AvatarUrl
+            m.AvatarUrl,
+            m.Status
         )).ToList();
 
         return Ok(members);

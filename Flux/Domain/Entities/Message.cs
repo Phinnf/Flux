@@ -19,5 +19,6 @@
         public Channel? Channel { get; set; }
         public Message? ParentMessage { get; set; }
         public ICollection<Message> Replies { get; set; } = new List<Message>();
+        public ICollection<Reaction> Reactions { get; set; } = new List<Reaction>();
     }
 }

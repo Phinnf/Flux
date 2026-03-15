@@ -16,11 +16,31 @@ namespace Flux.Infrastructure.Database
         public DbSet<User> Users => Set<User>();
         public DbSet<Channel> Channels => Set<Channel>();
         public DbSet<Message> Messages => Set<Message>();
+        public DbSet<Reaction> Reactions => Set<Reaction>();
 
         /// Configure database relationships and constraints here (Fluent API).
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            // Reaction - Message (1-to-Many)
+            modelBuilder.Entity<Reaction>()
+                .HasOne(r => r.Message)
+                .WithMany(m => m.Reactions)
+                .HasForeignKey(r => r.MessageId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Reaction - User (1-to-Many)
+            modelBuilder.Entity<Reaction>()
+                .HasOne(r => r.User)
+                .WithMany()
+                .HasForeignKey(r => r.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Unique constraint: A user can only react with a specific emoji once per message
+            modelBuilder.Entity<Reaction>()
+                .HasIndex(r => new { r.MessageId, r.UserId, r.Emoji })
+                .IsUnique();
 
             // Workspace - Channel (1-to-Many)
             modelBuilder.Entity<Channel>()
