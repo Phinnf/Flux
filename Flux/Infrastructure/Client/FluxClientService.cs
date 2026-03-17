@@ -483,6 +483,26 @@ public class FluxClientService(HttpClient httpClient, IJSRuntime jsRuntime)
         }
     }
 
+    public async Task<Result<string>> UploadAudioAsync(MultipartFormDataContent content)
+    {
+        try
+        {
+            await SetAuthHeaderAsync();
+            var response = await httpClient.PostAsync("/api/uploads/audio", content);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+                return Result<string>.CreateSuccess(result.GetProperty("url").GetString()!);
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return Result<string>.CreateFailure(error);
+        }
+        catch (Exception ex)
+        {
+            return Result<string>.CreateFailure(ex.Message);
+        }
+    }
+
     public async Task<Result> UpdateProfileAsync(Guid userId, string? username, string? fullName, string? nickName, string? gender, string? country, string? avatarUrl, string? status = null, string? newPassword = null)
     {
         try

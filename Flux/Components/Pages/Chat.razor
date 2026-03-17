@@ -74,7 +74,7 @@
                             <p class="hero-desc">This is the very beginning of the <strong>@(_currentChannelName ?? "channel-name")</strong> channel.</p>
                         </div>
 
-                        <Virtualize Items="@RootMessages" Context="msg" OverscanCount="20">
+                        <Virtualize @ref="_messageVirtualizeRef" Items="@RootMessages" Context="msg" OverscanCount="20">
                             @{
                                 var index = RootMessages.IndexOf(msg);
                                 var prevMsg = index > 0 ? RootMessages[index - 1] : null;
@@ -204,6 +204,33 @@
                                                             @msg.Content
                                                         }
                                                     }
+                                                    else if (msg.Content.Contains("[audio: "))
+                                                    {
+                                                        var startIndex = msg.Content.IndexOf("[audio: ");
+                                                        var endIndex = msg.Content.IndexOf("]", startIndex);
+                                                        if (startIndex >= 0 && endIndex > startIndex)
+                                                        {
+                                                            var before = msg.Content.Substring(0, startIndex);
+                                                            var url = msg.Content.Substring(startIndex + 8, endIndex - startIndex - 8);
+                                                            var after = msg.Content.Substring(endIndex + 1);
+                                                            
+                                                            if (!string.IsNullOrWhiteSpace(before))
+                                                            {
+                                                                <span>@before</span>
+                                                            }
+                                                            <div class="audio-player-wrapper">
+                                                                <audio src="@url" controls class="message-audio"></audio>
+                                                            </div>
+                                                            if (!string.IsNullOrWhiteSpace(after))
+                                                            {
+                                                                <span>@after</span>
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            @msg.Content
+                                                        }
+                                                    }
                                                     else
                                                     {
                                                         @if (msg.Content.StartsWith("IMPORTANT: "))
@@ -230,7 +257,7 @@
                                                     foreach (var reactionGroup in groupedReactions)
                                                     {
                                                         var hasReacted = reactionGroup.Any(r => r.UserId == CurrentUserId);
-                                                        <button class="reaction-badge @(hasReacted ? "reacted" : "")" @onclick="@(() => ToggleReaction(msg.Id, reactionGroup.Key))">
+                                                        <button class="reaction-badge @(hasReacted ? "reacted" : "")" @onclick="@(() => ToggleReaction(msg.Id, reactionGroup.Key))" @onclick:stopPropagation>
                                                             <span class="emoji">@reactionGroup.Key</span>
                                                             <span class="count">@reactionGroup.Count()</span>
                                                         </button>
@@ -260,6 +287,17 @@
         <!-- Chat Input -->
         <div class="chat-input-container">
             <div class="chat-input-box" style="position: relative;">
+                @if (_isAudioRecording)
+                {
+                    <div class="audio-recording-overlay">
+                        <div class="recording-status">
+                            <div class="recording-dot"></div>
+                            <span>Recording Audio... @_audioDurationString</span>
+                        </div>
+                        <FluentButton Appearance="Appearance.Stealth" OnClick="CancelAudioRecording" Style="color: var(--flux-main-text); margin-right: 8px;">Cancel</FluentButton>
+                        <FluentButton Appearance="Appearance.Accent" OnClick="StopAudioRecording" Style="background-color: #ff0055;">Stop & Send</FluentButton>
+                    </div>
+                }
                 <!-- Mentions Dropdown -->
                 @if (_showMentionsList && _filteredMembers.Any())
                 {
@@ -442,7 +480,7 @@
 @if (_showEmojiPicker)
 {
     <div class="menu-overlay" @onclick="CloseEmojiPicker" @oncontextmenu:preventDefault="true"></div>
-    <div class="emoji-picker" style="left: @(_emojiPickerX - 100)px; top: @(_emojiPickerY - 50)px;" @onclick:stopPropagation>
+    <div class="emoji-picker" style="left: @(_emojiPickerX - 100)px; top: @(_emojiPickerY)px;" @onclick:stopPropagation>
         <div class="emoji-grid-scroll">
             @foreach (var emoji in new[] { 
                 "😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "🥲", "☺️", "😊", "😇", "🙂", "🙃", "😉", "😌", "😍", "🥰", "😘", "😗", "😙", "😚", "😋", "😛", "😝", "😜", "🤪", "🤨", "🧐", "🤓", "😎", "🥸", "🤩", "🥳", "😏", "😒", "😞", "😔", "😟", "😕", "🙁", "☹️", "😣", "😖", "😫", "😩", "🥺", "😢", "😭", "😤", "😠", "😡", "🤬", "🤯", "😳", "🥵", "🥶", "😱", "😨", "😰", "😥", "😓", "🤗", "🤔", "🫣", "🤭", "🫢", "🫡", "🤫", "🫠", "🤥", "😶", "🫥", "😐", "🫤", "😑", "😬", "🙄", "😯", "😦", "😧", "😮", "😲", "🥱", "😴", "🤤", "😪", "😮‍💨", "😵", "😵‍💫", "🤐", "🥴", "🤢", "🤮", "🤧", "😷", "🤒", "🤕", "🤑", "🤠", "😈", "👿", "👹", "👺", "🤡", "💩", "👻", "💀", "☠️", "👽", "👾", "🤖", "🎃", "😺", "😸", "😹", "😻", "😼", "😽", "🙀", "😿", "😾",
@@ -450,7 +488,7 @@
                 "❤️", "🩷", "🧡", "💛", "💚", "💙", "𩵠", "💜", "🤎", "🖤", "🩶", "🤍", "💔", "❤️‍🔥", "❤️‍🩹", "❣️", "💕", "💞", "💓", "💗", "💖", "💘", "💝", "💟"
             })
             {
-                <button class="emoji-btn" @onclick="@(() => SelectEmoji(emoji))">@emoji</button>
+                <button class="emoji-btn" @onclick="@(() => SelectEmoji(emoji))" @onclick:stopPropagation>@emoji</button>
             }
         </div>
     </div>
@@ -560,6 +598,7 @@
     private bool _isLoadingMore = false;
     private bool _hasMoreMessages = true;
     private ElementReference _messagesViewport;
+    private Microsoft.AspNetCore.Components.Web.Virtualization.Virtualize<MessageDto>? _messageVirtualizeRef;
     private FluentTextArea _textAreaRef = default!;
     private DotNetObjectReference<Chat>? _objRef;
     private bool _shouldScrollToBottom = false;
@@ -725,9 +764,90 @@
         }
     }
 
-    private void StartAudioRecording()
+    // Audio Recorder State
+    private bool _isAudioRecording = false;
+    private string _audioDurationString = "00:00";
+    private int _audioRecordingSeconds = 0;
+    private System.Timers.Timer? _audioTimer;
+
+    private async Task StartAudioRecording()
     {
-        ToastService.ShowInfo("Audio recording coming soon! Use the Video icon to record with audio for now.");
+        var started = await JS.InvokeAsync<bool>("window.voiceRecorder.startRecording", _objRef);
+        if (started)
+        {
+            _isAudioRecording = true;
+            _audioRecordingSeconds = 0;
+            _audioDurationString = "00:00";
+            
+            _audioTimer?.Stop();
+            _audioTimer?.Dispose();
+            
+            _audioTimer = new System.Timers.Timer(1000);
+            _audioTimer.Elapsed += (sender, e) =>
+            {
+                _audioRecordingSeconds++;
+                var ts = TimeSpan.FromSeconds(_audioRecordingSeconds);
+                _audioDurationString = ts.ToString(@"mm\:ss");
+                InvokeAsync(StateHasChanged);
+            };
+            _audioTimer.Start();
+            StateHasChanged();
+        }
+        else
+        {
+            ToastService.ShowError("Could not access microphone.");
+        }
+    }
+
+    private async Task StopAudioRecording()
+    {
+        _audioTimer?.Stop();
+        await JS.InvokeVoidAsync("window.voiceRecorder.stopRecording");
+        _isAudioRecording = false;
+        StateHasChanged();
+    }
+
+    private async Task CancelAudioRecording()
+    {
+        _audioTimer?.Stop();
+        await JS.InvokeVoidAsync("window.voiceRecorder.cancelRecording");
+        _isAudioRecording = false;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async Task OnAudioDataReceived(string base64Data)
+    {
+        if (string.IsNullOrEmpty(base64Data)) return;
+        
+        ToastService.ShowInfo("Uploading audio...");
+        
+        try
+        {
+            var audioBytes = Convert.FromBase64String(base64Data);
+            using var content = new MultipartFormDataContent();
+            var byteContent = new ByteArrayContent(audioBytes);
+            byteContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/webm");
+            content.Add(byteContent, "file", $"voice_{DateTime.UtcNow:yyyyMMddHHmmss}.webm");
+
+            var result = await FluxService.UploadAudioAsync(content);
+            if (result.IsSuccess)
+            {
+                _newMessageContent += (string.IsNullOrEmpty(_newMessageContent) ? "" : "\n") + $"[audio: {result.Value}]";
+                ToastService.ShowSuccess("Audio recorded.");
+                await SendMessage();
+            }
+            else
+            {
+                ToastService.ShowError("Audio upload failed: " + result.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Error processing audio: " + ex.Message);
+        }
+        
+        StateHasChanged();
     }
 
     private void TriggerMention()
@@ -1049,7 +1169,14 @@
                 var index = _messages.IndexOf(msg);
                 _messages[index] = msg with { Reactions = newReactions };
                 
-                await InvokeAsync(StateHasChanged);
+                await InvokeAsync(async () => 
+                {
+                    StateHasChanged();
+                    if (_messageVirtualizeRef != null)
+                    {
+                        await _messageVirtualizeRef.RefreshDataAsync();
+                    }
+                });
             }
         });
 
@@ -1311,7 +1438,21 @@
     {
         _emojiTargetMessageId = messageId;
         _emojiPickerX = e.ClientX;
+        
+        // Dynamic Y position: if click is in the bottom half of the screen, show picker above
+        var viewportHeight = 800; // Default fallback
         _emojiPickerY = e.ClientY;
+        
+        // If the click is low on the screen, shift the picker up by its estimated height (300px)
+        if (e.ClientY > 400) 
+        {
+            _emojiPickerY = e.ClientY - 320;
+        }
+        else 
+        {
+            _emojiPickerY = e.ClientY + 20;
+        }
+
         _showEmojiPicker = true;
     }
 
@@ -1322,10 +1463,32 @@
 
     private async Task SelectEmoji(string emoji)
     {
+        var targetId = _emojiTargetMessageId;
         CloseEmojiPicker();
-        if (_emojiTargetMessageId != default)
+
+        if (targetId != default)
         {
-            await ToggleReaction(_emojiTargetMessageId, emoji);
+            // Optimistic UI update for immediate feedback
+            var msg = _messages.FirstOrDefault(m => m.Id == targetId);
+            if (msg != null)
+            {
+                var newReactions = msg.Reactions != null ? new List<ReactionDto>(msg.Reactions) : new List<ReactionDto>();
+                var existing = newReactions.FirstOrDefault(r => r.Emoji == emoji && r.UserId == CurrentUserId);
+                
+                if (existing != null) newReactions.Remove(existing);
+                else newReactions.Add(new ReactionDto(CurrentUserId, emoji));
+                
+                var index = _messages.IndexOf(msg);
+                _messages[index] = msg with { Reactions = newReactions };
+                
+                StateHasChanged();
+                if (_messageVirtualizeRef != null)
+                {
+                    await _messageVirtualizeRef.RefreshDataAsync();
+                }
+            }
+
+            await ToggleReaction(targetId, emoji);
         }
         else
         {
@@ -1821,6 +1984,20 @@
         overflow: hidden;
         border: 1px solid var(--flux-border);
     }
+
+    .audio-player-wrapper {
+        margin-top: 8px;
+        background: var(--flux-glass-medium);
+        padding: 8px;
+        border-radius: 8px;
+        border: 1px solid var(--flux-border);
+        width: fit-content;
+    }
+
+    .message-audio {
+        height: 36px;
+        border-radius: 18px;
+    }
     
     .chat-input-container {
         padding: 0 24px 24px 24px;
@@ -1934,26 +2111,76 @@
     .reaction-badge {
         display: inline-flex;
         align-items: center;
-        gap: 4px;
+        gap: 6px;
         background: var(--flux-glass-medium);
         border: 1px solid var(--flux-border);
         border-radius: 12px;
-        padding: 2px 8px;
-        font-size: 0.85rem;
+        padding: 3px 10px;
+        font-size: 0.9rem;
         cursor: pointer;
         color: var(--flux-main-text);
-        transition: all 0.2s ease;
+        transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        user-select: none;
     }
 
     .reaction-badge:hover {
         background: var(--flux-glass-heavy);
-        border-color: rgba(255, 255, 255, 0.3);
+        border-color: var(--flux-primary);
+        transform: scale(1.1);
+        box-shadow: 0 0 10px rgba(43, 172, 118, 0.3);
+        z-index: 5;
     }
 
     .reaction-badge.reacted {
-        background: rgba(43, 172, 118, 0.2);
+        background: rgba(43, 172, 118, 0.25);
         border-color: var(--flux-primary);
         color: var(--flux-primary);
+        font-weight: 700;
+    }
+
+    .audio-recording-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: var(--flux-glass-heavy);
+        backdrop-filter: blur(15px);
+        display: flex;
+        align-items: center;
+        padding: 0 16px;
+        z-index: 200;
+        border-radius: 12px;
+        animation: slide-up 0.2s ease-out;
+    }
+
+    .recording-status {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: #ff0055;
+        font-weight: bold;
+        flex: 1;
+    }
+
+    .recording-dot {
+        width: 10px;
+        height: 10px;
+        background-color: #ff0055;
+        border-radius: 50%;
+        box-shadow: 0 0 8px #ff0055;
+        animation: blink 1s infinite;
+    }
+
+    @@keyframes blink {
+        0% { opacity: 1; }
+        50% { opacity: 0.4; }
+        100% { opacity: 1; }
+    }
+
+    @@keyframes slide-up {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 
     .emoji-picker {
