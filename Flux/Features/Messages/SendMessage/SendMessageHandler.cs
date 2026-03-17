@@ -14,66 +14,57 @@ public class SendMessageHandler(
 {
     public async Task<Result<SendMessageResponse>> Handle(SendMessageCommand request, CancellationToken cancellationToken)
     {
-        // 1. Business logic & domain validation
-        var channel = await context.Channels
-            .Include(c => c.Members)
-            .FirstOrDefaultAsync(c => c.Id == request.ChannelId, cancellationToken);
+        // 1. Domain Validation & Permission Check Tối ưu hóa (Thực thi ngay trong 1 câu SQL)
+        var userAndChannelInfo = await context.Channels
+            .Where(c => c.Id == request.ChannelId)
+            .Select(c => new 
+            {
+                Channel = c,
+                HasPermission = c.Type == ChannelType.Private 
+                    ? c.Members.Any(m => m.Id == request.UserId) 
+                    : c.Workspace != null && c.Workspace.Members.Any(m => m.Id == request.UserId),
+                UserAvatar = context.Users.Where(u => u.Id == request.UserId).Select(u => u.AvatarUrl).FirstOrDefault(),
+                UserName = context.Users.Where(u => u.Id == request.UserId).Select(u => u.Username).FirstOrDefault()
+            })
+            .FirstOrDefaultAsync(cancellationToken);
 
-        if (channel == null)
+        if (userAndChannelInfo == null)
             return Result<SendMessageResponse>.CreateFailure("Channel not found.");
 
-        var user = await context.Users
-            .Include(u => u.Workspaces)
-            .FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
+        if (userAndChannelInfo.UserName == null)
+             return Result<SendMessageResponse>.CreateFailure("User not found.");
 
-        if (user == null)
-            return Result<SendMessageResponse>.CreateFailure("User not found.");
-
-        // Permission Check:
-        // 1. If Private: User must be in channel.Members
-        // 2. If Public: User must be in workspace.Members
-        bool hasPermission = false;
-        if (channel.Type == ChannelType.Private)
-        {
-            hasPermission = channel.Members.Any(m => m.Id == user.Id);
-        }
-        else
-        {
-            hasPermission = user.Workspaces.Any(w => w.Id == channel.WorkspaceId);
-        }
-
-        if (!hasPermission)
-        {
+        if (!userAndChannelInfo.HasPermission)
             return Result<SendMessageResponse>.CreateFailure("Access denied.");
-        }
 
-        // 3. Persist message
-        var message = new Message
+        // 2. Persist message (Sử dụng Target-typed new của C#)
+        Message message = new()
         {
             Content = request.Content,
             ChannelId = request.ChannelId,
             UserId = request.UserId,
             CreatedAt = DateTime.UtcNow,
-            AvatarUrl = user.AvatarUrl,
+            AvatarUrl = userAndChannelInfo.UserAvatar,
             ParentMessageId = request.ParentMessageId
         };
 
         context.Messages.Add(message);
         await context.SaveChangesAsync(cancellationToken);
 
-        var response = new SendMessageResponse(
+        // 3. Chuẩn bị Response
+        SendMessageResponse response = new(
             message.Id,
             message.Content,
             message.UserId,
-            user.Username,
+            userAndChannelInfo.UserName,
             message.ChannelId,
             message.CreatedAt,
             message.AvatarUrl,
             message.ParentMessageId);
 
-        // 4. Notify clients via SignalR (Real-time update)
-        await hubContext.Clients.Group(request.ChannelId.ToString())
-            .SendAsync("ReceiveMessage", response, cancellationToken);
+        // 4. Fire & Forget - Không await SignalR để API trả về kết quả nhanh nhất có thể cho người gửi
+        _ = hubContext.Clients.Group(request.ChannelId.ToString())
+            .SendAsync("ReceiveMessage", response, CancellationToken.None);
 
         return Result<SendMessageResponse>.CreateSuccess(response);
     }

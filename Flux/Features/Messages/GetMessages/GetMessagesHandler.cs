@@ -35,6 +35,7 @@ public class GetMessagesHandler(FluxDbContext dbContext)
                 m.ParentMessageId,
                 m.Replies.Count,
                 m.Reactions.Select(r => new ReactionDto(r.UserId, r.Emoji)).ToList()))
+            .AsSplitQuery()
             .ToListAsync(cancellationToken);
 
         // Since we ordered descending to get the latest ones easily, 

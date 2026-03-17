@@ -1,5 +1,6 @@
 @page "/workspace/{WorkspaceId:guid}"
 @layout Flux.Components.Layout.WorkspaceLayout
+@implements IDisposable
 @inject WorkspaceStateService StateService
 @inject NavigationManager Navigation
 @using Microsoft.AspNetCore.Components.Authorization

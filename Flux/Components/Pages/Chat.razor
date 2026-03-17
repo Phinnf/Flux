@@ -1,6 +1,7 @@
 @page "/workspace/{WorkspaceId:guid}/chat/{ChannelId:guid}"
 @layout Flux.Components.Layout.WorkspaceLayout
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Web.Virtualization
 @using System.Security.Claims
 @using Microsoft.AspNetCore.SignalR.Client
 @using Flux.Features.Messages.EditMessage
@@ -73,26 +74,28 @@
                             <p class="hero-desc">This is the very beginning of the <strong>@(_currentChannelName ?? "channel-name")</strong> channel.</p>
                         </div>
 
-                        @foreach (var group in _messages.Where(m => m.ParentMessageId == null).OrderBy(m => m.CreatedAt).GroupBy(m => m.CreatedAt.Date))
-                        {
-                            var dateLabel = group.Key.Date == DateTime.Today ? "Today" : 
-                                            group.Key.Date == DateTime.Today.AddDays(-1) ? "Yesterday" : 
-                                            group.Key.ToString("dddd, MMMM d");
-                                            
-                            <div class="date-divider">
-                                <hr />
-                                <span>@dateLabel</span>
-                            </div>
-
-                            var messagesInGroup = group.ToList();
-                            for (int i = 0; i < messagesInGroup.Count; i++)
-                            {
-                                var msg = messagesInGroup[i];
-                                var prevMsg = i > 0 ? messagesInGroup[i - 1] : null;
-                                bool isCompact = prevMsg != null && prevMsg.UserId == msg.UserId && (msg.CreatedAt - prevMsg.CreatedAt).TotalMinutes < 5;
+                        <Virtualize Items="@RootMessages" Context="msg" OverscanCount="20">
+                            @{
+                                var index = RootMessages.IndexOf(msg);
+                                var prevMsg = index > 0 ? RootMessages[index - 1] : null;
+                                bool showDate = prevMsg == null || msg.CreatedAt.Date != prevMsg.CreatedAt.Date;
+                                bool isCompact = !showDate && prevMsg != null && prevMsg.UserId == msg.UserId && (msg.CreatedAt - prevMsg.CreatedAt).TotalMinutes < 5;
                                 bool isSelf = msg.UserId == CurrentUserId;
+                            }
+                            
+                            @if (showDate)
+                            {
+                                var dateLabel = msg.CreatedAt.Date == DateTime.Today ? "Today" : 
+                                                msg.CreatedAt.Date == DateTime.Today.AddDays(-1) ? "Yesterday" : 
+                                                msg.CreatedAt.ToString("dddd, MMMM d");
+                                                
+                                <div class="date-divider">
+                                    <hr />
+                                    <span>@dateLabel</span>
+                                </div>
+                            }
 
-                                <div class="message-group @(isSelf ? "self" : "") @(_activeThreadParent?.Id == msg.Id ? "active-thread" : "") @(isCompact ? "compact" : "")">
+                            <div class="message-group @(isSelf ? "self" : "") @(_activeThreadParent?.Id == msg.Id ? "active-thread" : "") @(isCompact ? "compact" : "")">
                                     <!-- Hover Toolbar -->
                                     <div class="message-hover-toolbar" @onclick:stopPropagation>
                                         <div class="toolbar-container">
@@ -248,8 +251,7 @@
                                         </div>
                                     </div>
                                 </div>
-                            }
-                        }
+                        </Virtualize>
                     }
                 </div>
             }
@@ -551,6 +553,7 @@
     [Parameter] public Guid ChannelId { get; set; }
 
     private List<MessageDto> _messages = new();
+    private List<MessageDto> RootMessages => _messages.Where(m => m.ParentMessageId == null).OrderBy(m => m.CreatedAt).ToList();
     private string _newMessageContent = "";
     private string? _currentChannelName;
     private bool _isLoading = true;
