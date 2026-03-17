@@ -481,16 +481,7 @@
 {
     <div class="menu-overlay" @onclick="CloseEmojiPicker" @oncontextmenu:preventDefault="true"></div>
     <div class="emoji-picker" style="left: @(_emojiPickerX - 100)px; top: @(_emojiPickerY)px;" @onclick:stopPropagation>
-        <div class="emoji-grid-scroll">
-            @foreach (var emoji in new[] { 
-                "😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "🥲", "☺️", "😊", "😇", "🙂", "🙃", "😉", "😌", "😍", "🥰", "😘", "😗", "😙", "😚", "😋", "😛", "😝", "😜", "🤪", "🤨", "🧐", "🤓", "😎", "🥸", "🤩", "🥳", "😏", "😒", "😞", "😔", "😟", "😕", "🙁", "☹️", "😣", "😖", "😫", "😩", "🥺", "😢", "😭", "😤", "😠", "😡", "🤬", "🤯", "😳", "🥵", "🥶", "😱", "😨", "😰", "😥", "😓", "🤗", "🤔", "🫣", "🤭", "🫢", "🫡", "🤫", "🫠", "🤥", "😶", "🫥", "😐", "🫤", "😑", "😬", "🙄", "😯", "😦", "😧", "😮", "😲", "🥱", "😴", "🤤", "😪", "😮‍💨", "😵", "😵‍💫", "🤐", "🥴", "🤢", "🤮", "🤧", "😷", "🤒", "🤕", "🤑", "🤠", "😈", "👿", "👹", "👺", "🤡", "💩", "👻", "💀", "☠️", "👽", "👾", "🤖", "🎃", "😺", "😸", "😹", "😻", "😼", "😽", "🙀", "😿", "😾",
-                "👋", "🤚", "🖐", "✋", "🖖", "👌", "🤌", "🤏", "✌️", "🤞", "🤟", "🤘", "🤙", "👈", "👉", "👆", "🖕", "👇", "☝️", "👍", "👎", "✊", "👊", "🤛", "🤜", "👏", "🙌", "🫶", "👐", "🤲", "🤝", "🙏", "✍️", "💅", "🤳", "💪", "🦾", "🦿", "🦵", "🦶", "👂", "🦻", "👃", "🫀", "🧠", "🦷", "🦴", "👀", "👁", "👅", "👄", "🫦", "💋", "🩸",
-                "❤️", "🩷", "🧡", "💛", "💚", "💙", "𩵠", "💜", "🤎", "🖤", "🩶", "🤍", "💔", "❤️‍🔥", "❤️‍🩹", "❣️", "💕", "💞", "💓", "💗", "💖", "💘", "💝", "💟"
-            })
-            {
-                <button class="emoji-btn" @onclick="@(() => SelectEmoji(emoji))" @onclick:stopPropagation>@emoji</button>
-            }
-        </div>
+        <emoji-picker id="main-emoji-picker" class="light"></emoji-picker>
     </div>
 }
 
@@ -1434,19 +1425,18 @@
     private double _emojiPickerY = 0;
     private Guid _emojiTargetMessageId;
 
-    private void OpenEmojiPicker(MouseEventArgs e, Guid messageId = default)
+    private async Task OpenEmojiPicker(MouseEventArgs e, Guid messageId = default)
     {
         _emojiTargetMessageId = messageId;
         _emojiPickerX = e.ClientX;
         
         // Dynamic Y position: if click is in the bottom half of the screen, show picker above
-        var viewportHeight = 800; // Default fallback
         _emojiPickerY = e.ClientY;
         
-        // If the click is low on the screen, shift the picker up by its estimated height (300px)
-        if (e.ClientY > 400) 
+        // If the click is low on the screen, shift the picker up by its estimated height (350px for the new picker)
+        if (e.ClientY > 450) 
         {
-            _emojiPickerY = e.ClientY - 320;
+            _emojiPickerY = e.ClientY - 380;
         }
         else 
         {
@@ -1454,6 +1444,10 @@
         }
 
         _showEmojiPicker = true;
+        
+        // Wait for the UI to render the <emoji-picker> then init JS
+        await Task.Delay(50);
+        await JS.InvokeVoidAsync("emojiPicker.init", _objRef, "main-emoji-picker");
     }
 
     private void CloseEmojiPicker()
@@ -1461,48 +1455,50 @@
         _showEmojiPicker = false;
     }
 
-    private async Task SelectEmoji(string emoji)
+    [JSInvokable]
+    public async Task OnEmojiSelectedJS(string emoji)
     {
         var targetId = _emojiTargetMessageId;
         CloseEmojiPicker();
 
         if (targetId != default)
         {
-            // Optimistic UI update for immediate feedback
-            var msg = _messages.FirstOrDefault(m => m.Id == targetId);
-            if (msg != null)
-            {
-                var newReactions = msg.Reactions != null ? new List<ReactionDto>(msg.Reactions) : new List<ReactionDto>();
-                var existing = newReactions.FirstOrDefault(r => r.Emoji == emoji && r.UserId == CurrentUserId);
-                
-                if (existing != null) newReactions.Remove(existing);
-                else newReactions.Add(new ReactionDto(CurrentUserId, emoji));
-                
-                var index = _messages.IndexOf(msg);
-                _messages[index] = msg with { Reactions = newReactions };
-                
-                StateHasChanged();
-                if (_messageVirtualizeRef != null)
-                {
-                    await _messageVirtualizeRef.RefreshDataAsync();
-                }
-            }
-
             await ToggleReaction(targetId, emoji);
         }
         else
         {
             _newMessageContent += emoji;
-            StateHasChanged();
+            await InvokeAsync(StateHasChanged);
         }
     }
 
     private async Task ToggleReaction(Guid messageId, string emoji)
     {
+        // Optimistic UI update for immediate feedback when clicking existing badges
+        var msg = _messages.FirstOrDefault(m => m.Id == messageId);
+        if (msg != null)
+        {
+            var newReactions = msg.Reactions != null ? new List<ReactionDto>(msg.Reactions) : new List<ReactionDto>();
+            var existing = newReactions.FirstOrDefault(r => r.Emoji == emoji && r.UserId == CurrentUserId);
+            
+            if (existing != null) newReactions.Remove(existing);
+            else newReactions.Add(new ReactionDto(CurrentUserId, emoji));
+            
+            var index = _messages.IndexOf(msg);
+            _messages[index] = msg with { Reactions = newReactions };
+            
+            StateHasChanged();
+            if (_messageVirtualizeRef != null)
+            {
+                await _messageVirtualizeRef.RefreshDataAsync();
+            }
+        }
+
         var result = await FluxService.ToggleReactionAsync(messageId, CurrentUserId, emoji);
         if (!result.IsSuccess)
         {
             ToastService.ShowError("Failed to toggle reaction.");
+            // Revert optimistic update if failed? (Optional, usually SignalR will correct it)
         }
     }
 
@@ -2186,51 +2182,17 @@
     .emoji-picker {
         position: fixed;
         z-index: 1002;
-        background: var(--flux-glass-heavy);
-        backdrop-filter: blur(25px);
-        -webkit-backdrop-filter: blur(25px);
-        border: 1px solid var(--flux-glass-white);
         border-radius: 12px;
         box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
-        padding: 8px;
         animation: fade-in 0.15s ease-out;
     }
     
-    .emoji-grid-scroll {
-        display: grid;
-        grid-template-columns: repeat(8, 1fr);
-        gap: 4px;
-        max-height: 250px;
-        overflow-y: auto;
-        padding-right: 4px;
-    }
-    
-    /* Scrollbar for emoji picker */
-    .emoji-grid-scroll::-webkit-scrollbar {
-        width: 6px;
-    }
-    .emoji-grid-scroll::-webkit-scrollbar-thumb {
-        background-color: var(--flux-glass-white);
-        border-radius: 4px;
+    emoji-picker {
+        --num-columns: 8;
+        --category-emoji-size: 1.25rem;
+        height: 350px;
     }
 
-    .emoji-btn {
-        background: transparent;
-        border: none;
-        font-size: 1.25rem;
-        cursor: pointer;
-        padding: 6px;
-        border-radius: 6px;
-        transition: background-color 0.2s, transform 0.1s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .emoji-btn:hover {
-        background: rgba(255, 255, 255, 0.1);
-        transform: scale(1.2);
-    }
     
     /* Video Recorder */
     .video-recorder-overlay {
