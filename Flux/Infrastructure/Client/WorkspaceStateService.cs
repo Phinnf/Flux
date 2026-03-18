@@ -18,6 +18,9 @@ public class WorkspaceStateService
     public List<ChannelSummary> Channels { get; private set; } = new();
     public List<MemberDto> Members { get; private set; } = new();
 
+    public List<NotificationDto> Notifications { get; private set; } = new();
+    public int UnreadNotificationCount => Notifications.Count(n => !n.IsRead);
+
     public event Action? OnStateChanged;
 
     /// Loads channels for a workspace and updates the state.
@@ -38,6 +41,39 @@ public class WorkspaceStateService
 
         await RefreshChannelsAsync(userId);
         await RefreshMembersAsync(userId);
+    }
+
+    public void AddNotification(NotificationDto notification)
+    {
+        Notifications.Insert(0, notification);
+        NotifyStateChanged();
+    }
+
+    public void MarkNotificationAsRead(Guid messageId)
+    {
+        var note = Notifications.FirstOrDefault(n => n.MessageId == messageId);
+        if (note != null && !note.IsRead)
+        {
+            note.IsRead = true;
+            NotifyStateChanged();
+        }
+    }
+
+    public void MarkAllNotificationsAsRead()
+    {
+        bool changed = false;
+        foreach (var n in Notifications.Where(n => !n.IsRead))
+        {
+            n.IsRead = true;
+            changed = true;
+        }
+        if (changed) NotifyStateChanged();
+    }
+
+    public void ClearNotifications()
+    {
+        Notifications.Clear();
+        NotifyStateChanged();
     }
 
     public async Task RefreshMembersAsync(Guid userId)

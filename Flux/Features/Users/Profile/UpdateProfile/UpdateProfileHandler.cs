@@ -1,12 +1,14 @@
 using Flux.Domain.Common;
 using Flux.Infrastructure.Database;
 using Flux.Infrastructure.Identity;
+using Flux.Infrastructure.SignalR;
 using MediatR;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Flux.Features.Users.Profile.UpdateProfile;
 
-public class UpdateProfileHandler(FluxDbContext context, IPasswordHasher passwordHasher) : IRequestHandler<UpdateProfileCommand, Result>
+public class UpdateProfileHandler(FluxDbContext context, IPasswordHasher passwordHasher, IHubContext<ChatHub> hubContext) : IRequestHandler<UpdateProfileCommand, Result>
 {
     public async Task<Result> Handle(UpdateProfileCommand request, CancellationToken cancellationToken)
     {
@@ -29,6 +31,8 @@ public class UpdateProfileHandler(FluxDbContext context, IPasswordHasher passwor
         user.NickName = request.NickName;
         user.Gender = request.Gender;
         user.Country = request.Country;
+        
+        bool statusChanged = user.Status != request.Status;
         user.Status = request.Status;
 
         if (!string.IsNullOrEmpty(request.AvatarUrl))
@@ -45,6 +49,11 @@ public class UpdateProfileHandler(FluxDbContext context, IPasswordHasher passwor
 
         context.Users.Update(user);
         await context.SaveChangesAsync(cancellationToken);
+
+        if (statusChanged && !string.IsNullOrEmpty(user.Status))
+        {
+            await hubContext.Clients.All.SendAsync("UserPresenceChanged", user.Id.ToString(), user.Status, cancellationToken);
+        }
 
         return Result.Success();
     }

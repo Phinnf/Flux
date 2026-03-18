@@ -1183,12 +1183,28 @@
         await _hubConnection.StartAsync();
     }
 
+    private Guid _currentConnectedChannelId;
+
     protected override async Task OnParametersSetAsync()
     {
         if (_hubConnection?.State == HubConnectionState.Connected)
         {
-            await _hubConnection.InvokeAsync("JoinChannel", ChannelId.ToString());
+            if (_currentConnectedChannelId != Guid.Empty && _currentConnectedChannelId != ChannelId)
+            {
+                await _hubConnection.InvokeAsync("LeaveChannel", _currentConnectedChannelId.ToString());
+            }
+
+            if (_currentConnectedChannelId != ChannelId)
+            {
+                await _hubConnection.InvokeAsync("JoinChannel", ChannelId.ToString());
+                _currentConnectedChannelId = ChannelId;
+            }
         }
+        else
+        {
+            _currentConnectedChannelId = ChannelId;
+        }
+
         await LoadChatData();
     }
 

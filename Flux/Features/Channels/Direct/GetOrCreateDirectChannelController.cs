@@ -34,12 +34,13 @@ public class GetOrCreateDirectChannelController : ControllerBase
         if (!workspace.Members.Any(m => m.Id == request.CurrentUserId) || !workspace.Members.Any(m => m.Id == request.TargetUserId))
             return BadRequest("Both users must be members of the workspace.");
 
-        // Look for an existing direct channel between these two users
+        bool isSelfDm = request.CurrentUserId == request.TargetUserId;
+
+        // Look for an existing direct channel between these two users (or just self)
         var existingChannel = workspace.Channels.FirstOrDefault(c => 
             c.Type == ChannelType.Direct &&
-            c.Members.Count == 2 &&
-            c.Members.Any(m => m.Id == request.CurrentUserId) &&
-            c.Members.Any(m => m.Id == request.TargetUserId));
+            (isSelfDm ? c.Members.Count == 1 && c.Members.Any(m => m.Id == request.CurrentUserId) 
+                      : c.Members.Count == 2 && c.Members.Any(m => m.Id == request.CurrentUserId) && c.Members.Any(m => m.Id == request.TargetUserId)));
 
         if (existingChannel != null)
         {
@@ -47,18 +48,21 @@ public class GetOrCreateDirectChannelController : ControllerBase
         }
 
         // Create new direct channel
-        var targetUser = workspace.Members.First(m => m.Id == request.TargetUserId);
         var currentUser = workspace.Members.First(m => m.Id == request.CurrentUserId);
+        var targetUser = isSelfDm ? currentUser : workspace.Members.First(m => m.Id == request.TargetUserId);
         
         var newChannel = new Channel
         {
-            Name = $"{currentUser.Username}-{targetUser.Username}",
+            Name = isSelfDm ? $"{currentUser.Username}-self" : $"{currentUser.Username}-{targetUser.Username}",
             Type = ChannelType.Direct,
             WorkspaceId = workspaceId
         };
         
         newChannel.Members.Add(currentUser);
-        newChannel.Members.Add(targetUser);
+        if (!isSelfDm)
+        {
+            newChannel.Members.Add(targetUser);
+        }
 
         _context.Channels.Add(newChannel);
         await _context.SaveChangesAsync();

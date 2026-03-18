@@ -9,6 +9,20 @@
     <link rel="stylesheet" href="css/app.css" />
     <link rel="stylesheet" href="css/auth.css" />
     <link rel="stylesheet" href="_content/Microsoft.FluentUI.AspNetCore.Components/css/reboot.css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            corePlugins: { preflight: false },
+            theme: {
+                extend: {
+                    colors: {
+                        fluxPrimary: 'var(--flux-primary)',
+                        fluxBg: 'var(--flux-bg)',
+                    }
+                }
+            }
+        }
+    </script>
     <HeadOutlet />
 </head>
 

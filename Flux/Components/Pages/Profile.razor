@@ -545,6 +545,11 @@
             _initials = string.IsNullOrEmpty(_model.FullName) 
                 ? (_model.Username?.Length > 0 ? _model.Username[0].ToString().ToUpper() : "U")
                 : _model.FullName[0].ToString().ToUpper();
+                
+            if (WorkspaceState.CurrentWorkspaceId.HasValue)
+            {
+                await WorkspaceState.RefreshMembersAsync(_currentUserId);
+            }
         }
         else
         {

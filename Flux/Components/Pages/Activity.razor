@@ -1,0 +1,191 @@
+@page "/workspace/{WorkspaceId:guid}/activity"
+@layout Flux.Components.Layout.WorkspaceLayout
+@using Flux.Infrastructure.Client
+@inject WorkspaceStateService StateService
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<PageTitle>Activity</PageTitle>
+
+<div class="flex h-full w-full bg-[#1A1D21] text-gray-200" style="overflow: hidden; height: 100vh;">
+    <!-- Activity Sidebar -->
+    <div class="w-[350px] flex flex-col bg-[#19171D] border-r border-gray-700 h-full flex-shrink-0">
+        <!-- Header -->
+        <div class="h-[60px] min-h-[60px] flex items-center justify-between px-4 border-b border-gray-700">
+            <h2 class="text-white font-bold text-lg">Activity</h2>
+            <div class="flex items-center gap-2">
+                <span class="text-[13px] text-gray-400 font-medium">Unreads</span>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" @bind="ShowUnreadsOnly" class="sr-only peer">
+                    <div class="w-8 h-4 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[#007a5a]"></div>
+                </label>
+            </div>
+        </div>
+        
+        <!-- Tabs -->
+        <div class="flex border-b border-gray-700 px-4 pt-2 overflow-x-auto custom-scrollbar no-scrollbar">
+            <button class="@(ActiveTab == "All" ? "text-white border-b-2 border-indigo-500" : "text-gray-400 hover:text-gray-300") pb-2 mr-4 font-medium text-[13px] transition-colors whitespace-nowrap" @onclick='() => ActiveTab = "All"'>All</button>
+            <button class="@(ActiveTab == "Mentions" ? "text-white border-b-2 border-indigo-500" : "text-gray-400 hover:text-gray-300") pb-2 mr-4 font-medium text-[13px] transition-colors whitespace-nowrap" @onclick='() => ActiveTab = "Mentions"'>@("@ Mentions")</button>
+            <button class="@(ActiveTab == "Threads" ? "text-white border-b-2 border-indigo-500" : "text-gray-400 hover:text-gray-300") pb-2 mr-4 font-medium text-[13px] transition-colors whitespace-nowrap" @onclick='() => ActiveTab = "Threads"'>Threads</button>
+            <button class="@(ActiveTab == "Reactions" ? "text-white border-b-2 border-indigo-500" : "text-gray-400 hover:text-gray-300") pb-2 mr-4 font-medium text-[13px] transition-colors whitespace-nowrap" @onclick='() => ActiveTab = "Reactions"'>Reactions</button>
+            <button class="@(ActiveTab == "Invitations" ? "text-white border-b-2 border-indigo-500" : "text-gray-400 hover:text-gray-300") pb-2 font-medium text-[13px] transition-colors whitespace-nowrap" @onclick='() => ActiveTab = "Invitations"'>Invitations</button>
+        </div>
+
+        <!-- Notification List -->
+        <div class="flex-1 overflow-y-auto custom-scrollbar">
+            @{
+                var filteredNotifications = StateService.Notifications.Where(n => 
+                    (!ShowUnreadsOnly || !n.IsRead) &&
+                    (ActiveTab == "All" || 
+                    (ActiveTab == "Mentions" && n.Type == "Mention") || 
+                    (ActiveTab == "Threads" && n.Type == "Thread") ||
+                    (ActiveTab == "Reactions" && n.Type == "Reaction") ||
+                    (ActiveTab == "Invitations" && n.Type == "Invitation") ||
+                    (ActiveTab == "All" && n.Type == "DM")) // Display DMs in All
+                ).ToList();
+            }
+
+            @if (!filteredNotifications.Any())
+            {
+                <div class="flex flex-col items-center justify-center h-full p-6 text-center text-gray-500">
+                    <svg class="w-12 h-12 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                    <p class="text-[14px] font-semibold text-gray-300">You're all caught up!</p>
+                    <p class="text-[12px] mt-1">No new activity to show here.</p>
+                </div>
+            }
+            else
+            {
+                @foreach (var note in filteredNotifications)
+                {
+                    var channel = StateService.Channels.FirstOrDefault(c => c.Id == note.ChannelId);
+                    var channelName = channel?.Name ?? "unknown";
+                    var member = StateService.Members.FirstOrDefault(m => m.Username == note.SenderName);
+                    var initials = string.IsNullOrEmpty(note.SenderName) ? "?" : note.SenderName[0].ToString().ToUpper();
+                    
+                    <div @onclick="() => SelectNotification(note)" class="p-4 border-b border-gray-800 hover:bg-[#2C2D30] cursor-pointer transition-colors relative @(SelectedChannelId == note.ChannelId ? "bg-[#2C2D30]" : "") @(!note.IsRead ? "bg-[#222529]" : "")">
+                        @if (!note.IsRead)
+                        {
+                            <div class="absolute top-4 right-4 w-2 h-2 bg-[#007a5a] rounded-full"></div>
+                        }
+                        
+                        <div class="flex items-start gap-3">
+                            <div class="flex-shrink-0 mt-1">
+                                @if (!string.IsNullOrEmpty(member?.AvatarUrl)) {
+                                    <img src="@member.AvatarUrl" class="w-9 h-9 rounded-md object-cover" />
+                                } else {
+                                    <div class="w-9 h-9 rounded-md bg-indigo-600 flex items-center justify-center text-white font-bold text-sm">@initials</div>
+                                }
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="text-[13px] text-gray-300 mb-1 leading-snug">
+                                    <span class="font-bold text-gray-100">@note.SenderName</span>
+                                    @if (note.Type == "Mention")
+                                    {
+                                        <span> mentioned you in </span><span class="font-semibold text-gray-200">#@channelName</span>
+                                    }
+                                    else if (note.Type == "DM")
+                                    {
+                                        <span> sent you a direct message</span>
+                                    }
+                                    else if (note.Type == "Reaction")
+                                    {
+                                        <span> reacted in </span><span class="font-semibold text-gray-200">#@channelName</span>
+                                    }
+                                    else if (note.Type == "Thread")
+                                    {
+                                        <span> replied to a thread in </span><span class="font-semibold text-gray-200">#@channelName</span>
+                                    }
+                                </div>
+                                <div class="bg-[#1A1D21] border border-gray-700 rounded-md p-2 mt-1 text-[13px] text-gray-300 line-clamp-2 leading-snug font-mono">
+                                    @note.Content
+                                </div>
+                                @if (note.Type == "Reaction")
+                                {
+                                    <div class="mt-1.5 flex gap-1">
+                                        <div class="inline-flex items-center justify-center px-1.5 py-0.5 rounded-full bg-gray-700 border border-gray-600 text-[11px]">
+                                            <span class="mr-1">👀</span> 1
+                                        </div>
+                                    </div>
+                                }
+                                <div class="text-[11px] text-gray-500 mt-2">@note.CreatedAt.ToLocalTime().ToString("g")</div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+
+    <!-- Main Pane Placeholder / Chat view -->
+    <div class="flex-1 flex flex-col bg-[#1A1D21] min-w-0 relative">
+        @if (SelectedChannelId.HasValue)
+        {
+            <Flux.Components.Pages.Chat WorkspaceId="WorkspaceId" ChannelId="SelectedChannelId.Value" />
+        }
+        else
+        {
+            <div class="flex-1 flex flex-col items-center justify-center">
+                <div class="text-center max-w-md p-6">
+                    <svg class="w-20 h-20 mx-auto mb-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                    <h3 class="text-xl font-bold text-white mb-2">Activity</h3>
+                    <p class="text-gray-400 text-sm">Select an item from the sidebar to jump to the conversation and view context.</p>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background-color: rgba(255,255,255,0.1); 
+        border-radius: 10px;
+    }
+    .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+        background-color: rgba(255,255,255,0.2);
+    }
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+</style>
+
+@code {
+    [Parameter] public Guid WorkspaceId { get; set; }
+    
+    private string ActiveTab = "All";
+    private bool ShowUnreadsOnly = false;
+    private Guid? SelectedChannelId;
+
+    private void OnStateChangedHandler()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    protected override void OnInitialized()
+    {
+        StateService.OnStateChanged += OnStateChangedHandler;
+    }
+
+    private void SelectNotification(NotificationDto note)
+    {
+        StateService.MarkNotificationAsRead(note.MessageId);
+        SelectedChannelId = note.ChannelId;
+        StateHasChanged();
+    }
+
+    private void MarkAllAsRead()
+    {
+        StateService.MarkAllNotificationsAsRead();
+    }
+
+    public void Dispose()
+    {
+        StateService.OnStateChanged -= OnStateChangedHandler;
+    }
+}

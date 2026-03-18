@@ -3,6 +3,7 @@
 @using Flux.Features.Channels.CreateChannel
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
+@using Microsoft.AspNetCore.SignalR.Client
 @inject WorkspaceStateService WorkspaceState
 @inject NavigationManager Navigation
 @inject FluxClientService FluxService
@@ -10,7 +11,7 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IJSRuntime JS
 @inject IToastService ToastService
-@implements IDisposable
+@implements IAsyncDisposable
 
 <FluentDesignTheme Mode="DesignThemeModes.Dark" CustomColor="#611f69" />
 
@@ -23,18 +24,24 @@
                     <div class="workspace-initial">@(string.IsNullOrEmpty(WorkspaceState.CurrentWorkspaceName) ? "F" : WorkspaceState.CurrentWorkspaceName[0].ToString().ToUpper())</div>
                 </div>
 
-                <div class="activity-item @(IsActive("/workspace") && !IsActive("/dms") && !IsActive("/threads") ? "active" : "")" title="Home" @onclick="NavigateToFirstChannel">
+                <div class="activity-item @(IsActive("/workspace") && !Navigation.Uri.Contains("/dms") && !Navigation.Uri.Contains("/activity") && !IsActive("/threads") ? "active" : "")" title="Home" @onclick="NavigateToFirstChannel">
                     <FluentIcon Value="@(new Icons.Regular.Size24.Home())" Color="@Color.Custom" CustomColor="currentColor" />
                     <span class="activity-label">Home</span>
                 </div>
 
-                <div class="activity-item @(IsActive("/dms") ? "active" : "")" title="Direct Messages" @onclick='() => Navigation.NavigateTo("/dms")'>
+                <div class="activity-item @(Navigation.Uri.Contains("/dms") ? "active" : "")" title="Direct Messages" @onclick='() => Navigation.NavigateTo($"/workspace/{WorkspaceState.CurrentWorkspaceId}/dms")'>
                     <FluentIcon Value="@(new Icons.Regular.Size24.ChatMultiple())" Color="@Color.Custom" CustomColor="currentColor" />
                     <span class="activity-label">DMs</span>
                 </div>
 
-                <div class="activity-item @(IsActive("/activity") ? "active" : "")" title="Activity">
+                <div class="activity-item @(Navigation.Uri.Contains("/activity") ? "active" : "")" title="Activity" style="position: relative;" @onclick='() => Navigation.NavigateTo($"/workspace/{WorkspaceState.CurrentWorkspaceId}/activity")'>
                     <FluentIcon Value="@(new Icons.Regular.Size24.Alert())" Color="@Color.Custom" CustomColor="currentColor" />
+                    @if (WorkspaceState.UnreadNotificationCount > 0)
+                    {
+                        <div style="position: absolute; top: 4px; right: 8px; background-color: #E01E5A; color: white; border-radius: 10px; font-size: 10px; font-weight: bold; padding: 2px 6px; border: 2px solid var(--neutral-layer-1);">
+                            @WorkspaceState.UnreadNotificationCount
+                        </div>
+                    }
                     <span class="activity-label">Activity</span>
                 </div>
                 
@@ -46,12 +53,19 @@
             <FluentSpacer />
             <div class="activity-bottom">
                 <div id="profile-icon" class="profile-item" title="Profile" style="cursor: pointer; padding-bottom: 12px;" @onclick='() => Navigation.NavigateTo("/profile")'>
-                    <FluentPersona Status="PresenceStatus.Available" ImageSize="36px" Initials="ME" />
+                    @{
+                        var currentUser = WorkspaceState.Members.FirstOrDefault(m => m.Id == _currentUserId);
+                        var avatarUrl = currentUser?.AvatarUrl;
+                        var initials = string.IsNullOrEmpty(currentUser?.Username) ? "ME" : currentUser.Username[0].ToString().ToUpper();
+                    }
+                    <FluentPersona Status="PresenceStatus.Available" ImageSize="36px" Image="@avatarUrl" Initials="@initials" />
                 </div>
             </div>
         </div>
 
         <!-- 2. Workspace Sidebar -->
+        @if (!Navigation.Uri.Contains("/dms") && !Navigation.Uri.Contains("/activity"))
+        {
         <div class="workspace-sidebar">
             <div class="sidebar-header">
                 <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center">
@@ -100,13 +114,20 @@
                             {
                                 if (member.Id == _currentUserId) continue;
 
-                                var isOnline = member.Status == "Online";
-                                var statusColor = isOnline ? "#2bac76" : "transparent";
-                                var statusBorder = isOnline ? "transparent" : "#ccc";
-
                                 <FluentNavLink OnClick="@(() => StartDirectMessage(member.Id))" Match="NavLinkMatch.All">
                                     <div style="display: flex; align-items: center; gap: 8px;">
-                                        <div style="width: 10px; height: 10px; border-radius: 50%; background-color: @statusColor; border: 1px solid @statusBorder;"></div>
+                                        @if (member.Status == "Online")
+                                        {
+                                            <div style="width: 10px; height: 10px; border-radius: 50%; background-color: #2bac76;"></div>
+                                        }
+                                        else if (member.Status == "Idle")
+                                        {
+                                            <div style="font-size: 10px; line-height: 1;">🌙</div>
+                                        }
+                                        else
+                                        {
+                                            <div style="width: 10px; height: 10px; border-radius: 50%; background-color: #000; border: 1px solid #555;"></div>
+                                        }
                                         <span>@member.Username</span>
                                     </div>
                                 </FluentNavLink>
@@ -116,6 +137,7 @@
                 </FluentNavMenu>
             </div>
         </div>
+        }
 
         <!-- 3. Main Content -->
         <div class="main-content">
@@ -254,6 +276,7 @@
     private bool _isGroupMenu = false;
     private Guid _selectedChannelId;
     private string? _selectedChannelName;
+    private HubConnection? _hubConnection;
 
     protected override async Task OnInitializedAsync()
     {
@@ -269,6 +292,35 @@
                 _currentUserId = id;
             }
         }
+
+        // Setup global notification listener
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/chatHub"), options =>
+            {
+                options.AccessTokenProvider = async () =>
+                {
+                    try {
+                        var token = await JS.InvokeAsync<string>("sessionStorage.getItem", "authToken");
+                        return string.IsNullOrWhiteSpace(token) ? await JS.InvokeAsync<string>("localStorage.getItem", "authToken") : token;
+                    } catch { return null; }
+                };
+            })
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hubConnection.On<NotificationDto>("ReceiveNotification", async (notification) =>
+        {
+            // Don't notify if we are already viewing the channel
+            if (!Navigation.Uri.Contains(notification.ChannelId.ToString()))
+            {
+                WorkspaceState.AddNotification(notification);
+                
+                string title = notification.Type == "DM" ? "New Direct Message" : "You were mentioned";
+                ToastService.ShowInfo($"{title} from {notification.SenderName}: {notification.Content}");
+            }
+        });
+
+        await _hubConnection.StartAsync();
     }
 
     private void OpenCreateDialog()
@@ -446,5 +498,12 @@
 
     private bool IsActive(string href) => Navigation.ToBaseRelativePath(Navigation.Uri).StartsWith(href.TrimStart('/'));
 
-    public void Dispose() => WorkspaceState.OnStateChanged -= StateHasChanged;
+    public async ValueTask DisposeAsync()
+    {
+        WorkspaceState.OnStateChanged -= StateHasChanged;
+        if (_hubConnection != null)
+        {
+            await _hubConnection.DisposeAsync();
+        }
+    }
 }

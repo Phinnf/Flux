@@ -41,12 +41,17 @@ public class ChatHub : Hub
                     var user = await dbContext.Users.FindAsync(uid);
                     if (user != null)
                     {
-                        user.Status = "Online";
-                        await dbContext.SaveChangesAsync();
+                        // Preserve custom statuses like "Idle" or "Working" if they reconnect.
+                        // Only change to "Online" if they were previously "Offline".
+                        if (user.Status == "Offline" || string.IsNullOrEmpty(user.Status))
+                        {
+                            user.Status = "Online";
+                            await dbContext.SaveChangesAsync();
+                        }
+                        
+                        await Clients.All.SendAsync("UserPresenceChanged", userId, user.Status);
                     }
                 }
-                
-                await Clients.All.SendAsync("UserPresenceChanged", userId, "Online");
             }
         }
         await base.OnConnectedAsync();

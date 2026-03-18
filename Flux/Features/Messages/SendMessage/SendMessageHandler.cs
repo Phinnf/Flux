@@ -66,6 +66,66 @@ public class SendMessageHandler(
         _ = hubContext.Clients.Group(request.ChannelId.ToString())
             .SendAsync("ReceiveMessage", response, CancellationToken.None);
 
+        // 5. Notify for DMs and Mentions
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var scope = context.Database.GetDbConnection().CreateCommand();
+                
+                if (userAndChannelInfo.Channel.Type == ChannelType.Direct)
+                {
+                    // For Direct Messages, notify the other user(s) in the channel
+                    var targetUsers = await context.Channels
+                        .Where(c => c.Id == request.ChannelId)
+                        .SelectMany(c => c.Members)
+                        .Where(m => m.Id != request.UserId)
+                        .Select(m => m.Id)
+                        .ToListAsync(cancellationToken);
+
+                    foreach (var targetId in targetUsers)
+                    {
+                        var notification = new { 
+                            MessageId = message.Id, 
+                            ChannelId = message.ChannelId, 
+                            SenderName = userAndChannelInfo.UserName,
+                            Content = message.Content,
+                            Type = "DM" 
+                        };
+                        await hubContext.Clients.User(targetId.ToString())
+                            .SendAsync("ReceiveNotification", notification, CancellationToken.None);
+                    }
+                }
+                else
+                {
+                    // Check for @mentions in public/private channels
+                    var workspaceUsers = await context.Channels
+                        .Where(c => c.Id == request.ChannelId)
+                        .SelectMany(c => c.Workspace!.Members)
+                        .ToListAsync(cancellationToken);
+
+                    var mentionedUsers = workspaceUsers
+                        .Where(u => u.Id != request.UserId && message.Content.Contains($"@{u.Username}"))
+                        .Select(u => u.Id)
+                        .ToList();
+
+                    foreach (var targetId in mentionedUsers)
+                    {
+                        var notification = new { 
+                            MessageId = message.Id, 
+                            ChannelId = message.ChannelId, 
+                            SenderName = userAndChannelInfo.UserName,
+                            Content = message.Content,
+                            Type = "Mention" 
+                        };
+                        await hubContext.Clients.User(targetId.ToString())
+                            .SendAsync("ReceiveNotification", notification, CancellationToken.None);
+                    }
+                }
+            }
+            catch { /* Ignore notification failures to not block */ }
+        }, CancellationToken.None);
+
         return Result<SendMessageResponse>.CreateSuccess(response);
     }
 }
