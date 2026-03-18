@@ -1,0 +1,91 @@
+@using Flux.Infrastructure.Services
+@inject IToastService ToastService
+@implements IDisposable
+
+<div class="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">
+    @foreach (var toast in _toasts)
+    {
+        <div class="pointer-events-auto min-w-[300px] max-w-md p-4 rounded-xl shadow-2xl border backdrop-blur-md animate-in slide-in-from-right duration-300 @GetToastClasses(toast.Level)">
+            <div class="flex items-start gap-3">
+                <div class="flex-shrink-0 mt-0.5">
+                    @GetToastIcon(toast.Level)
+                </div>
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-white">@toast.Message</p>
+                </div>
+                <button @onclick="() => RemoveToast(toast)" class="flex-shrink-0 text-white/40 hover:text-white transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<ToastMessage> _toasts = new();
+
+    protected override void OnInitialized()
+    {
+        ToastService.OnToastAdded += HandleToastAdded;
+    }
+
+    private async void HandleToastAdded(ToastMessage toast)
+    {
+        await InvokeAsync(() =>
+        {
+            _toasts.Add(toast);
+            StateHasChanged();
+        });
+
+        // Auto remove after 5 seconds
+        _ = Task.Delay(5000).ContinueWith(_ => RemoveToast(toast));
+    }
+
+    private void RemoveToast(ToastMessage toast)
+    {
+        InvokeAsync(() =>
+        {
+            _toasts.Remove(toast);
+            StateHasChanged();
+        });
+    }
+
+    private string GetToastClasses(ToastLevel level) => level switch
+    {
+        ToastLevel.Success => "bg-green-600/90 border-green-500/50",
+        ToastLevel.Error => "bg-red-600/90 border-red-500/50",
+        ToastLevel.Warning => "bg-yellow-600/90 border-yellow-500/50",
+        _ => "bg-blue-600/90 border-blue-500/50"
+    };
+
+    private RenderFragment GetToastIcon(ToastLevel level) => builder =>
+    {
+        builder.OpenElement(0, "svg");
+        builder.AddAttribute(1, "class", "w-5 h-5 text-white");
+        builder.AddAttribute(2, "fill", "none");
+        builder.AddAttribute(3, "stroke", "currentColor");
+        builder.AddAttribute(4, "viewBox", "0 0 24 24");
+        
+        builder.OpenElement(5, "path");
+        builder.AddAttribute(6, "stroke-linecap", "round");
+        builder.AddAttribute(7, "stroke-linejoin", "round");
+        builder.AddAttribute(8, "stroke-width", "2");
+        
+        var d = level switch
+        {
+            ToastLevel.Success => "M5 13l4 4L19 7",
+            ToastLevel.Error => "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z",
+            ToastLevel.Warning => "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z",
+            _ => "M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+        };
+        
+        builder.AddAttribute(9, "d", d);
+        builder.CloseElement();
+        builder.CloseElement();
+    };
+
+    public void Dispose()
+    {
+        ToastService.OnToastAdded -= HandleToastAdded;
+    }
+}

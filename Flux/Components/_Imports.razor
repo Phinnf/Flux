@@ -8,11 +8,23 @@
 @using Microsoft.JSInterop
 @using Flux
 @using Flux.Components
-@using Microsoft.FluentUI.AspNetCore.Components
-@using Microsoft.FluentUI.AspNetCore.Components.Icons
-@using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons
 @using Flux.Infrastructure.Client
+@using Flux.Infrastructure.Services
 @using Flux.Domain.Entities
 @using Flux.Features.Messages.GetMessages
 @using Flux.Features.Messages.SendMessage
 @using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.AspNetCore.Builder
+@using Microsoft.AspNetCore.Hosting
+@using Microsoft.AspNetCore.Http
+@using Microsoft.AspNetCore.Routing
+@using Microsoft.Extensions.Configuration
+@using Microsoft.Extensions.DependencyInjection
+@using Microsoft.Extensions.Hosting
+@using Microsoft.Extensions.Logging
+@using System
+@using System.Collections.Generic
+@using System.IO
+@using System.Linq
+@using System.Threading
+@using System.Threading.Tasks

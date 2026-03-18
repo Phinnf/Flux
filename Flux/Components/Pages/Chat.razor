@@ -21,28 +21,35 @@
     <div class="chat-container">
         <!-- Chat Header -->
         <div class="chat-header">
-            <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center">
-                <div class="channel-info">
-                    <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="4">
-                        <FluentIcon Value="@(new Icons.Regular.Size20.Tag())" Color="Color.Custom" CustomColor="var(--flux-main-text)" />
-                        <FluentLabel Typo="Typography.H6" Style="font-weight: 700; color: var(--flux-main-text);">@(_currentChannelName ?? "channel-name")</FluentLabel>
-                        <FluentIcon Value="@(new Icons.Regular.Size12.ChevronDown())" Color="Color.Custom" CustomColor="var(--flux-main-text)" Style="margin-left: 4px; opacity: 0.6;" />
-                    </FluentStack>
+            <div class="flex items-center gap-3 w-full">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"></path></svg>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-bold text-white leading-none">@(_currentChannelName ?? "channel-name")</h2>
+                        <p class="text-[10px] text-white/30 uppercase tracking-widest mt-1">Active Channel</p>
+                    </div>
                 </div>
-                <FluentSpacer />
-                <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8">
-                    <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Info())" />
-                </FluentStack>
-            </FluentStack>
+                <div class="flex-1"></div>
+                <div class="flex items-center gap-1">
+                    <button class="p-2 text-white/20 hover:text-white transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    </button>
+                    <button class="p-2 text-white/20 hover:text-white transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </button>
+                </div>
+            </div>
         </div>
 
         <!-- Messages Viewport -->
         <div class="messages-viewport" @ref="_messagesViewport">
             @if (_isLoading)
             {
-                <div class="loading-container">
-                    <FluentProgressRing />
-                    <FluentLabel Style="color: var(--flux-main-text);">Loading messages...</FluentLabel>
+                <div class="flex flex-col items-center justify-center h-full gap-4">
+                    <div class="w-10 h-10 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+                    <p class="text-sm font-medium text-white/60">Loading messages...</p>
                 </div>
             }
             else
@@ -59,13 +66,20 @@
                     {
                         @if (_hasMoreMessages)
                         {
-                            <div class="load-more-container">
-                                <FluentButton Appearance="Appearance.Stealth" 
-                                              OnClick="LoadMoreMessages" 
-                                              Loading="_isLoadingMore"
-                                              IconStart="@(new Icons.Regular.Size16.ArrowClockwise())">
+                            <div class="flex justify-center my-4">
+                                <button class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-all disabled:opacity-50" 
+                                        @onclick="LoadMoreMessages" 
+                                        disabled="@_isLoadingMore">
+                                    @if (_isLoadingMore)
+                                    {
+                                        <div class="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                                    }
+                                    else
+                                    {
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                    }
                                     Load older messages
-                                </FluentButton>
+                                </button>
                             </div>
                         }
 
@@ -100,18 +114,18 @@
                                     <div class="message-hover-toolbar" @onclick:stopPropagation>
                                         <div class="toolbar-container">
                                             <button class="toolbar-btn" title="Add Reaction" @onclick="@((e) => OpenEmojiPicker(e, msg.Id))">
-                                                <FluentIcon Value="@(new Icons.Regular.Size16.Emoji())" Color="Color.Custom" CustomColor="var(--flux-main-text)" />
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                             </button>
                                             <button class="toolbar-btn" title="Reply in thread" @onclick="@(() => OpenThread(msg))">
-                                                <FluentIcon Value="@(new Icons.Regular.Size16.ArrowReply())" Color="Color.Custom" CustomColor="var(--flux-main-text)" />
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l5 5m-5-5l5-5" /></svg>
                                             </button>
                                             @if (isSelf)
                                             {
                                                 <button class="toolbar-btn" title="Edit message" @onclick="@(() => HandleQuickAction(msg, "Edit"))">
-                                                    <FluentIcon Value="@(new Icons.Regular.Size16.Edit())" Color="Color.Custom" CustomColor="var(--flux-main-text)" />
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                                                 </button>
-                                                <button class="toolbar-btn delete" title="Delete message" @onclick="@(() => HandleQuickAction(msg, "Delete"))">
-                                                    <FluentIcon Value="@(new Icons.Regular.Size16.Delete())" Color="Color.Error" />
+                                                <button class="toolbar-btn text-red-500 hover:bg-red-500/10" title="Delete message" @onclick="@(() => HandleQuickAction(msg, "Delete"))">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                                 </button>
                                             }
                                         </div>
@@ -119,12 +133,17 @@
 
                                     @if (!isCompact)
                                     {
-                                        <div class="avatar-wrapper" style="cursor: pointer;" @onclick="@(() => OpenProfile(msg.UserId))">
-                                            <FluentPersona Status="PresenceStatus.Available"
-                                                          ImageSize="36px" 
-                                                          Image="@msg.AvatarUrl"
-                                                          Initials="@GetInitials(msg.Username)"
-                                                          Title="@msg.Username" />
+                                        <div class="avatar-wrapper flex-shrink-0 cursor-pointer" @onclick="@(() => OpenProfile(msg.UserId))">
+                                            @if (!string.IsNullOrEmpty(msg.AvatarUrl))
+                                            {
+                                                <img src="@msg.AvatarUrl" class="w-9 h-9 rounded-lg object-cover" alt="@msg.Username" title="@msg.Username" />
+                                            }
+                                            else
+                                            {
+                                                <div class="w-9 h-9 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs" title="@msg.Username">
+                                                    @GetInitials(msg.Username)
+                                                </div>
+                                            }
                                         </div>
                                     }
                                     else
@@ -143,11 +162,13 @@
                                         <div class="message-bubble-wrapper">
                                             @if (_editingMessageId == msg.Id)
                                             {
-                                                <div class="inline-editor">
-                                                    <FluentTextArea @bind-Value="_editMessageContent" Class="inline-editor-textarea" Rows="2" />
-                                                    <div class="inline-editor-actions">
-                                                        <FluentButton Appearance="Appearance.Stealth" OnClick="CancelEdit">Cancel</FluentButton>
-                                                        <FluentButton Appearance="Appearance.Accent" OnClick="SaveEditMessage" Style="background-color: #007a5a;">Save</FluentButton>
+                                                <div class="inline-editor flex flex-col gap-2 w-full max-w-[600px]">
+                                                    <textarea @bind="_editMessageContent" 
+                                                              class="w-full bg-white/5 border border-blue-500 rounded-lg p-3 text-white focus:outline-none focus:ring-1 focus:ring-blue-500" 
+                                                              rows="2"></textarea>
+                                                    <div class="inline-editor-actions flex justify-end gap-2">
+                                                        <button class="px-4 py-1.5 text-sm font-medium text-white/60 hover:text-white transition-colors" @onclick="CancelEdit">Cancel</button>
+                                                        <button class="px-4 py-1.5 text-sm font-medium text-white bg-[#007a5a] hover:bg-[#007a5a]/90 rounded-md transition-colors" @onclick="SaveEditMessage">Save</button>
                                                     </div>
                                                 </div>
                                             }
@@ -268,8 +289,10 @@
                                             @if (msg.ReplyCount > 0)
                                             {
                                                 <div class="thread-replies-indicator" @onclick:stopPropagation @onclick="@(() => OpenThread(msg))">
-                                                    <div class="reply-avatars">
-                                                        <FluentPersona ImageSize="20px" Initials="@GetInitials(msg.Username)" />
+                                                    <div class="reply-avatars flex -space-x-2">
+                                                        <div class="w-5 h-5 rounded-md bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-[8px] border border-gray-800">
+                                                            @GetInitials(msg.Username)
+                                                        </div>
                                                     </div>
                                                     <span class="reply-count">@msg.ReplyCount @(msg.ReplyCount > 1 ? "replies" : "reply")</span>
                                                     <span class="view-thread-text">View thread</span>
@@ -294,8 +317,8 @@
                             <div class="recording-dot"></div>
                             <span>Recording Audio... @_audioDurationString</span>
                         </div>
-                        <FluentButton Appearance="Appearance.Stealth" OnClick="CancelAudioRecording" Style="color: var(--flux-main-text); margin-right: 8px;">Cancel</FluentButton>
-                        <FluentButton Appearance="Appearance.Accent" OnClick="StopAudioRecording" Style="background-color: #ff0055;">Stop & Send</FluentButton>
+                        <button class="px-3 py-1 text-sm text-white/60 hover:text-white transition-colors mr-2" @onclick="CancelAudioRecording">Cancel</button>
+                        <button class="px-4 py-1.5 text-sm bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors font-bold" @onclick="StopAudioRecording">Stop & Send</button>
                     </div>
                 }
                 <!-- Mentions Dropdown -->
@@ -306,50 +329,68 @@
                         {
                             <div class="mention-item @(member.Id == _selectedMentionId ? "selected" : "")" 
                                  @onclick="() => InsertMention(member.Username)">
-                                <FluentPersona Status="PresenceStatus.Available" 
-                                              ImageSize="24px" 
-                                              Image="@member.AvatarUrl"
-                                              Initials="@GetInitials(member.Username)" />
-                                <span style="margin-left: 8px;">@member.Username</span>
+                                @if (!string.IsNullOrEmpty(member.AvatarUrl))
+                                {
+                                    <img src="@member.AvatarUrl" class="w-6 h-6 rounded-md object-cover" alt="@member.Username" />
+                                }
+                                else
+                                {
+                                    <div class="w-6 h-6 rounded-md bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-[10px]">
+                                        @GetInitials(member.Username)
+                                    </div>
+                                }
+                                <span class="ml-2 text-sm">@member.Username</span>
                             </div>
                         }
                     </div>
                 }
 
-                <FluentTextArea @ref="_textAreaRef"
-                                Value="@_newMessageContent"
-                                ValueChanged="@(EventCallback.Factory.Create<string>(this, OnChatInputChanged))"
-                                ValueExpression="@(() => _newMessageContent)"
-                                Immediate="true"
-                                Placeholder="@($"Message #{(_currentChannelName?.StartsWith("#") == true ? _currentChannelName.Substring(1) : _currentChannelName)}")"
-                                title="Press Enter to send. Press Ctrl+Enter for a new line."
-                                Class="chat-textarea-redesigned"
-                                Rows="1" />
-                <div class="bottom-toolbar">
-                    <div class="toolbar-left">
+                <div class="flex items-end bg-transparent gap-2 p-1">
+                    <textarea @ref="_textAreaRef"
+                              @bind="_newMessageContent"
+                              @bind:event="oninput"
+                              @onkeydown="HandleKeyDown"
+                              placeholder="@($"Message #{(_currentChannelName?.StartsWith("#") == true ? _currentChannelName.Substring(1) : _currentChannelName)}")"
+                              title="Press Enter to send. Press Shift+Enter for a new line."
+                              class="flex-1 bg-transparent border-none focus:ring-0 text-white p-3 min-h-[44px] max-h-[200px] resize-none overflow-y-auto"
+                              rows="1"></textarea>
+                    
+                    <button class="w-10 h-10 flex items-center justify-center rounded-lg @(string.IsNullOrWhiteSpace(_newMessageContent) ? "text-white/20" : "text-white bg-green-600 hover:bg-green-700") transition-all shrink-0 mb-1.5 mr-1"
+                            @onclick="SendMessage"
+                            disabled="@(string.IsNullOrWhiteSpace(_newMessageContent))"
+                            title="Send message (Enter)">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                    </button>
+                </div>
+
+                <div class="bottom-toolbar flex justify-between items-center px-2 py-1 border-t border-white/5">
+                    <div class="toolbar-left flex items-center gap-1">
                         <InputFile id="chat-file-upload" OnChange="HandleFileUpload" accept="image/*" style="display: none;" />
-                        <label for="chat-file-upload" style="margin: 0; display: flex;">
-                            <span class="add-button" title="Upload image" style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background-color: var(--flux-primary); color: white; cursor: pointer;">
-                                <FluentIcon Value="@(new Icons.Regular.Size20.Add())" Color="Color.Custom" CustomColor="white" />
+                        <label for="chat-file-upload" class="m-0 flex cursor-pointer">
+                            <span class="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
                             </span>
                         </label>
-                        <FluentDivider Vertical="true" style="height: 20px; margin: 0 4px;" />
-                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Video())" OnClick="OpenVideoRecorder" Title="Record video" />
-                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Mic())" OnClick="StartAudioRecording" Title="Record audio" />
-                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Emoji())" OnClick="@((e) => OpenEmojiPicker(e, default))" Title="Add emoji" />
-                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Mention())" OnClick="TriggerMention" Title="Mention someone" />
-                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.TextFont())" OnClick="ToggleFormatting" Title="Formatting" />
-                        <FluentDivider Vertical="true" style="height: 20px; margin: 0 4px;" />
-                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.ChatWarning())" OnClick="FlagAsImportant" Title="Important" />
-                    </div>
-                    <div class="toolbar-right">
-                        <FluentButton Appearance="@(string.IsNullOrWhiteSpace(_newMessageContent) ? Appearance.Stealth : Appearance.Accent)"
-                                      IconEnd="@(new Icons.Regular.Size16.Send())"
-                                      OnClick="SendMessage"
-                                      Disabled="@(string.IsNullOrWhiteSpace(_newMessageContent))"
-                                      Title="Send message (Enter)" />
-                        <FluentDivider Vertical="true" style="height: 20px;" />
-                        <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size12.ChevronDown())" />
+                        <div class="w-px h-5 bg-white/10 mx-1"></div>
+                        <button class="p-1.5 text-white/40 hover:text-white transition-colors" @onclick="OpenVideoRecorder" title="Record video">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                        </button>
+                        <button class="p-1.5 text-white/40 hover:text-white transition-colors" @onclick="StartAudioRecording" title="Record audio">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                        </button>
+                        <button class="p-1.5 text-white/40 hover:text-white transition-colors" @onclick="@((e) => OpenEmojiPicker(e, default))" title="Add emoji">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </button>
+                        <button class="p-1.5 text-white/40 hover:text-white transition-colors" @onclick="TriggerMention" title="Mention someone">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.206" /></svg>
+                        </button>
+                        <button class="p-1.5 text-white/40 hover:text-white transition-colors" @onclick="ToggleFormatting" title="Formatting">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" /></svg>
+                        </button>
+                        <div class="w-px h-5 bg-white/10 mx-1"></div>
+                        <button class="p-1.5 text-white/40 hover:text-white transition-colors" @onclick="FlagAsImportant" title="Important">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -365,16 +406,24 @@
                     <h3 style="margin: 0; color: var(--flux-main-text); font-size: 1.1rem; font-weight: 700;">Thread</h3>
                     <span style="font-size: 0.8rem; color: rgba(204, 220, 219, 0.6);">#@_currentChannelName</span>
                 </div>
-                <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.Dismiss())" OnClick="CloseThread" />
+                <button class="p-2 text-white/40 hover:text-white transition-colors" @onclick="CloseThread">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
             </div>
 
             <div class="thread-viewport" @ref="_threadViewport">
                 <!-- Parent Message -->
                 <div class="thread-parent-message">
-                    <FluentPersona Status="PresenceStatus.Available"
-                                  ImageSize="36px" 
-                                  Image="@_activeThreadParent.AvatarUrl"
-                                  Initials="@GetInitials(_activeThreadParent.Username)" />
+                    @if (!string.IsNullOrEmpty(_activeThreadParent.AvatarUrl))
+                    {
+                        <img src="@_activeThreadParent.AvatarUrl" class="w-9 h-9 rounded-lg object-cover flex-shrink-0" alt="@_activeThreadParent.Username" />
+                    }
+                    else
+                    {
+                        <div class="w-9 h-9 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs flex-shrink-0">
+                            @GetInitials(_activeThreadParent.Username)
+                        </div>
+                    }
                     <div class="message-content">
                         <div class="message-meta">
                             <span class="username">@_activeThreadParent.Username</span>
@@ -392,10 +441,16 @@
                 @foreach (var msg in _messages.Where(m => m.ParentMessageId == _activeThreadParent.Id).OrderBy(m => m.CreatedAt).ToList())
                 {
                     <div class="message-group">
-                        <FluentPersona Status="PresenceStatus.Available"
-                                      ImageSize="36px" 
-                                      Image="@msg.AvatarUrl"
-                                      Initials="@GetInitials(msg.Username)" />
+                        @if (!string.IsNullOrEmpty(msg.AvatarUrl))
+                        {
+                            <img src="@msg.AvatarUrl" class="w-9 h-9 rounded-lg object-cover flex-shrink-0" alt="@msg.Username" />
+                        }
+                        else
+                        {
+                            <div class="w-9 h-9 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs flex-shrink-0">
+                                @GetInitials(msg.Username)
+                            </div>
+                        }
                         <div class="message-content">
                             <div class="message-meta">
                                 <span class="username">@msg.Username</span>
@@ -408,26 +463,33 @@
             </div>
 
             <!-- Thread Input -->
-            <div class="thread-input-container">
-                <div class="chat-input-box">
-                    <FluentTextArea @ref="_threadTextAreaRef"
-                                    Value="@_newThreadMessageContent"
-                                    ValueChanged="@(EventCallback.Factory.Create<string>(this, OnThreadInputChanged))"
-                                    ValueExpression="@(() => _newThreadMessageContent)"
-                                    Immediate="true"
-                                    Placeholder="Reply..."
-                                    Class="chat-textarea-redesigned"
-                                    Rows="1" />
-                    <div class="bottom-toolbar">
-                        <div class="toolbar-left">
-                            <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Add())" />
-                            <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size20.Emoji())" />
-                        </div>
-                        <div class="toolbar-right">
-                            <FluentButton Appearance="@(string.IsNullOrWhiteSpace(_newThreadMessageContent) ? Appearance.Stealth : Appearance.Accent)"
-                                          IconEnd="@(new Icons.Regular.Size16.Send())"
-                                          OnClick="SendThreadMessage"
-                                          Disabled="@(string.IsNullOrWhiteSpace(_newThreadMessageContent))" />
+            <div class="thread-input-container p-4">
+                <div class="chat-input-box bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+                    <div class="flex items-end bg-transparent gap-2 p-1">
+                        <textarea @ref="_threadTextAreaRef"
+                                  @bind="_newThreadMessageContent"
+                                  @bind:event="oninput"
+                                  @onkeydown="HandleThreadKeyDown"
+                                  placeholder="Reply..."
+                                  class="flex-1 bg-transparent border-none focus:ring-0 text-white p-3 min-h-[44px] max-h-[150px] resize-none overflow-y-auto"
+                                  rows="1"></textarea>
+                        
+                        <button class="w-9 h-9 flex items-center justify-center rounded-lg @(string.IsNullOrWhiteSpace(_newThreadMessageContent) ? "text-white/20" : "text-white bg-green-600 hover:bg-green-700") transition-all shrink-0 mb-1.5 mr-1"
+                                @onclick="SendThreadMessage"
+                                disabled="@(string.IsNullOrWhiteSpace(_newThreadMessageContent))"
+                                title="Send message (Enter)">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                        </button>
+                    </div>
+
+                    <div class="bottom-toolbar flex justify-between items-center px-2 py-1 border-t border-white/5">
+                        <div class="toolbar-left flex items-center gap-1">
+                            <button class="p-1.5 text-white/40 hover:text-white transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                            </button>
+                            <button class="p-1.5 text-white/40 hover:text-white transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -443,7 +505,9 @@
                 <div style="display: flex; flex-direction: column;">
                     <h3 style="margin: 0; color: var(--flux-main-text); font-size: 1.1rem; font-weight: 700;">Profile</h3>
                 </div>
-                <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.Dismiss())" OnClick="CloseProfile" />
+                <button class="p-2 text-white/40 hover:text-white transition-colors" @onclick="CloseProfile">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
             </div>
 
             <div class="profile-body">
@@ -467,7 +531,7 @@
                     @if (_activeProfile.Id != CurrentUserId)
                     {
                         <div class="profile-actions">
-                            <FluentButton Appearance="Appearance.Outline" Style="width: 100%;">Message</FluentButton>
+                            <button class="w-full py-2 bg-transparent border border-white/20 hover:bg-white/5 text-white rounded-md transition-colors">Message</button>
                         </div>
                     }
                 </div>
@@ -490,86 +554,106 @@
 {
     <div class="menu-overlay" @onclick="CloseMessageMenu" @oncontextmenu:preventDefault="true"></div>
     <div class="message-context-menu" style="left: @(_menuX)px; top: @(_menuY)px;">
-        <FluentStack Orientation="Orientation.Vertical" VerticalGap="0">
-            <FluentMenuItem Icon="@(new Icons.Regular.Size16.ArrowReply())" OnClick="@(() => HandleAction("Reply"))">Reply in Thread</FluentMenuItem>
-            <FluentMenuItem Icon="@(new Icons.Regular.Size16.Edit())" OnClick="@(() => HandleAction("Edit"))">Edit</FluentMenuItem>
-            <FluentDivider />
-            <FluentMenuItem Icon="@(new Icons.Regular.Size16.Delete())" OnClick="@(() => HandleAction("Delete"))">
-                <FluentLabel Color="Color.Error">Delete</FluentLabel>
-            </FluentMenuItem>
-        </FluentStack>
+        <div class="flex flex-col py-1">
+            <button class="flex items-center gap-2 px-4 py-2 hover:bg-white/5 text-sm text-white text-left" @onclick="@(() => HandleAction("Reply"))">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l5 5m-5-5l5-5" /></svg>
+                Reply in Thread
+            </button>
+            <button class="flex items-center gap-2 px-4 py-2 hover:bg-white/5 text-sm text-white text-left" @onclick="@(() => HandleAction("Edit"))">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                Edit
+            </button>
+            <div class="h-px bg-white/10 my-1"></div>
+            <button class="flex items-center gap-2 px-4 py-2 hover:bg-red-500/10 text-sm text-red-500 text-left" @onclick="@(() => HandleAction("Delete"))">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                Delete
+            </button>
+        </div>
     </div>
 }
 
 <!-- Delete Confirm Dialog -->
-<FluentDialog Hidden="!_showDeleteDialog" Modal="true" TrapFocus="true" @onclick:stopPropagation>
-    <div class="glass-dialog" style="padding: 24px; width: 400px; max-width: 90vw; background: var(--flux-glass-heavy); backdrop-filter: blur(25px); border-radius: 12px; border: 1px solid var(--flux-glass-white);">
-        <h3 style="color: var(--flux-main-text); margin-top: 0; margin-bottom: 8px; font-weight: 700;">Delete Message</h3>
-        <p style="color: var(--flux-main-text); opacity: 0.8; margin-bottom: 24px; line-height: 1.5;">Are you sure you want to delete this message? This cannot be undone.</p>
-        <div style="display: flex; justify-content: flex-end; gap: 12px;">
-            <FluentButton Appearance="Appearance.Stealth" OnClick="() => _showDeleteDialog = false" Style="color: var(--flux-main-text);">Cancel</FluentButton>
-            <FluentButton Appearance="Appearance.Accent" Style="background-color: #e01e5a; color: white;" OnClick="ExecuteDeleteMessage">Delete</FluentButton>
+@if (_showDeleteDialog)
+{
+    <div class="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" @onclick="() => _showDeleteDialog = false">
+        <div class="glass-dialog w-full max-w-md bg-[#1a1a1d] border border-white/10 rounded-2xl p-6 shadow-2xl animate-in fade-in zoom-in duration-200" @onclick:stopPropagation>
+            <h3 class="text-xl font-bold text-white mb-2">Delete Message</h3>
+            <p class="text-white/60 mb-8 leading-relaxed">Are you sure you want to delete this message? This cannot be undone.</p>
+            <div class="flex justify-end gap-3">
+                <button class="px-4 py-2 text-sm font-medium text-white/60 hover:text-white transition-colors" @onclick="() => _showDeleteDialog = false">Cancel</button>
+                <button class="px-6 py-2 text-sm font-bold bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors shadow-lg shadow-red-600/20" @onclick="ExecuteDeleteMessage">Delete</button>
+            </div>
         </div>
     </div>
-</FluentDialog>
+}
 
 <!-- Video Recorder Dialog -->
 @if (_showVideoRecorder)
 {
     <div class="video-recorder-overlay" @onclick="CloseVideoRecorder">
         <div class="video-recorder-dialog" @onclick:stopPropagation>
-            <div class="recorder-header">
-                <h3 style="color: white">Record video clip</h3>
-                <FluentButton Appearance="Appearance.Stealth" IconEnd="@(new Icons.Regular.Size16.Dismiss())" OnClick="CloseVideoRecorder" />
+            <div class="recorder-header flex justify-between items-center p-4 border-b border-white/5">
+                <h3 class="text-white font-bold">Record video clip</h3>
+                <button class="p-2 text-white/40 hover:text-white transition-colors" @onclick="CloseVideoRecorder">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
             </div>
             
-            <div class="recorder-body">
-                <video id="videoPreview" autoplay playsinline class="video-preview"></video>
+            <div class="recorder-body relative bg-black aspect-video flex items-center justify-center">
+                <video id="videoPreview" autoplay playsinline class="w-full h-full object-cover"></video>
                 @if (_isCameraError)
                 {
-                    <div class="camera-error-overlay">
-                        <FluentIcon Value="@(new Icons.Regular.Size32.Warning())" Color="Color.Custom" CustomColor="#ffb300" />
-                        <h4>Can't access camera</h4>
-                        <p>Check your browser settings to make sure Flux has permission to access your camera, and try again.</p>
+                    <div class="camera-error-overlay absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-black/90">
+                        <svg class="w-12 h-12 text-yellow-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                        <h4 class="text-lg font-bold text-white mb-2">Can't access camera</h4>
+                        <p class="text-white/60 text-sm max-w-xs">Check your browser settings to make sure Flux has permission to access your camera, and try again.</p>
                     </div>
                 }
             </div>
             
-            <div class="recorder-footer">
+            <div class="recorder-footer flex items-center gap-4 p-4 bg-[#1a1a1d] border-t border-white/5">
                 @if (_recordedVideoUrl != null)
                 {
-                    <FluentButton Appearance="Appearance.Stealth" IconStart="@(new Icons.Regular.Size20.ArrowDownload())" OnClick="DownloadVideo">Download Video</FluentButton>
-                    <FluentSpacer />
-                    <FluentButton Appearance="Appearance.Stealth" OnClick="RetakeVideo" Disabled="@_isUploading">Retake</FluentButton>
-                    <FluentButton Appearance="Appearance.Accent" OnClick="UploadVideo" Loading="@_isUploading">Upload Video</FluentButton>
+                    <button class="flex items-center gap-2 px-3 py-1.5 text-sm text-white/60 hover:text-white transition-colors" @onclick="DownloadVideo">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        Download Video
+                    </button>
+                    <div class="flex-1"></div>
+                    <button class="px-4 py-2 text-sm font-medium text-white/60 hover:text-white transition-colors" @onclick="RetakeVideo" disabled="@_isUploading">Retake</button>
+                    <button class="px-6 py-2 text-sm font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2" @onclick="UploadVideo" disabled="@_isUploading">
+                        @if (_isUploading) { <div class="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div> }
+                        Upload Video
+                    </button>
                 }
                 else
                 {
-                    <div class="device-controls">
-                        <FluentButton Appearance="@(_currentCaptureMode == "camera" ? Appearance.Neutral : Appearance.Stealth)" IconEnd="@(new Icons.Regular.Size20.Video())" OnClick='() => SwitchCaptureMode("camera")' Title="Camera" />
-                        <FluentButton Appearance="@(_currentCaptureMode == "screen" ? Appearance.Neutral : Appearance.Stealth)" IconEnd="@(new Icons.Regular.Size20.Desktop())" OnClick='() => SwitchCaptureMode("screen")' Title="Screen Share" />
-                        <FluentButton Appearance="@(_isMicEnabled ? Appearance.Stealth : Appearance.Neutral)" 
-                                      IconEnd="@(_isMicEnabled ? new Icons.Regular.Size20.Mic() : new Icons.Regular.Size20.MicOff())" 
-                                      OnClick="ToggleMic" Title="Toggle Microphone" />
+                    <div class="device-controls flex gap-2">
+                        <button class="p-2 rounded-lg @(_currentCaptureMode == "camera" ? "bg-white/10 text-white" : "text-white/40 hover:text-white hover:bg-white/5")" @onclick='() => SwitchCaptureMode("camera")' title="Camera">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                        </button>
+                        <button class="p-2 rounded-lg @(_currentCaptureMode == "screen" ? "bg-white/10 text-white" : "text-white/40 hover:text-white hover:bg-white/5")" @onclick='() => SwitchCaptureMode("screen")' title="Screen Share">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                        </button>
+                        <button class="p-2 rounded-lg @(_isMicEnabled ? "text-white/40 hover:text-white" : "bg-red-500/20 text-red-500")" @onclick="ToggleMic" title="Toggle Microphone">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="@(_isMicEnabled ? "M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" : "M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z")" /></svg>
+                        </button>
                     </div>
-                    <FluentSpacer />
+                    <div class="flex-1"></div>
                     @if (_isCountingDown)
                     {
-                        <FluentButton Appearance="Appearance.Accent" Style="background-color: #e01e5a; opacity: 0.8;" Disabled="true">
-                            Starting in @_countdownSeconds...
-                        </FluentButton>
+                        <div class="px-6 py-2 text-sm font-bold bg-red-600/50 text-white rounded-lg">Starting in @_countdownSeconds...</div>
                     }
                     else if (_isRecording)
                     {
-                        <span style="color: #ff0055; font-family: monospace; font-weight: bold; margin-right: 15px; font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">
-                            <span class="status-dot" style="background-color: #ff0055; box-shadow: 0 0 10px #ff0055;"></span>
-                            @_recordingDurationString
-                        </span>
-                        <FluentButton Appearance="Appearance.Stealth" OnClick="StopRecording" Style="color: white; border: 1px solid rgba(255,255,255,0.2);">Stop Recording</FluentButton>
+                        <div class="flex items-center gap-3 mr-4">
+                            <div class="w-3 h-3 bg-red-600 rounded-full animate-pulse shadow-[0_0_10px_rgba(220,38,38,0.5)]"></div>
+                            <span class="text-white font-mono font-bold text-lg">@_recordingDurationString</span>
+                        </div>
+                        <button class="px-6 py-2 text-sm font-bold bg-white text-black rounded-lg hover:bg-white/90 transition-colors" @onclick="StopRecording">Stop Recording</button>
                     }
                     else
                     {
-                        <FluentButton Appearance="Appearance.Accent" OnClick="StartRecording" Style="background-color: #e01e5a;" Disabled="@_isCameraError">Record</FluentButton>
+                        <button class="px-8 py-2 text-sm font-bold bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all shadow-lg shadow-red-600/20" @onclick="StartRecording" disabled="@_isCameraError">Record</button>
                     }
                 }
             </div>
@@ -590,7 +674,7 @@
     private bool _hasMoreMessages = true;
     private ElementReference _messagesViewport;
     private Microsoft.AspNetCore.Components.Web.Virtualization.Virtualize<MessageDto>? _messageVirtualizeRef;
-    private FluentTextArea _textAreaRef = default!;
+    private ElementReference _textAreaRef;
     private DotNetObjectReference<Chat>? _objRef;
     private bool _shouldScrollToBottom = false;
     private HubConnection? _hubConnection;
@@ -599,7 +683,7 @@
     private MessageDto? _activeThreadParent;
     private string _newThreadMessageContent = "";
     private ElementReference _threadViewport;
-    private FluentTextArea _threadTextAreaRef = default!;
+    private ElementReference _threadTextAreaRef;
 
     // Profile specific state
     private MemberDto? _activeProfile;
@@ -1264,7 +1348,6 @@
         if (firstRender)
         {
             _objRef = DotNetObjectReference.Create(this);
-            await JS.InvokeVoidAsync("registerEnterKeyHandler", _textAreaRef.Element, _objRef);
         }
 
         if (_shouldScrollToBottom)
@@ -1283,6 +1366,22 @@
     public async Task SendMessageFromJS()
     {
         await SendMessage();
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            await SendMessage();
+        }
+    }
+
+    private async Task HandleThreadKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            await SendThreadMessage();
+        }
     }
 
     private async Task SendMessage()

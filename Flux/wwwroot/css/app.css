@@ -1,37 +1,21 @@
-/* Flux Global Styles & Theme Variables - Glassmorphism Edition */
+/* Flux Global Styles & Theme Variables - Modern Dark Glass Edition */
 :root {
-    --flux-primary: #3E9E60; /* More muted green, less neon */
-    --flux-primary-hover: #348a52;
+    /* Primary Brand Colors */
+    --flux-primary: #3b82f6; 
+    --flux-primary-hover: #2563eb;
     
     /* Solid Colors - Dark Mode */
-    --flux-main-bg: #135E4B;
-    --flux-main-text: #BFCFCF; /* Slightly muted white/grey, less glaring */
-    --flux-secondary: #A1D8B5;
+    --flux-main-bg: #0b0c10;
+    --flux-main-text: #e2e8f0; 
+    --flux-secondary: #6366f1;
 
-    /* Glassmorphism Colors - Dark Mode */
-    --flux-glass-heavy: rgba(19, 94, 75, 0.9); 
-    --flux-glass-medium: rgba(19, 94, 75, 0.7); 
-    --flux-glass-light: rgba(19, 94, 75, 0.4);  
-    --flux-glass-white: rgba(255, 255, 255, 0.05);
+    /* Glassmorphism Colors */
+    --flux-glass-heavy: rgba(15, 17, 21, 0.98); 
+    --flux-glass-medium: rgba(22, 24, 29, 0.9); 
+    --flux-glass-light: rgba(11, 12, 16, 0.4);  
+    --flux-glass-white: rgba(255, 255, 255, 0.03);
 
-    --flux-border: rgba(204, 220, 219, 0.1); 
-
-    /* Fluent UI Global Overrides */
-    --neutral-foreground-rest: #BFCFCF;
-    --neutral-foreground-hint: rgba(204, 220, 219, 0.5);
-    --accent-fill-rest: #3E9E60;
-    --neutral-fill-rest: rgba(204, 220, 219, 0.05);
-    --neutral-stroke-rest: rgba(204, 220, 219, 0.1);
-}
-
-/* Force global text colors for Fluent components */
-.fluent-nav-text, 
-.fluent-typography,
-fluent-label,
-span, 
-div,
-h1, h2, h3, h4, h5, h6, p, a {
-    color: inherit;
+    --flux-border: rgba(255, 255, 255, 0.08); 
 }
 
 body {
@@ -40,226 +24,342 @@ body {
     font-family: "Inter", "Segoe UI", -apple-system, sans-serif;
     overflow: hidden;
     background-color: var(--flux-main-bg);
-    /* Chill Dark Background Image */
-    background-image: url('https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=2574&auto=format&fit=crop'); 
+    background-image: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop'); 
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
     color: var(--flux-main-text);
 }
 
-/* Layout Framework */
-.main-container {
-    height: 100vh;
-    width: 100vw;
-    display: flex;
-}
+.main-container { height: 100vh; width: 100vw; display: flex; }
+.slack-layout { display: flex; flex: 1; width: 100%; overflow: hidden; background: transparent; }
 
-.slack-layout {
-    display: flex;
-    flex: 1;
-    width: 100%;
-    overflow: hidden;
-    background: transparent;
-}
-
-/* 1. Activity Bar - Glass */
+/* --- 1. Activity Bar (Redesigned) --- */
 .activity-bar {
-    width: 68px;
-    background-color: var(--flux-glass-heavy);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    width: 72px;
+    background-color: rgba(10, 11, 15, 0.95);
+    backdrop-filter: blur(20px);
     border-right: 1px solid var(--flux-border);
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 12px 0;
+    padding: 20px 0;
     z-index: 100;
 }
 
-.activity-top {
+.workspace-brand-wrapper {
+    width: 44px;
+    height: 44px;
+    background: var(--flux-primary);
+    border-radius: 12px;
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 16px;
+    justify-content: center;
+    margin-bottom: 24px;
+    cursor: pointer;
+    box-shadow: 0 8px 16px -4px rgba(59, 130, 246, 0.4);
 }
 
 .activity-item {
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     border-radius: 12px;
-    transition: all 0.2s ease;
+    margin-bottom: 8px;
     color: var(--flux-main-text);
-    opacity: 0.7;
+    opacity: 0.4;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .activity-item:hover {
-    background-color: var(--flux-glass-white);
     opacity: 1;
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .activity-item.active {
-    background-color: var(--flux-primary);
-    color: white;
     opacity: 1;
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--flux-primary);
 }
 
-.activity-label {
-    display: none;
+.notification-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: #ef4444;
+    color: white;
+    font-size: 10px;
+    font-weight: 900;
+    padding: 2px 5px;
+    border-radius: 10px;
+    border: 2px solid #0a0b0f;
 }
 
-.workspace-icon-wrapper {
-    width: 48px;
-    height: 48px;
-    background: var(--flux-primary);
-    border-radius: 14px;
+.profile-avatar-wrapper {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
-    margin-bottom: 12px;
-    transition: all 0.2s ease;
-    border: 1px solid var(--flux-border);
-    box-shadow: 0 4px 12px rgba(76, 181, 114, 0.3);
-}
-
-.workspace-icon-wrapper:hover {
-    border-radius: 10px;
-    transform: translateY(-2px);
-}
-
-.workspace-initial {
-    color: white;
     font-weight: 800;
-    font-size: 1.4rem;
+    position: relative;
+    cursor: pointer;
+    overflow: visible;
 }
 
-/* 2. Sidebar - Glass */
+.status-dot {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 12px;
+    height: 12px;
+    background: #22c55e;
+    border: 3px solid #0a0b0f;
+    border-radius: 50%;
+}
+
+/* --- 2. Sidebar (Redesigned) --- */
 .workspace-sidebar {
     width: 260px;
     background-color: var(--flux-glass-medium);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(30px);
     border-right: 1px solid var(--flux-border);
     display: flex;
     flex-direction: column;
 }
 
 .sidebar-header {
-    padding: 0 16px;
-    height: 60px;
+    padding: 0 20px;
+    height: 64px;
     border-bottom: 1px solid var(--flux-border);
     display: flex;
     align-items: center;
 }
 
-.workspace-name fluent-label {
-    font-weight: 800 !important;
-    font-size: 16px !important;
-    color: var(--flux-main-text) !important;
+.workspace-name-display {
+    font-size: 16px;
+    color: white;
+    max-width: 160px;
 }
 
-.sidebar-scrollable {
-    flex: 1;
-    overflow-y: auto;
-    padding: 12px 0;
-}
-
-/* Sidebar Nav Items overriding Fluent UI */
-.workspace-sidebar fluent-icon {
-    fill: var(--flux-main-text) !important;
-    color: var(--flux-main-text) !important;
-    opacity: 0.7;
-}
-
-.workspace-sidebar fluent-nav-link[active] fluent-icon {
-    opacity: 1;
-    fill: white !important;
-    color: white !important;
-}
-
-.workspace-sidebar fluent-nav-link {
-    margin: 2px 12px;
+.invite-btn {
+    padding: 6px;
     border-radius: 8px;
-    --neutral-fill-stealth-rest: transparent;
-    --neutral-fill-stealth-hover: var(--flux-glass-white);
-    --neutral-fill-stealth-active: var(--flux-primary);
-    color: var(--flux-main-text) !important;
-    font-weight: 500;
-    height: 36px !important;
-    transition: all 0.2s ease;
+    color: rgba(255, 255, 255, 0.3);
+    transition: all 0.2s;
 }
 
-.workspace-sidebar fluent-nav-link:hover {
-    font-weight: 600;
+.invite-btn:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.05);
 }
 
-.workspace-sidebar fluent-nav-link[active] {
-    background: var(--flux-primary) !important;
-    color: white !important;
-    font-weight: 600;
-    box-shadow: 0 4px 10px rgba(76, 181, 114, 0.2);
-}
+.sidebar-scrollable { flex: 1; overflow-y: auto; padding: 16px 0; }
 
-.workspace-sidebar fluent-nav-group::part(expand-collapse-button) {
-    color: var(--flux-main-text) !important;
-    opacity: 0.7;
-}
-
-.workspace-sidebar fluent-nav-group fluent-icon {
-    opacity: 0.7;
-}
-
-/* 3. Main Content Area - Glass/Transparent */
-.main-content {
-    flex: 1;
+.section-title {
+    padding: 0 20px;
+    margin-bottom: 8px;
     display: flex;
-    flex-direction: column;
-    background-color: var(--flux-glass-light); /* Let the body chill image show through clearly */
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    align-items: center;
+    gap: 8px;
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
-/* Scrollbar Styling */
-::-webkit-scrollbar {
-    width: 8px;
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 20px;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border-radius: 0;
 }
 
-::-webkit-scrollbar-track {
+.nav-link:hover {
+    background: rgba(255, 255, 255, 0.03);
+    color: white;
+}
+
+.nav-link.active {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--flux-primary);
+    font-weight: 700;
+    border-right: 2px solid var(--flux-primary);
+}
+
+.add-channel-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 20px;
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 13px;
+    font-style: italic;
+    width: 100%;
+}
+
+.add-channel-btn:hover { color: white; }
+
+.status-indicator { width: 8px; height: 8px; border-radius: 50%; }
+.status-indicator.online { background: #22c55e; box-shadow: 0 0 8px rgba(34, 197, 94, 0.4); }
+.status-indicator.offline { border: 1.5px solid rgba(255, 255, 255, 0.2); }
+
+/* --- 3. Chat Input (Modern Redesign) --- */
+.chat-input-container {
+    padding: 0 24px 24px 24px;
     background: transparent;
 }
 
-::-webkit-scrollbar-thumb {
-    background: rgba(19, 94, 75, 0.2);
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: rgba(19, 94, 75, 0.4);
-}
-
-/* Glass Card Utilities */
-.glass-card {
-    background: var(--flux-glass-heavy);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid var(--flux-glass-white);
-    box-shadow: 0 8px 32px rgba(19, 94, 75, 0.1);
+.chat-input-box-modern {
+    background: #16181d;
+    border: 1px solid var(--flux-border);
     border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
 }
 
-.glass-input {
-    background: var(--flux-glass-white) !important;
-    border: 1px solid var(--flux-border) !important;
-    color: var(--flux-main-text) !important;
+.chat-input-box-modern:focus-within {
+    border-color: rgba(59, 130, 246, 0.4);
+    box-shadow: 0 15px 40px -12px rgba(0, 0, 0, 0.6), 0 0 0 4px rgba(59, 130, 246, 0.05);
 }
 
-.glass-input:focus {
-    border-color: var(--flux-primary) !important;
-    background: white !important;
+.formatting-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid var(--flux-border);
 }
+
+.toolbar-btn {
+    padding: 6px;
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.4);
+    transition: all 0.2s;
+}
+
+.toolbar-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+}
+
+.toolbar-btn.active {
+    color: var(--flux-primary);
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.chat-textarea-modern {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 15px;
+    padding: 16px;
+    resize: none;
+    min-height: 44px;
+}
+
+.chat-textarea-modern:focus { outline: none; }
+
+.chat-actions-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+}
+
+.action-group { display: flex; align-items: center; gap: 4px; }
+
+.send-btn-modern {
+    width: 36px;
+    height: 36px;
+    background: var(--flux-primary);
+    color: white;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.send-btn-modern:hover {
+    background: var(--flux-primary-hover);
+    transform: scale(1.05);
+}
+
+.send-btn-modern:disabled {
+    opacity: 0.3;
+    background: rgba(255, 255, 255, 0.1);
+    transform: none;
+}
+
+/* --- Dialogs & Modals --- */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.modal-content {
+    background: #1a1c24;
+    border: 1px solid var(--flux-border);
+    border-radius: 32px;
+    padding: 40px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    animation: modalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.context-menu {
+    background: #1a1c24;
+    border: 1px solid var(--flux-border);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    min-width: 200px;
+    padding: 6px;
+}
+
+.menu-item {
+    width: 100%;
+    text-align: left;
+    padding: 8px 12px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    transition: all 0.2s;
+}
+
+.menu-item:hover { background: rgba(255, 255, 255, 0.05); }
+.menu-label { font-size: 10px; font-weight: 800; color: rgba(255, 255, 255, 0.3); text-transform: uppercase; }
+
+@keyframes modalIn {
+    from { opacity: 0; transform: scale(0.95) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.05); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.1); }

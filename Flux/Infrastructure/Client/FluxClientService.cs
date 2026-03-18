@@ -90,7 +90,8 @@ public class FluxClientService(HttpClient httpClient, IJSRuntime jsRuntime)
                 return result?.Token != null ? Result<string>.CreateSuccess(result.Token) : Result<string>.CreateFailure("Invalid token received.");
             }
             
-            return Result<string>.CreateFailure("Invalid email or password.");
+            var errorResult = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+            return Result<string>.CreateFailure(errorResult?.Error ?? "Invalid email or password.");
         }
         catch (Exception ex)
         {
@@ -105,14 +106,14 @@ public class FluxClientService(HttpClient httpClient, IJSRuntime jsRuntime)
             var request = new { Username = username, Email = email, Password = password };
             var response = await httpClient.PostAsJsonAsync("/api/users/register", request);
             
-            var content = await response.Content.ReadAsStringAsync();
-
             if (response.IsSuccessStatusCode)
             {
-                return Result<string>.CreateSuccess(content); 
+                var result = await response.Content.ReadFromJsonAsync<RegisterResponse>();
+                return Result<string>.CreateSuccess(result?.Message ?? "Registration successful."); 
             }
             
-            return Result<string>.CreateFailure(content ?? "Registration failed.");
+            var errorResult = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+            return Result<string>.CreateFailure(errorResult?.Error ?? "Registration failed.");
         }
         catch (Exception ex)
         {
@@ -132,8 +133,8 @@ public class FluxClientService(HttpClient httpClient, IJSRuntime jsRuntime)
                 return Result.Success();
             }
             
-            var error = await response.Content.ReadAsStringAsync();
-            return Result.Failure(error);
+            var errorResult = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+            return Result.Failure(errorResult?.Error ?? "Verification failed.");
         }
         catch (Exception ex)
         {
@@ -142,6 +143,8 @@ public class FluxClientService(HttpClient httpClient, IJSRuntime jsRuntime)
     }
 
     private class LoginResponse { public string? Token { get; set; } }
+    private class RegisterResponse { public string? Message { get; set; } }
+    private class ErrorResponse { public string? Error { get; set; } }
 
     public async Task<Result<WorkspaceSummary>> CreateWorkspaceAsync(Guid userId, string name, string? description)
     {
@@ -602,8 +605,8 @@ public class FluxClientService(HttpClient httpClient, IJSRuntime jsRuntime)
                 return Result.Success();
             }
             
-            var error = await response.Content.ReadAsStringAsync();
-            return Result.Failure(error);
+            var errorResult = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+            return Result.Failure(errorResult?.Error ?? "Failed to send OTP.");
         }
         catch (Exception ex)
         {
@@ -623,8 +626,8 @@ public class FluxClientService(HttpClient httpClient, IJSRuntime jsRuntime)
                 return Result.Success();
             }
             
-            var error = await response.Content.ReadAsStringAsync();
-            return Result.Failure(error);
+            var errorResult = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+            return Result.Failure(errorResult?.Error ?? "Failed to reset password.");
         }
         catch (Exception ex)
         {

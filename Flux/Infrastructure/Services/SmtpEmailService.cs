@@ -1,5 +1,6 @@
-using System.Net;
-using System.Net.Mail;
+using MailKit.Net.Smtp;
+using MailKit.Security;
+using MimeKit;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -18,41 +19,42 @@ public class SmtpEmailService(ILogger<SmtpEmailService> logger, IConfiguration c
             var fromEmail = configuration["Smtp:FromEmail"] ?? username;
             var fromName = configuration["Smtp:FromName"] ?? "Flux App";
 
-            // If SMTP is not configured or email is invalid, fallback to logging
-            if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(fromEmail) || !fromEmail.Contains("@"))
+            if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(fromEmail))
             {
-                logger.LogWarning("SMTP is not fully configured or FromEmail is invalid. Falling back to simulation.");
+                logger.LogWarning("SMTP is not fully configured. Falling back to simulation.");
                 logger.LogInformation($"--- EMAIL SIMULATION ---\nTo: {toEmail}\nSubject: {subject}\nBody:\n{body}\n------------------------");
                 return;
             }
 
             if (!int.TryParse(portString, out int port))
             {
-                port = 587; // default SMTP port
+                port = 587;
             }
 
-            using var client = new SmtpClient(host, port)
-            {
-                Credentials = new NetworkCredential(username, password),
-                EnableSsl = true
-            };
+            var message = new MimeMessage();
+            message.From.Add(new MailboxAddress(fromName, fromEmail));
+            message.To.Add(new MailboxAddress("", toEmail));
+            message.Subject = subject;
 
-            var mailMessage = new MailMessage
-            {
-                From = new MailAddress(fromEmail, fromName),
-                Subject = subject,
-                Body = body,
-                IsBodyHtml = true,
-            };
+            var bodyBuilder = new BodyBuilder { HtmlBody = body };
+            message.Body = bodyBuilder.ToMessageBody();
+
+            using var client = new SmtpClient();
             
-            mailMessage.To.Add(toEmail);
-            
-            await client.SendMailAsync(mailMessage);
-            logger.LogInformation($"Email successfully sent to {toEmail}");
+            // For Gmail on port 587, StartTls is recommended
+            await client.ConnectAsync(host, port, SecureSocketOptions.StartTls);
+
+            // Authenticate with the app password
+            await client.AuthenticateAsync(username, password);
+
+            await client.SendAsync(message);
+            await client.DisconnectAsync(true);
+
+            logger.LogInformation($"Email successfully sent to {toEmail} via MailKit");
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to send email.");
+            logger.LogError(ex, "Failed to send email via MailKit SMTP.");
         }
     }
 }

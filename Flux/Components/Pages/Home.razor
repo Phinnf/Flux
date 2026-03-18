@@ -10,24 +10,24 @@
     <nav class="ws-nav">
         <div class="ws-nav-left">
             <div class="ws-logo">
-                <FluentIcon Value="@(new Icons.Filled.Size24.Flash())" Color="Color.Custom" CustomColor="#ffffff" Style="margin-right: 8px;" />
+                <svg class="w-6 h-6 text-white mr-2" fill="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                 Flux
             </div>
             <div class="ws-links">
-                <a href="#">Products <FluentIcon Value="@(new Icons.Regular.Size12.ChevronDown())" /></a>
-                <a href="#">Solutions <FluentIcon Value="@(new Icons.Regular.Size12.ChevronDown())" /></a>
-                <a href="#">Resources <FluentIcon Value="@(new Icons.Regular.Size12.ChevronDown())" /></a>
-                <a href="#">Pricing <FluentIcon Value="@(new Icons.Regular.Size12.ChevronDown())" /></a>
+                <a href="#">Products <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></a>
+                <a href="#">Solutions <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></a>
+                <a href="#">Resources <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></a>
+                <a href="#">Pricing <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></a>
             </div>
         </div>
         <div class="ws-nav-right">
             <AuthorizeView>
                 <Authorized>
-                    <button class="ws-btn-primary" @onclick='() => Navigation.NavigateTo("/workspaces")'>Go to Workspaces <FluentIcon Value="@(new Icons.Regular.Size16.ArrowRight())" Style="margin-left: 4px;" /></button>
+                    <button class="ws-btn-primary" @onclick='() => Navigation.NavigateTo("/workspaces")'>Go to Workspaces <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
                 </Authorized>
                 <NotAuthorized>
                     <button class="ws-btn-secondary" @onclick='() => Navigation.NavigateTo("/auth")'>Login</button>
-                    <button class="ws-btn-primary" @onclick='() => Navigation.NavigateTo("/auth")'>Try Flux free <FluentIcon Value="@(new Icons.Regular.Size16.ArrowRight())" Style="margin-left: 4px;" /></button>
+                    <button class="ws-btn-primary" @onclick='() => Navigation.NavigateTo("/auth")'>Try Flux free <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
                 </NotAuthorized>
             </AuthorizeView>
         </div>
@@ -39,7 +39,7 @@
             <div class="hero-content">
                 <h1>Get More Done with Flux</h1>
                 <p>Unified communication software that enables your teams to collaborate, chat, and manage everyday tasks seamlessly.</p>
-                <button class="ws-btn-primary" @onclick='() => Navigation.NavigateTo("/auth")'>Try Flux free <FluentIcon Value="@(new Icons.Regular.Size16.ArrowRight())" Style="margin-left: 4px;" /></button>
+                <button class="ws-btn-primary" @onclick='() => Navigation.NavigateTo("/auth")'>Try Flux free <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
             </div>
             <div class="hero-image">
                 <div class="placeholder-box blue-box"></div>
@@ -54,7 +54,7 @@
             <div class="feature-content">
                 <h2>Message to <br/><span class="underline-accent">Task Management</span></h2>
                 <p>Don't let ideas get lost in the chat. Convert any message into an actionable task with a single click. Organize them on Kanban boards, assign members, and track progress effortlessly.</p>
-                <button class="ws-btn-primary" @onclick='() => Navigation.NavigateTo("/auth")'>Get Started <FluentIcon Value="@(new Icons.Regular.Size16.ArrowRight())" Style="margin-left: 4px;" /></button>
+                <button class="ws-btn-primary" @onclick='() => Navigation.NavigateTo("/auth")'>Get Started <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
             </div>
             <div class="feature-image">
                 <div class="placeholder-box light-blue-box"></div>
@@ -68,13 +68,13 @@
             <div class="feature-content">
                 <h2>Work <span class="underline-accent">together</span></h2>
                 <p>With Flux, communicate with your colleagues in public channels or private direct messages. Share files, record videos, and keep everyone on the same page.</p>
-                <button class="ws-btn-primary" @onclick='() => Navigation.NavigateTo("/auth")'>Try it now <FluentIcon Value="@(new Icons.Regular.Size16.ArrowRight())" Style="margin-left: 4px;" /></button>
+                <button class="ws-btn-primary" @onclick='() => Navigation.NavigateTo("/auth")'>Try it now <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
             </div>
             <div class="feature-image circle-diagram">
                 <!-- Abstract circle diagram representation -->
                 <div class="orbit">
                     <div class="center-logo">
-                        <FluentIcon Value="@(new Icons.Filled.Size32.Flash())" Color="Color.Custom" CustomColor="#4CB572" />
+                        <svg class="w-8 h-8 text-green-500" fill="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                     </div>
                     <div class="node n1" style="background: #A1D8B5;"></div>
                     <div class="node n2" style="background: #4CB572;"></div>
@@ -96,7 +96,7 @@
             <div class="feature-content text-white">
                 <h2>Use as <span class="underline-accent yellow-accent">Workspace</span></h2>
                 <p>Create dedicated workspaces for different teams or projects. Keep channels, tasks, and members perfectly isolated and organized within their specific context.</p>
-                <button class="ws-btn-primary" @onclick='() => Navigation.NavigateTo("/auth")'>Let's Go <FluentIcon Value="@(new Icons.Regular.Size16.ArrowRight())" Style="margin-left: 4px;" /></button>
+                <button class="ws-btn-primary" @onclick='() => Navigation.NavigateTo("/auth")'>Let's Go <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
             </div>
             <div class="feature-image">
                 <div class="placeholder-box light-blue-box"></div>
@@ -110,7 +110,7 @@
             <div class="feature-content">
                 <h2>Customise it to <br/><span class="underline-accent">your needs</span></h2>
                 <p>Organize your tasks with drag-and-drop Kanban boards. Tailor your workflow, categorize by status, and manage everyday productivity precisely how your team prefers.</p>
-                <button class="ws-btn-primary" @onclick='() => Navigation.NavigateTo("/auth")'>Let's Go <FluentIcon Value="@(new Icons.Regular.Size16.ArrowRight())" Style="margin-left: 4px;" /></button>
+                <button class="ws-btn-primary" @onclick='() => Navigation.NavigateTo("/auth")'>Let's Go <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
             </div>
             <div class="feature-image">
                 <div class="placeholder-box light-blue-box"></div>
@@ -133,11 +133,11 @@
                     <div class="price">$0</div>
                     <p class="subtitle">Capture ideas and find them quickly</p>
                     <ul class="features">
-                        <li><FluentIcon Value="@(new Icons.Regular.Size20.Checkmark())" /> Sync unlimited devices</li>
-                        <li><FluentIcon Value="@(new Icons.Regular.Size20.Checkmark())" /> 10 GB monthly uploads</li>
-                        <li><FluentIcon Value="@(new Icons.Regular.Size20.Checkmark())" /> 200 MB max. file size</li>
-                        <li><FluentIcon Value="@(new Icons.Regular.Size20.Checkmark())" /> Convert messages to tasks</li>
-                        <li><FluentIcon Value="@(new Icons.Regular.Size20.Checkmark())" /> Basic Kanban boards</li>
+                        <li><svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Sync unlimited devices</li>
+                        <li><svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> 10 GB monthly uploads</li>
+                        <li><svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> 200 MB max. file size</li>
+                        <li><svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Convert messages to tasks</li>
+                        <li><svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Basic Kanban boards</li>
                     </ul>
                     <button class="ws-btn-outline" @onclick='() => Navigation.NavigateTo("/auth")'>Get Started</button>
                 </div>
@@ -148,11 +148,11 @@
                     <div class="price">$11.99</div>
                     <p class="subtitle">Keep team productivity on track</p>
                     <ul class="features">
-                        <li><FluentIcon Value="@(new Icons.Regular.Size20.Checkmark())" /> Sync unlimited devices</li>
-                        <li><FluentIcon Value="@(new Icons.Regular.Size20.Checkmark())" /> 100 GB monthly uploads</li>
-                        <li><FluentIcon Value="@(new Icons.Regular.Size20.Checkmark())" /> 2 GB max. file size</li>
-                        <li><FluentIcon Value="@(new Icons.Regular.Size20.Checkmark())" /> Advanced Kanban boards</li>
-                        <li><FluentIcon Value="@(new Icons.Regular.Size20.Checkmark())" /> Video message recording</li>
+                        <li><svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Sync unlimited devices</li>
+                        <li><svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> 100 GB monthly uploads</li>
+                        <li><svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> 2 GB max. file size</li>
+                        <li><svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Advanced Kanban boards</li>
+                        <li><svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Video message recording</li>
                     </ul>
                     <button class="ws-btn-primary full-width" @onclick='() => Navigation.NavigateTo("/auth")'>Get Started</button>
                 </div>
@@ -163,11 +163,11 @@
                     <div class="price">$49.99</div>
                     <p class="subtitle">Capture ideas and find them quickly</p>
                     <ul class="features">
-                        <li><FluentIcon Value="@(new Icons.Regular.Size20.Checkmark())" /> Sync unlimited devices</li>
-                        <li><FluentIcon Value="@(new Icons.Regular.Size20.Checkmark())" /> Unlimited monthly uploads</li>
-                        <li><FluentIcon Value="@(new Icons.Regular.Size20.Checkmark())" /> 10 GB max. file size</li>
-                        <li><FluentIcon Value="@(new Icons.Regular.Size20.Checkmark())" /> Custom workspace branding</li>
-                        <li><FluentIcon Value="@(new Icons.Regular.Size20.Checkmark())" /> Priority support</li>
+                        <li><svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Sync unlimited devices</li>
+                        <li><svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Unlimited monthly uploads</li>
+                        <li><svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> 10 GB max. file size</li>
+                        <li><svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Custom workspace branding</li>
+                        <li><svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Priority support</li>
                     </ul>
                     <button class="ws-btn-outline" @onclick='() => Navigation.NavigateTo("/auth")'>Get Started</button>
                 </div>
@@ -183,7 +183,7 @@
             <p class="text-white mt-4" style="max-width: 800px; margin: 20px auto 40px;">
                 Access your messages and tasks from your computer, phone or tablet by synchronizing with various services. The web app is available on Windows, macOS, Linux, Android and iOS.
             </p>
-            <button class="ws-btn-primary" @onclick='() => Navigation.NavigateTo("/auth")'>Try Flux <FluentIcon Value="@(new Icons.Regular.Size16.ArrowRight())" Style="margin-left: 4px;" /></button>
+            <button class="ws-btn-primary" @onclick='() => Navigation.NavigateTo("/auth")'>Try Flux <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
         </div>
     </section>
 </div>

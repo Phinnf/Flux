@@ -13,7 +13,6 @@
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IJSRuntime JS
-@inject IToastService ToastService
 @implements IAsyncDisposable
 
 <PageTitle>Direct Messages</PageTitle>
@@ -126,123 +125,122 @@
             </div>
 
             <!-- Messages List -->
-            <div class="flex-1 overflow-y-auto p-6 space-y-2 custom-scrollbar" @ref="_messagesViewport">
+            <div class="flex-1 overflow-y-auto" @ref="_messagesViewport">
                 @if (!_messages.Any())
                 {
-                    <div class="flex flex-col justify-end min-h-full pb-10">
+                    <div class="flex flex-col justify-end min-h-full pb-10 px-8">
                         <div class="mb-4">
                             @if (!string.IsNullOrEmpty(_targetUser?.AvatarUrl)) {
                                 <img src="@_targetUser.AvatarUrl" class="w-20 h-20 rounded-xl object-cover" />
                             } else {
-                                <div class="w-20 h-20 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-3xl">@GetInitials(_targetUser?.Username)</div>
+                                <div class="w-20 h-20 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-3xl">@GetInitials(_targetUser?.Username)</div>
                             }
                         </div>
                         <h1 class="text-3xl font-bold text-white mb-2">@_targetUser?.Username</h1>
                         @if (_targetUser?.Id == CurrentUserId)
                         {
-                            <p class="text-gray-400 text-[15px] max-w-2xl">This is your space. Draft messages, list your to-dos, or keep links and files handy. You can also talk to yourself here, but please keep in mind you'll have to reply.</p>
+                            <p class="text-white/60 text-[15px] max-w-2xl">This is your space. Draft messages, list your to-dos, or keep links and files handy.</p>
                         }
                         else
                         {
-                            <p class="text-gray-400 text-[15px]">This is the very beginning of your direct message history with <span class="font-semibold text-gray-200">@_targetUser?.Username</span>.</p>
+                            <p class="text-white/60 text-[15px]">This is the very beginning of your direct message history with <span class="font-semibold text-white">@_targetUser?.Username</span>.</p>
                         }
                     </div>
                 }
                 else
                 {
-                    @for (int i = 0; i < _messages.Count; i++)
-                    {
-                        var msg = _messages[i];
-                        var prevMsg = i > 0 ? _messages[i - 1] : null;
-                        
-                        bool showDate = prevMsg == null || msg.CreatedAt.Date != prevMsg.CreatedAt.Date;
-                        bool isCompact = !showDate && prevMsg != null && prevMsg.UserId == msg.UserId && (msg.CreatedAt - prevMsg.CreatedAt).TotalMinutes < 5;
-
-                        if (showDate)
+                    <div class="message-list py-6">
+                        @for (int i = 0; i < _messages.Count; i++)
                         {
-                            var dateLabel = msg.CreatedAt.Date == DateTime.Today ? "Today" : 
-                                            msg.CreatedAt.Date == DateTime.Today.AddDays(-1) ? "Yesterday" : 
-                                            msg.CreatedAt.ToString("dddd, MMMM d");
-                            <div class="relative flex items-center justify-center py-4">
-                                <div class="absolute inset-0 flex items-center">
-                                    <div class="w-full border-t border-gray-700"></div>
+                            var msg = _messages[i];
+                            var prevMsg = i > 0 ? _messages[i - 1] : null;
+                            
+                            bool showDate = prevMsg == null || msg.CreatedAt.Date != prevMsg.CreatedAt.Date;
+                            bool isCompact = !showDate && prevMsg != null && prevMsg.UserId == msg.UserId && (msg.CreatedAt - prevMsg.CreatedAt).TotalMinutes < 5;
+                            bool isSelf = msg.UserId == CurrentUserId;
+
+                            if (showDate)
+                            {
+                                var dateLabel = msg.CreatedAt.Date == DateTime.Today ? "Today" : 
+                                                msg.CreatedAt.Date == DateTime.Today.AddDays(-1) ? "Yesterday" : 
+                                                msg.CreatedAt.ToString("dddd, MMMM d");
+                                                
+                                <div class="date-divider">
+                                    <hr />
+                                    <span>@dateLabel</span>
                                 </div>
-                                <div class="relative bg-[#1A1D21] px-4 text-[13px] font-bold text-gray-300 rounded-full border border-gray-700">
-                                    @dateLabel
+                            }
+
+                            <div class="message-group @(isSelf ? "self" : "") @(isCompact ? "compact" : "")">
+                                @if (!isCompact)
+                                {
+                                    <div class="avatar-wrapper flex-shrink-0">
+                                        @if (!string.IsNullOrEmpty(msg.AvatarUrl))
+                                        {
+                                            <img src="@msg.AvatarUrl" class="w-9 h-9 rounded-lg object-cover" alt="@msg.Username" />
+                                        }
+                                        else
+                                        {
+                                            <div class="w-9 h-9 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">
+                                                @GetInitials(msg.Username)
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="compact-time">@msg.CreatedAt.ToString("hh:mm")</div>
+                                }
+                                
+                                <div class="message-content">
+                                    @if (!isCompact)
+                                    {
+                                        <div class="message-meta">
+                                            <span class="username">@msg.Username</span>
+                                            <span class="timestamp">@msg.CreatedAt.ToLocalTime().ToString("h:mm tt")</span>
+                                        </div>
+                                    }
+                                    <div class="message-bubble-wrapper">
+                                        <div class="message-bubble">@msg.Content</div>
+                                    </div>
                                 </div>
                             </div>
                         }
-
-                        <div class="group flex items-start hover:bg-white/5 py-1 px-4 -mx-4 rounded transition-colors relative">
-                            @if (!isCompact)
-                            {
-                                <div class="flex-shrink-0 mr-3 mt-1">
-                                    @if (!string.IsNullOrEmpty(msg.AvatarUrl)) {
-                                        <img src="@msg.AvatarUrl" class="w-9 h-9 rounded-md object-cover" />
-                                    } else {
-                                        <div class="w-9 h-9 rounded-md bg-indigo-600 flex items-center justify-center text-white font-bold text-sm">@GetInitials(msg.Username)</div>
-                                    }
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <div class="flex items-baseline gap-2 mb-0.5">
-                                        <span class="font-bold text-[15px] text-gray-100 hover:underline cursor-pointer">@msg.Username</span>
-                                        <span class="text-[12px] text-gray-500">@msg.CreatedAt.ToLocalTime().ToString("h:mm tt")</span>
-                                    </div>
-                                    <div class="text-[15px] text-gray-300 leading-[1.4] whitespace-pre-wrap break-words">@msg.Content</div>
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="w-9 mr-3 flex-shrink-0 flex justify-end">
-                                    <span class="text-[10px] text-gray-500 opacity-0 group-hover:opacity-100 mt-1">@msg.CreatedAt.ToLocalTime().ToString("hh:mm")</span>
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <div class="text-[15px] text-gray-300 leading-[1.4] whitespace-pre-wrap break-words">@msg.Content</div>
-                                </div>
-                            }
-                        </div>
-                    }
+                    </div>
                 }
             </div>
 
-            <!-- Input Area -->
-            <div class="px-6 pb-6 pt-2">
-                <div class="bg-[#222529] border border-gray-600 rounded-xl focus-within:border-gray-400 focus-within:ring-1 focus-within:ring-gray-400 transition-all shadow-sm">
-                    <div class="flex bg-gray-800/40 rounded-t-xl px-2 py-1 border-b border-gray-700">
-                        <button class="p-1.5 text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 rounded mr-0.5" title="Bold"><svg class="w-[18px] h-[18px]" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5h4.5a4.5 4.5 0 0 1 0 9H8V5zm4.5 7.5A2.5 2.5 0 0 0 12.5 7H10v5h2.5z"/></svg></button>
-                        <button class="p-1.5 text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 rounded mr-0.5" title="Italic"><svg class="w-[18px] h-[18px]" fill="currentColor" viewBox="0 0 24 24"><path d="M10 5l-2 14h2l2-14h-2z"/></svg></button>
-                        <button class="p-1.5 text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 rounded mr-0.5" title="Strikethrough"><svg class="w-[18px] h-[18px]" fill="currentColor" viewBox="0 0 24 24"><path d="M5 12h14v2H5v-2z"/></svg></button>
-                        <div class="w-px h-4 bg-gray-600 my-auto mx-1"></div>
-                        <button class="p-1.5 text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 rounded ml-0.5" title="Code"><svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg></button>
-                    </div>
-                    
-                    <textarea @bind="_newMessageContent" @bind:event="oninput" @onkeydown="HandleKeyDown"
-                              class="w-full bg-transparent border-none focus:ring-0 text-white p-3 resize-none custom-scrollbar outline-none text-[15px]" 
-                              rows="1" 
-                              style="min-height: 44px; max-height: 250px;"
-                              placeholder="@(_targetUser?.Id == CurrentUserId ? "Jot something down" : $"Message {_targetUser?.Username}")"></textarea>
-                    
-                    <div class="flex items-center justify-between px-2 py-2 bg-[#222529] rounded-b-xl">
-                        <div class="flex items-center gap-0.5">
-                            <button class="w-[32px] h-[32px] rounded-full flex items-center justify-center bg-gray-700 hover:bg-gray-600 text-white transition mr-1">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                            </button>
-                            <button class="p-1.5 text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 rounded" title="Emoji">
-                                <svg class="w-[20px] h-[20px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            </button>
-                            <button class="p-1.5 text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 rounded" title="Mention">
-                                <svg class="w-[20px] h-[20px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"></path></svg>
-                            </button>
-                        </div>
-                        <button class="px-3 py-1.5 rounded flex items-center justify-center transition-colors @(string.IsNullOrWhiteSpace(_newMessageContent) ? "bg-transparent text-gray-500" : "bg-[#007a5a] hover:bg-[#148567] text-white")" 
-                                @onclick="SendMessage" 
-                                disabled="@string.IsNullOrWhiteSpace(_newMessageContent)">
-                            <svg class="w-4 h-4 transform rotate-90" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path></svg>
+            <!-- Chat Input Area -->
+            <div class="chat-input-container">
+                <div class="chat-input-box">
+                    <div class="flex items-end bg-transparent gap-2 p-1">
+                        <textarea @ref="_textAreaRef"
+                                  @bind="_newMessageContent"
+                                  @bind:event="oninput"
+                                  @onkeydown="HandleKeyDown"
+                                  placeholder="@(_targetUser?.Id == CurrentUserId ? "Jot something down" : $"Message {_targetUser?.Username}")"
+                                  title="Press Enter to send. Press Shift+Enter for a new line."
+                                  class="flex-1 bg-transparent border-none focus:ring-0 text-white p-3 min-h-[44px] max-h-[200px] resize-none overflow-y-auto"
+                                  rows="1"></textarea>
+                        
+                        <button class="w-10 h-10 flex items-center justify-center rounded-lg @(string.IsNullOrWhiteSpace(_newMessageContent) ? "text-white/20" : "text-white bg-green-600 hover:bg-green-700") transition-all shrink-0 mb-1.5 mr-1"
+                                @onclick="SendMessage"
+                                disabled="@(string.IsNullOrWhiteSpace(_newMessageContent))"
+                                title="Send message (Enter)">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
                         </button>
                     </div>
-                </div>
-                <div class="text-center text-[11px] text-gray-500 mt-2 opacity-70">
-                    <span class="font-semibold">Return</span> to send <span class="mx-1.5">|</span> <span class="font-semibold">Shift + Return</span> to add a new line
+
+                    <div class="bottom-toolbar flex justify-between items-center px-2 py-1 border-t border-white/5">
+                        <div class="toolbar-left flex items-center gap-1">
+                             <button class="p-1.5 text-white/40 hover:text-white transition-colors" title="Add emoji">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </button>
+                            <button class="p-1.5 text-white/40 hover:text-white transition-colors" title="Mention">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.206" /></svg>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         }
@@ -283,6 +281,7 @@
     private string _newMessageContent = "";
     private bool _isLoading = false;
     private ElementReference _messagesViewport;
+    private ElementReference _textAreaRef;
     
     private HubConnection? _hubConnection;
 
@@ -404,7 +403,7 @@
             }
             else
             {
-                ToastService.ShowError($"Failed to load conversation: {channelResult.Error}");
+                 await JS.InvokeVoidAsync("alert", $"Failed to load conversation: {channelResult.Error}");
             }
         }
         finally
@@ -434,7 +433,7 @@
         if (!result.IsSuccess)
         {
             _newMessageContent = content; 
-            ToastService.ShowError($"Failed to send: {result.Error}");
+             await JS.InvokeVoidAsync("alert", $"Failed to send: {result.Error}");
         }
         else
         {

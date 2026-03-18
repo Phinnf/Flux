@@ -94,6 +94,15 @@ namespace Flux.Infrastructure.Database
             modelBuilder.Entity<Channel>()
                 .HasIndex(c => new { c.WorkspaceId, c.Name })
                 .IsUnique();
+
+            // User - Unique constraints
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Email)
+                .IsUnique();
+
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Username)
+                .IsUnique();
         }
     }
 }

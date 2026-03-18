@@ -30,7 +30,7 @@ public class LoginHandler : IRequestHandler<LoginCommand, Result<string>>
 
         if (!user.EmailConfirmed && string.IsNullOrEmpty(user.ExternalProvider))
         {
-            return Result.Failure<string>("Please verify your email address before logging in.");
+            return Result.Failure<string>("Your email is not verified yet. Please register again to receive a new OTP.");
         }
 
         var token = _jwtService.GenerateToken(user);

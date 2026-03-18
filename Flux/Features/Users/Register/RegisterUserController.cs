@@ -21,9 +21,9 @@ public class RegisterUserController : ControllerBase
 
         if (!result.IsSuccess)
         {
-            return BadRequest(result.Error);
+            return BadRequest(new { Error = result.Error });
         }
 
-        return Ok(new { Token = result.Value });
+        return Ok(new { Message = result.Value });
     }
 }

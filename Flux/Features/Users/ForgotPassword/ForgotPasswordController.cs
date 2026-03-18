@@ -16,7 +16,7 @@ public class ForgotPasswordController(IMediator mediator) : ControllerBase
         if (result.IsFailure)
         {
             // Even if failure, we might return Ok so as not to leak user info, but we'll return BadRequest if it's a validation thing.
-            return BadRequest(new { Message = result.Error });
+            return BadRequest(new { Error = result.Error });
         }
 
         return Ok(new { Message = "If the email exists, an OTP has been sent." });

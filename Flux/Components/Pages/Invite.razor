@@ -5,48 +5,52 @@
 @inject NavigationManager Navigation
 @inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
 
-<FluentDesignTheme Mode="DesignThemeModes.Dark" CustomColor="#611f69" />
-
-<div class="auth-container" style="display: flex; justify-content: center; align-items: center; height: 100vh; background-color: var(--neutral-layer-1);">
-    <div class="auth-card" style="width: 400px; padding: 40px; background-color: var(--neutral-layer-2); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;">
-        <div class="logo" style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 30px;">
-            <FluentIcon Value="@(new Icons.Regular.Size24.PersonAdd())" Color="Color.Custom" CustomColor="#611f69" />
-            <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: white;">Flux</h1>
+<div class="flex justify-center items-center h-screen bg-gray-900 text-white">
+    <div class="w-96 p-10 bg-gray-800 rounded-lg shadow-lg text-center">
+        <div class="flex items-center justify-center gap-2 mb-8">
+            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
+            <h1 class="text-2xl font-extrabold text-white m-0">Flux</h1>
         </div>
 
         @if (_isLoading)
         {
-            <FluentProgressRing />
-            <p style="margin-top: 15px; color: var(--neutral-foreground-rest);">Loading invitation details...</p>
+            <div class="flex flex-col items-center">
+                <div class="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                <p class="mt-4 text-gray-400">Loading invitation details...</p>
+            </div>
         }
         else if (_errorMessage != null)
         {
-            <div style="background-color: rgba(216, 59, 1, 0.1); color: #ff5e5e; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+            <div class="bg-red-900/30 text-red-400 p-4 rounded mb-5">
                 @_errorMessage
             </div>
-            <FluentButton Appearance="Appearance.Outline" OnClick='() => Navigation.NavigateTo("/")' Style="width: 100%;">Return to Home</FluentButton>
+            <button class="w-full px-4 py-2 border border-gray-500 rounded hover:bg-gray-700 transition-colors" @onclick='() => Navigation.NavigateTo("/")'>Return to Home</button>
         }
         else if (_inviteDetails != null)
         {
-            <h2 style="font-size: 20px; margin-bottom: 10px; color: white;">You've been invited!</h2>
-            <p style="color: var(--neutral-foreground-rest); margin-bottom: 25px;">
+            <h2 class="text-xl mb-2 text-white">You've been invited!</h2>
+            <p class="text-gray-400 mb-6">
                 Join <strong>@_inviteDetails.WorkspaceName</strong> on Flux.
                 @if (!string.IsNullOrEmpty(_inviteDetails.WorkspaceDescription))
                 {
                     <br />
-                    <span style="font-size: 13px; opacity: 0.8;">@_inviteDetails.WorkspaceDescription</span>
+                    <span class="text-sm opacity-80">@_inviteDetails.WorkspaceDescription</span>
                 }
             </p>
 
-            <FluentButton Appearance="Appearance.Accent" OnClick="JoinWorkspace" Style="width: 100%; height: 40px; margin-bottom: 15px;" Loading="_isJoining">
+            <button class="w-full h-10 mb-4 px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors flex items-center justify-center gap-2" @onclick="JoinWorkspace" disabled="@_isJoining">
+                @if (_isJoining)
+                {
+                    <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                }
                 Accept Invitation
-            </FluentButton>
+            </button>
 
             @if (!_isAuthenticated)
             {
-                <p style="font-size: 12px; color: var(--neutral-foreground-rest);">
+                <p class="text-xs text-gray-400">
                     You need to be logged in to join. 
-                    <a href="/auth?returnUrl=/invite/@Code" style="color: #611f69; text-decoration: none; font-weight: bold;">Log in here</a>.
+                    <a href="/auth?returnUrl=/invite/@Code" class="text-purple-400 font-bold hover:underline">Log in here</a>.
                 </p>
             }
         }

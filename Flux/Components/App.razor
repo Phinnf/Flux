@@ -8,16 +8,18 @@
     <link rel="stylesheet" href="Flux.styles.css" />
     <link rel="stylesheet" href="css/app.css" />
     <link rel="stylesheet" href="css/auth.css" />
-    <link rel="stylesheet" href="_content/Microsoft.FluentUI.AspNetCore.Components/css/reboot.css" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
-            corePlugins: { preflight: false },
             theme: {
                 extend: {
                     colors: {
-                        fluxPrimary: 'var(--flux-primary)',
-                        fluxBg: 'var(--flux-bg)',
+                        primary: '#3b82f6',
+                        secondary: '#64748b',
+                        fluxPrimary: '#3E9E60',
+                    },
+                    borderRadius: {
+                        '3xl': '1.5rem',
                     }
                 }
             }
@@ -33,7 +35,6 @@
     <script src="js/emoji-helper.js"></script>
     <script src="js/videoRecorder.js"></script>
     <script src="js/voiceRecorder.js"></script>
-    <script src="_content/Microsoft.FluentUI.AspNetCore.Components/Microsoft.FluentUI.AspNetCore.Components.lib.module.js" type="module"></script>
     <script>
         window.scrollToBottom = (element) => {
             if (element) {

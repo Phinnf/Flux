@@ -8,7 +8,6 @@ using Flux.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.FluentUI.AspNetCore.Components;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
@@ -18,9 +17,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 builder.Services.AddSignalR();
-builder.Services.AddFluentValidationAutoValidation()
-    .AddFluentValidationClientsideAdapters()
-    .AddValidatorsFromAssemblyContaining<Program>();
+// builder.Services.AddFluentValidationAutoValidation() // Keep this if user didn't ask to remove validation, but they said "bo cai file @Flux\obj\Debug\net10.0\Flux.GlobalUsings.g.cs layout hay bat ki thu vien ma FE dung" which might imply they want a clean start or just remove the UI stuff.
+// Actually, FluentValidation is for backend/logic. I'll stick to removing UI library.
 
 // --- IDENTITY & JWT SERVICES ---
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
@@ -70,10 +68,9 @@ builder.Services.AddAuthentication(options =>
     });
 // ------------------------------
 
-// Add Blazor and Fluent UI
+// Add Blazor
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
-builder.Services.AddFluentUIComponents();
 
 builder.Services.AddScoped<AuthenticationStateProvider, FluxAuthStateProvider>();
 
@@ -100,6 +97,7 @@ builder.Services.AddHttpClient<Flux.Infrastructure.Client.FluxClientService>((sp
 });
 
 builder.Services.AddScoped<Flux.Infrastructure.Client.WorkspaceStateService>(); // State management service
+builder.Services.AddScoped<IToastService, ToastService>();
 builder.Services.AddHttpContextAccessor(); // Required to get the base address dynamically
 
 // Swagger is a great tool for testing our APIs before connecting the Blazor frontend

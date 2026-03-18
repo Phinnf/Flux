@@ -1,314 +1,334 @@
 @page "/workspaces"
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
+@using Flux.Infrastructure.Client
 @inject NavigationManager Navigation
 @inject FluxClientService FluxService
 @inject AuthenticationStateProvider AuthStateProvider
-@layout Flux.Components.Layout.MainLayout
+@layout Flux.Components.Layout.EmptyLayout
 
-<PageTitle>Your Workspaces - Flux</PageTitle>
+<PageTitle>Workspaces - Flux</PageTitle>
 
-<div class="scenic-workspaces-page">
-    <nav class="scenic-nav">
-        <div class="logo-container" style="cursor: pointer;" @onclick='() => Navigation.NavigateTo("/")'>
-            <span class="logo-text">FLUX</span>
+<div class="ws-page-wrapper min-h-screen flex flex-col">
+    <!-- Background elements -->
+    <div class="bg-glow"></div>
+    <div class="bg-glow-2"></div>
+
+    <nav class="ws-nav flex items-center justify-between px-8 py-6 relative z-20">
+        <div class="flex items-center gap-3 cursor-pointer" @onclick='() => Navigation.NavigateTo("/")'>
+            <span class="text-2xl font-black text-white tracking-tighter">FLUX</span>
         </div>
-        <div class="nav-actions">
-            <FluentPersona Status="PresenceStatus.Available" 
-                           ImageSize="32px" 
-                           Initials="Me" />
+
+        <div class="flex items-center gap-4">
+            <div class="user-profile flex items-center gap-3 px-4 py-2 rounded-2xl bg-white/[0.03] border border-white/10">
+                <div class="text-right hidden sm:block">
+                    <p class="text-sm font-bold text-white leading-tight">@(_currentUser?.Username ?? "User")</p>
+                    <p class="text-[10px] text-white/40 uppercase tracking-widest">Personal Account</p>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center text-white font-bold shadow-lg overflow-hidden border border-white/20">
+                    @if (!string.IsNullOrEmpty(_currentUser?.AvatarUrl))
+                    {
+                        <img src="@_currentUser.AvatarUrl" class="w-full h-full object-cover" />
+                    }
+                    else
+                    {
+                        @(_currentUser?.Username?.Length > 0 ? _currentUser.Username[0].ToString().ToUpper() : "U")
+                    }
+                </div>
+            </div>
         </div>
     </nav>
 
-    <div class="workspaces-container">
-        <div class="workspaces-header">
-            <h1 class="hero-heading" style="font-size: 3rem; margin-bottom: 10px;">Welcome to Flux!</h1>
-            <p class="hero-subheading" style="margin-bottom: 40px;">
-                Choose a workspace to join your team, or create a new one.
-            </p>
+    <main class="ws-content flex-1 container mx-auto max-w-6xl px-6 py-12 relative z-10">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
+            <div>
+                <h1 class="text-4xl font-extrabold text-white mb-3">Your Workspaces</h1>
+                <p class="text-white/50 max-w-md">Access your collaborative environments or start a new chapter by creating a workspace.</p>
+            </div>
+            
+            <div class="flex items-center gap-4 w-full md:w-auto">
+                <div class="relative flex-1 md:w-72">
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-white/30">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    </span>
+                    <input type="text" @bind="_searchQuery" @bind:event="oninput" placeholder="Find workspace..." 
+                           class="search-input pl-12 pr-4 py-3" />
+                </div>
+                <button class="add-ws-btn" @onclick="() => _showCreateDialog = true">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 6v6m0 0v6m0-6h6m-6 0H6" stroke-width="2.5" stroke-linecap="round"/></svg>
+                </button>
+            </div>
         </div>
 
         @if (_workspaces == null)
         {
-            <div class="glass-panel" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; max-width: 400px; margin: 0 auto;">
-                <FluentProgressRing />
-                <FluentLabel Style="margin-top: 15px; color: white;">Finding your workspaces...</FluentLabel>
+            <div class="flex flex-col items-center justify-center py-20">
+                <div class="loader-ring mb-4"></div>
+                <p class="text-white/40 animate-pulse">Syncing with server...</p>
             </div>
         }
         else
         {
-            <div class="workspaces-grid">
-                @foreach (var workspace in _workspaces)
+            var filteredWorkspaces = string.IsNullOrWhiteSpace(_searchQuery) 
+                ? _workspaces 
+                : _workspaces.Where(w => w.Name.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase)).ToList();
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                @foreach (var ws in filteredWorkspaces)
                 {
-                    <div class="glass-card workspace-card" @onclick="() => SelectWorkspace(workspace)">
-                        <div class="workspace-card-content">
-                            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="15" VerticalAlignment="VerticalAlignment.Center">
-                                <div class="workspace-avatar">
-                                    @(workspace.Name?.Length > 0 ? workspace.Name[0].ToString().ToUpper() : "?")
+                    <div class="ws-card group" @onclick="() => SelectWorkspace(ws)">
+                        <div class="p-6">
+                            <div class="flex justify-between items-start mb-6">
+                                <div class="ws-icon-box">
+                                    @(ws.Name?.Length > 0 ? ws.Name[0].ToString().ToUpper() : "W")
                                 </div>
-                                <div style="flex: 1;">
-                                    <h3 style="margin: 0; color: white; font-weight: 700; font-size: 1.2rem;">@workspace.Name</h3>
-                                    <p style="margin: 5px 0 0 0; color: rgba(255,255,255,0.6); font-size: 0.9rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-                                        @(string.IsNullOrEmpty(workspace.Description) ? "No description provided." : workspace.Description)
-                                    </p>
-                                </div>
-                            </FluentStack>
-                        </div>
-                        <div class="workspace-card-actions">
-                            <div @onclick:stopPropagation="true">
-                                <FluentButton Appearance="Appearance.Stealth" 
-                                              IconStart="@(new Icons.Regular.Size16.Delete())" 
-                                              Color="Color.Error" 
-                                              OnClick="() => DeleteWorkspace(workspace)"
-                                              Title="Delete Workspace">
-                                </FluentButton>
+                                <button class="delete-btn opacity-0 group-hover:opacity-100 transition-all duration-300" 
+                                        @onclick:stopPropagation="true" @onclick="() => DeleteWorkspace(ws)">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-width="2"/></svg>
+                                </button>
                             </div>
-                            <button class="scenic-btn-outline" style="padding: 6px 16px; font-size: 12px;">Join</button>
+                            <h3 class="text-xl font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">@ws.Name</h3>
+                            <p class="text-white/40 text-sm line-clamp-2 min-h-[40px]">@(string.IsNullOrEmpty(ws.Description) ? "Professional collaboration workspace." : ws.Description)</p>
+                        </div>
+                        <div class="mt-auto px-6 py-4 bg-white/[0.02] border-t border-white/5 flex items-center justify-between">
+                            <span class="text-[10px] uppercase tracking-widest text-white/20 font-bold">Active Member</span>
+                            <div class="flex items-center text-blue-400 text-xs font-bold group-hover:translate-x-1 transition-transform">
+                                Enter Workspace <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 7l5 5m0 0l-5 5m5-5H6" stroke-width="2"/></svg>
+                            </div>
                         </div>
                     </div>
                 }
 
-                <!-- Create New Workspace Card -->
-                <div class="glass-card create-card" @onclick="() => _showCreateDialog = true">
-                    <div class="create-card-content">
-                        <FluentIcon Value="@(new Icons.Regular.Size48.AddCircle())" Color="Color.Accent" Style="margin-bottom: 15px;" />
-                        <h3 style="margin: 0; color: white; font-weight: 600;">Create New Workspace</h3>
+                @if (!filteredWorkspaces.Any() && !string.IsNullOrWhiteSpace(_searchQuery))
+                {
+                    <div class="col-span-full py-20 text-center rounded-3xl border-2 border-dashed border-white/5 bg-white/[0.01]">
+                        <div class="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-8 h-8 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        </div>
+                        <h4 class="text-white font-bold">No workspaces found</h4>
+                        <p class="text-white/30 text-sm">We couldn't find anything matching "@_searchQuery"</p>
+                    </div>
+                }
+
+                <div class="create-ws-card" @onclick="() => _showCreateDialog = true">
+                    <div class="flex flex-col items-center justify-center h-full gap-4 text-white/30 group hover:text-white/60 transition-colors">
+                        <div class="w-14 h-14 rounded-full border-2 border-dashed border-current flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 6v6m0 0v6m0-6h6m-6 0H6" stroke-width="2.5" stroke-linecap="round"/></svg>
+                        </div>
+                        <span class="font-bold tracking-tight">Setup New Workspace</span>
                     </div>
                 </div>
             </div>
         }
-    </div>
+    </main>
 </div>
 
-@* Create Workspace Dialog *@
-<FluentDialog Hidden="!_showCreateDialog" Modal="true" TrapFocus="true" @onclick:stopPropagation>
-    <div class="glass-dialog">
-        <h2 style="color: white; margin-top: 0; margin-bottom: 20px;">New Workspace</h2>
-        
-        <FluentTextField Label="Workspace Name" @bind-Value="_newWorkspaceName" Style="width: 100%; margin-bottom: 15px; color: white;" Required="true" />
-        <FluentTextArea Label="Description" @bind-Value="_newWorkspaceDescription" Style="width: 100%; margin-bottom: 25px; color: white;" Rows="3" />
-        
-        <div style="display: flex; justify-content: flex-end; gap: 10px;">
-            <button class="scenic-btn-outline" @onclick="() => _showCreateDialog = false">Cancel</button>
-            <button class="scenic-btn-primary" @onclick="CreateWorkspace" disabled="@string.IsNullOrWhiteSpace(_newWorkspaceName)">Create & Join</button>
+@if (_showCreateDialog)
+{
+    <div class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-md" @onclick="() => _showCreateDialog = false"></div>
+        <div class="relative w-full max-w-lg bg-[#1a1c24] border border-white/10 rounded-[32px] p-8 md:p-10 shadow-2xl animate-modal">
+            <h2 class="text-3xl font-bold text-white mb-2">Build a Space</h2>
+            <p class="text-white/40 mb-8">This is where your team's energy finds its flow.</p>
+            
+            <div class="space-y-6">
+                <div class="input-group">
+                    <label class="text-xs font-semibold text-white/50 uppercase tracking-widest ml-1">Workspace Identity</label>
+                    <input type="text" @bind="_newWorkspaceName" placeholder="e.g. Acme Marketing" 
+                           class="auth-input mt-2" />
+                </div>
+                
+                <div class="input-group">
+                    <label class="text-xs font-semibold text-white/50 uppercase tracking-widest ml-1">Mission / Description</label>
+                    <textarea @bind="_newWorkspaceDescription" rows="3" placeholder="What is this workspace about?" 
+                              class="auth-input mt-2 resize-none"></textarea>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-4 mt-10">
+                <button class="flex-1 px-6 py-4 rounded-2xl text-white/60 font-bold hover:bg-white/5 transition-colors" 
+                        @onclick="() => _showCreateDialog = false">Cancel</button>
+                <button class="flex-[2] px-6 py-4 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-lg shadow-blue-600/20 transition-all disabled:opacity-50" 
+                        @onclick="CreateWorkspace" 
+                        disabled="@string.IsNullOrWhiteSpace(_newWorkspaceName)">Launch Workspace</button>
+            </div>
         </div>
     </div>
-</FluentDialog>
+}
 
 <style>
-    /* Inherit base styles from empty layout but add workspace specific ones */
-    .scenic-workspaces-page {
-        min-height: 100vh;
-        width: 100%;
-        background-color: transparent; /* Assuming Body has the global background image now */
-        color: var(--flux-main-text);
-        display: flex;
-        flex-direction: column;
+    :root {
+        --bg: #0b0c10;
+        --card: #16181d;
+        --input: rgba(255, 255, 255, 0.03);
+        --accent: #3b82f6;
+        --border: rgba(255, 255, 255, 0.08);
     }
 
-    .scenic-nav {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 25px 60px;
+    .ws-page-wrapper {
+        background: var(--bg);
+        color: white;
+        overflow-x: hidden;
         position: relative;
-        z-index: 10;
-        background: var(--flux-glass-heavy);
-        backdrop-filter: blur(20px);
-        border-bottom: 1px solid var(--flux-glass-white);
     }
 
-    .logo-text {
-        font-size: 24px;
-        font-weight: 800;
-        letter-spacing: 2px;
-        color: var(--flux-main-text);
+    .bg-glow {
+        position: absolute;
+        top: -10%;
+        left: -5%;
+        width: 40%;
+        height: 40%;
+        background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+        filter: blur(80px);
+        z-index: 0;
     }
 
-    .workspaces-container {
-        flex: 1;
-        padding: 60px 40px;
-        max-width: 1200px;
-        margin: 0 auto;
+    .bg-glow-2 {
+        position: absolute;
+        bottom: -5%;
+        right: -5%;
+        width: 50%;
+        height: 50%;
+        background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
+        filter: blur(80px);
+        z-index: 0;
+    }
+
+    .search-input {
         width: 100%;
-        animation: fadeIn 0.6s ease-out;
-    }
-
-    .workspaces-header {
-        text-align: center;
-        margin-bottom: 60px;
-        color: var(--flux-main-text);
-    }
-
-    .hero-heading {
-        font-weight: 800;
-        letter-spacing: -1px;
-    }
-
-    .hero-subheading {
-        color: rgba(19, 94, 75, 0.8);
-        font-size: 1.1rem;
-    }
-
-    .workspaces-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-        gap: 24px;
-    }
-
-    /* Glass Cards */
-    .glass-card {
-        background: var(--flux-glass-heavy);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border: 1px solid var(--flux-glass-white);
+        background: var(--input);
+        border: 1px solid var(--border);
         border-radius: 16px;
-        box-shadow: 0 10px 30px rgba(19, 94, 75, 0.15);
+        color: white;
+        font-size: 14px;
         transition: all 0.3s ease;
-        overflow: hidden;
+    }
+
+    .search-input:focus {
+        outline: none;
+        border-color: var(--accent);
+        background: rgba(255, 255, 255, 0.05);
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+    }
+
+    .add-ws-btn {
+        width: 48px;
+        height: 48px;
+        background: var(--accent);
+        color: white;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+        box-shadow: 0 8px 16px -4px rgba(59, 130, 246, 0.3);
+    }
+
+    .add-ws-btn:hover {
+        background: #2563eb;
+        transform: rotate(90deg) scale(1.05);
+    }
+
+    .ws-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 28px;
+        cursor: pointer;
         display: flex;
         flex-direction: column;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        overflow: hidden;
     }
 
-    .glass-panel {
-        background: var(--flux-glass-heavy);
-        backdrop-filter: blur(20px);
-        border: 1px solid var(--flux-glass-white);
-        border-radius: 16px;
-        padding: 40px;
-        box-shadow: 0 10px 30px rgba(19, 94, 75, 0.15);
+    .ws-card:hover {
+        transform: translateY(-8px);
+        border-color: var(--accent);
+        background: #1c1f26;
+        box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5), 0 0 20px rgba(59, 130, 246, 0.1);
     }
 
-    .workspace-card {
-        cursor: pointer;
-    }
-
-    .workspace-card:hover {
-        transform: translateY(-5px);
-        background: white;
-        border-color: var(--flux-primary);
-        box-shadow: 0 15px 40px rgba(76, 181, 114, 0.2);
-    }
-
-    .workspace-card-content {
-        padding: 24px;
-        flex: 1;
-    }
-
-    .workspace-avatar {
-        background: var(--flux-primary);
+    .ws-icon-box {
         width: 56px;
         height: 56px;
-        border-radius: 14px;
+        background: linear-gradient(135deg, var(--accent) 0%, #1d4ed8 100%);
+        border-radius: 18px;
         display: flex;
         align-items: center;
         justify-content: center;
+        font-size: 24px;
         font-weight: 800;
-        font-size: 1.5rem;
         color: white;
-        box-shadow: 0 4px 10px rgba(76, 181, 114, 0.3);
+        box-shadow: 0 10px 20px -5px rgba(59, 130, 246, 0.4);
     }
 
-    .workspace-card-actions {
-        padding: 16px 24px;
-        background: var(--flux-glass-white);
-        border-top: 1px solid var(--flux-border);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+    .delete-btn {
+        padding: 8px;
+        border-radius: 12px;
+        color: rgba(239, 68, 68, 0.4);
+        background: rgba(239, 68, 68, 0.05);
     }
 
-    /* Create Card Specifics */
-    .create-card {
-        background: var(--flux-glass-light);
-        border: 2px dashed var(--flux-border);
+    .delete-btn:hover {
+        color: #ef4444;
+        background: rgba(239, 68, 68, 0.1);
+        transform: scale(1.1);
+    }
+
+    .create-ws-card {
+        border: 2px dashed var(--border);
+        border-radius: 28px;
         cursor: pointer;
-        min-height: 200px;
-    }
-
-    .create-card:hover {
-        background: var(--flux-glass-medium);
-        border-color: var(--flux-primary);
-        transform: translateY(-5px);
-    }
-
-    .create-card-content {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
-        padding: 24px;
-        text-align: center;
-        color: var(--flux-main-text);
-    }
-
-    /* Custom Dialog Styling */
-    ::deep fluent-dialog::part(control) {
-        background: var(--flux-glass-heavy);
-        backdrop-filter: blur(25px);
-        -webkit-backdrop-filter: blur(25px);
-        border: 1px solid var(--flux-glass-white);
-        border-radius: 20px;
-        box-shadow: 0 20px 50px rgba(19, 94, 75, 0.2);
-        padding: 0;
-    }
-
-    .glass-dialog {
-        padding: 30px;
-        width: 450px;
-        color: var(--flux-main-text);
-    }
-
-    /* Buttons from Auth */
-    .scenic-btn-outline {
-        background: transparent;
-        border: 2px solid var(--flux-main-text);
-        color: var(--flux-main-text);
-        padding: 8px 24px;
-        border-radius: 30px;
-        font-weight: 600;
-        font-size: 14px;
-        cursor: pointer;
+        min-height: 240px;
         transition: all 0.3s ease;
     }
 
-    .scenic-btn-outline:hover {
-        background: rgba(19, 94, 75, 0.05);
+    .create-ws-card:hover {
+        border-color: var(--accent);
+        background: rgba(59, 130, 246, 0.02);
     }
 
-    .scenic-btn-primary {
-        background: var(--flux-primary);
+    .auth-input {
+        width: 100%;
+        padding: 14px 20px;
+        background: var(--input);
+        border: 1px solid var(--border);
+        border-radius: 16px;
         color: white;
-        border: none;
-        padding: 10px 24px;
-        border-radius: 30px;
-        font-weight: 700;
-        font-size: 14px;
-        cursor: pointer;
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        transition: all 0.3s ease;
     }
 
-    .scenic-btn-primary:hover:not(:disabled) {
-        transform: translateY(-2px);
-        background: var(--flux-primary-hover);
-        box-shadow: 0 10px 20px rgba(76, 181, 114, 0.3);
+    .auth-input:focus {
+        outline: none;
+        border-color: var(--accent);
+        background: rgba(255, 255, 255, 0.05);
     }
+
+    .loader-ring {
+        width: 48px;
+        height: 48px;
+        border: 3px solid rgba(255, 255, 255, 0.05);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @@keyframes spin { to { transform: rotate(360deg); } }
     
-    .scenic-btn-primary:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
+    .animate-modal {
+        animation: modalIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    @@keyframes fadeIn {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
+    @@keyframes modalIn {
+        from { opacity: 0; transform: scale(0.9) translateY(20px); }
+        to { opacity: 1; transform: scale(1) translateY(0); }
     }
 </style>
 
 @code {
     private List<WorkspaceSummary>? _workspaces;
     private Guid _currentUserId;
+    private FluxClientService.UserProfileDto? _currentUser;
+    private string _searchQuery = "";
 
     private bool _showCreateDialog = false;
     private string _newWorkspaceName = "";
@@ -325,6 +345,7 @@
             if (idClaim != null && Guid.TryParse(idClaim.Value, out var id))
             {
                 _currentUserId = id;
+                await LoadUserProfile();
             }
         }
         else 
@@ -334,6 +355,15 @@
         }
 
         await LoadWorkspaces();
+    }
+
+    private async Task LoadUserProfile()
+    {
+        var result = await FluxService.GetProfileAsync(_currentUserId);
+        if (result.IsSuccess)
+        {
+            _currentUser = result.Value;
+        }
     }
 
     private async Task LoadWorkspaces()
@@ -391,9 +421,7 @@
             _newWorkspaceName = "";
             _newWorkspaceDescription = "";
             _showCreateDialog = false;
-            
-            // Immediately join the newly created workspace
-            await SelectWorkspace(result.Value);
+            await LoadWorkspaces();
         }
     }
 }

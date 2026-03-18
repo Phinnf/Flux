@@ -7,66 +7,32 @@
 
 <PageTitle>Workspace - Flux</PageTitle>
 
-<div class="workspace-home-container">
-    <div class="glass-card welcome-card">
-        <FluentIcon Value="@(new Icons.Regular.Size48.Organization())" Color="Color.Accent" Style="margin-bottom: 20px;" />
-        <FluentLabel Typo="Typography.H2" Style="font-weight: bold; margin-bottom: 10px;">
+<div class="flex items-center justify-center h-full p-10">
+    <div class="flex flex-col items-center p-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-xl text-white">
+        <svg class="w-12 h-12 text-blue-500 mb-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+        <h2 class="text-2xl font-bold mb-3">
             Welcome to @(StateService.CurrentWorkspaceName ?? "your workspace")!
-        </FluentLabel>
+        </h2>
         
         @if (!StateService.Channels.Any())
         {
-            <FluentLabel Typo="Typography.Body" Style="margin-bottom: 30px; opacity: 0.8; text-align: center; max-width: 400px;">
+            <p class="mb-8 opacity-80 text-center max-w-md">
                 This workspace doesn't have any channels yet. Channels are where your team communicates.
-            </FluentLabel>
+            </p>
             
-            <div class="hint-box">
-                <FluentIcon Value="@(new Icons.Regular.Size24.ArrowCircleLeft())" />
+            <div class="flex items-center gap-4 bg-black/20 p-4 rounded-xl border border-white/10">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z"></path></svg>
                 <span>Click the <b>+ Add Channels</b> button in the sidebar to get started!</span>
             </div>
         }
         else
         {
-            <FluentLabel Typo="Typography.Body" Style="margin-bottom: 30px; opacity: 0.8; text-align: center; max-width: 400px;">
+            <p class="mb-8 opacity-80 text-center max-w-md">
                 Select a channel from the sidebar to start chatting.
-            </FluentLabel>
+            </p>
         }
     </div>
 </div>
-
-<style>
-    .workspace-home-container {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
-        padding: 40px;
-    }
-
-    .welcome-card {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 50px;
-        border-radius: 20px;
-        background: rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        color: white;
-    }
-
-    .hint-box {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-        background: rgba(0, 0, 0, 0.2);
-        padding: 15px 25px;
-        border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-</style>
 
 @code {
     [Parameter]

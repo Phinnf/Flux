@@ -15,7 +15,7 @@ public class ResetPasswordController(IMediator mediator) : ControllerBase
 
         if (result.IsFailure)
         {
-            return BadRequest(new { Message = result.Error });
+            return BadRequest(new { Error = result.Error });
         }
 
         return Ok(new { Message = "Password reset successfully." });
