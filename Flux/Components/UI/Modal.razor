@@ -1,0 +1,46 @@
+@if (IsOpen)
+{
+    <div class="modal-overlay" @onclick="CloseModal">
+        <div class="modal-content @WidthClass" @onclick:stopPropagation>
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h3 class="text-2xl font-bold text-white leading-tight">@Title</h3>
+                    @if (!string.IsNullOrEmpty(Subtitle))
+                    {
+                        <p class="text-white/40 text-sm mt-1">@Subtitle</p>
+                    }
+                </div>
+                <button @onclick="CloseModal" class="p-2 rounded-xl text-white/30 hover:text-white hover:bg-white/5 transition-all">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                @ChildContent
+            </div>
+
+            @if (Footer != null)
+            {
+                <div class="mt-8 flex justify-end gap-3">
+                    @Footer
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string? Subtitle { get; set; }
+    [Parameter] public string WidthClass { get; set; } = "w-[450px]";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Footer { get; set; }
+
+    private async Task CloseModal()
+    {
+        IsOpen = false;
+        await IsOpenChanged.InvokeAsync(false);
+    }
+}

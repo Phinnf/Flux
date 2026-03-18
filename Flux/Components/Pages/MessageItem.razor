@@ -1,0 +1,217 @@
+@using Flux.Features.Messages.GetMessages
+@using Flux.Infrastructure.Client
+
+<div class="message-group @(IsSelf ? "self" : "") @(IsActiveThread ? "active-thread" : "") @(IsCompact ? "compact" : "")" @oncontextmenu="ShowContextMenu" @oncontextmenu:preventDefault>
+    <!-- Hover Toolbar -->
+    <div class="message-hover-toolbar" @onclick:stopPropagation>
+        <div class="toolbar-container">
+            <button class="toolbar-btn" title="Add Reaction" @onclick="@((e) => OnReaction.InvokeAsync(e))">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </button>
+            <button class="toolbar-btn" title="Reply in thread" @onclick="@(() => OnReply.InvokeAsync())">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l5 5m-5-5l5-5" /></svg>
+            </button>
+            @if (IsSelf)
+            {
+                <button class="toolbar-btn" title="Edit message" @onclick="@(() => OnEdit.InvokeAsync())">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                </button>
+                <button class="toolbar-btn text-red-500 hover:bg-red-500/10" title="Delete message" @onclick="@(() => OnDelete.InvokeAsync())">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                </button>
+            }
+        </div>
+    </div>
+
+    @if (!IsCompact)
+    {
+        <div class="avatar-wrapper flex-shrink-0 cursor-pointer" @onclick="@(() => OnProfileClick.InvokeAsync())">
+            @if (!string.IsNullOrEmpty(Message.AvatarUrl))
+            {
+                <img src="@Message.AvatarUrl" class="w-9 h-9 rounded-lg object-cover" alt="@Message.Username" title="@Message.Username" />
+            }
+            else
+            {
+                <div class="w-9 h-9 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs" title="@Message.Username">
+                    @Initials
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="compact-time">@Message.CreatedAt.ToString("hh:mm")</div>
+    }
+    
+    <div class="message-content">
+        @if (!IsCompact)
+        {
+            <div class="message-meta">
+                <span class="username" style="cursor: pointer;" @onclick="@(() => OnProfileClick.InvokeAsync())">@Message.Username</span>
+                <span class="timestamp">@Message.CreatedAt.ToString("h:mm tt")</span>
+            </div>
+        }
+        <div class="message-bubble-wrapper">
+            @if (IsEditing)
+            {
+                <div class="inline-editor flex flex-col gap-2 w-full max-w-[600px]">
+                    <textarea value="@EditText" @oninput="@((e) => OnEditTextChanged.InvokeAsync(e.Value?.ToString()))"
+                                class="w-full bg-white/5 border border-blue-500 rounded-lg p-3 text-white focus:outline-none focus:ring-1 focus:ring-blue-500" 
+                                rows="2"></textarea>
+                    <div class="inline-editor-actions flex justify-end gap-2">
+                        <button class="px-4 py-1.5 text-sm font-medium text-white/60 hover:text-white transition-colors" @onclick="OnCancelEdit">Cancel</button>
+                        <button class="px-4 py-1.5 text-sm font-medium text-white bg-[#007a5a] hover:bg-[#007a5a]/90 rounded-md transition-colors" @onclick="OnSaveEdit">Save</button>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="message-bubble">
+                    @ParseContent(Message.Content)
+
+                    @if (Message.UpdatedAt.HasValue)
+                    {
+                        <span class="edited-badge">(edited)</span>
+                    }
+                </div>
+            }
+            
+            <div class="message-reactions">
+                @if (Message.Reactions != null && Message.Reactions.Any())
+                {
+                    var groupedReactions = Message.Reactions.GroupBy(r => r.Emoji);
+                    foreach (var reactionGroup in groupedReactions)
+                    {
+                        var hasReacted = reactionGroup.Any(r => r.UserId == CurrentUserId);
+                        <button class="reaction-badge @(hasReacted ? "reacted" : "")" @onclick="@(() => OnToggleReaction.InvokeAsync(reactionGroup.Key))" @onclick:stopPropagation>
+                            <span class="emoji">@reactionGroup.Key</span>
+                            <span class="count">@reactionGroup.Count()</span>
+                        </button>
+                    }
+                }
+            </div>
+
+            @if (Message.ReplyCount > 0)
+            {
+                <div class="thread-replies-indicator" @onclick:stopPropagation @onclick="@(() => OnReply.InvokeAsync())">
+                    <div class="reply-avatars flex -space-x-2">
+                        <div class="w-5 h-5 rounded-md bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-[8px] border border-gray-800">
+                            @Initials
+                        </div>
+                    </div>
+                    <span class="reply-count">@Message.ReplyCount @(Message.ReplyCount > 1 ? "replies" : "reply")</span>
+                    <span class="view-thread-text">View thread</span>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public MessageDto Message { get; set; } = default!;
+    [Parameter] public bool IsCompact { get; set; }
+    [Parameter] public bool IsSelf { get; set; }
+    [Parameter] public bool IsActiveThread { get; set; }
+    [Parameter] public bool IsEditing { get; set; }
+    [Parameter] public string EditText { get; set; } = "";
+    [Parameter] public Guid CurrentUserId { get; set; }
+    [Parameter] public string Initials { get; set; } = "?";
+
+    [Parameter] public EventCallback OnReply { get; set; }
+    [Parameter] public EventCallback OnEdit { get; set; }
+    [Parameter] public EventCallback OnDelete { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> OnReaction { get; set; }
+    [Parameter] public EventCallback<string> OnToggleReaction { get; set; }
+    [Parameter] public EventCallback OnProfileClick { get; set; }
+    [Parameter] public EventCallback OnCancelEdit { get; set; }
+    [Parameter] public EventCallback OnSaveEdit { get; set; }
+    [Parameter] public EventCallback<string> OnEditTextChanged { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> OnContextMenu { get; set; }
+
+    private RenderFragment ParseContent(string content) => builder =>
+    {
+        if (content.Contains("[video: "))
+        {
+            var startIndex = content.IndexOf("[video: ");
+            var endIndex = content.IndexOf("]", startIndex);
+            if (startIndex >= 0 && endIndex > startIndex)
+            {
+                var before = content.Substring(0, startIndex);
+                var url = content.Substring(startIndex + 8, endIndex - startIndex - 8);
+                var after = content.Substring(endIndex + 1);
+                
+                if (!string.IsNullOrWhiteSpace(before)) builder.AddContent(0, before);
+                builder.OpenElement(1, "video");
+                builder.AddAttribute(2, "src", url);
+                builder.AddAttribute(3, "controls", true);
+                builder.AddAttribute(4, "class", "message-video");
+                builder.AddAttribute(5, "preload", "metadata");
+                builder.CloseElement();
+                if (!string.IsNullOrWhiteSpace(after)) builder.AddContent(6, after);
+                return;
+            }
+        }
+        
+        if (content.Contains("[image: "))
+        {
+            var startIndex = content.IndexOf("[image: ");
+            var endIndex = content.IndexOf("]", startIndex);
+            if (startIndex >= 0 && endIndex > startIndex)
+            {
+                var before = content.Substring(0, startIndex);
+                var url = content.Substring(startIndex + 8, endIndex - startIndex - 8);
+                var after = content.Substring(endIndex + 1);
+                
+                if (!string.IsNullOrWhiteSpace(before)) builder.AddContent(0, before);
+                builder.OpenElement(1, "img");
+                builder.AddAttribute(2, "src", url);
+                builder.AddAttribute(3, "class", "message-image");
+                builder.AddAttribute(4, "alt", "Uploaded image");
+                builder.CloseElement();
+                if (!string.IsNullOrWhiteSpace(after)) builder.AddContent(5, after);
+                return;
+            }
+        }
+
+        if (content.Contains("[audio: "))
+        {
+            var startIndex = content.IndexOf("[audio: ");
+            var endIndex = content.IndexOf("]", startIndex);
+            if (startIndex >= 0 && endIndex > startIndex)
+            {
+                var before = content.Substring(0, startIndex);
+                var url = content.Substring(startIndex + 8, endIndex - startIndex - 8);
+                var after = content.Substring(endIndex + 1);
+                
+                if (!string.IsNullOrWhiteSpace(before)) builder.AddContent(0, before);
+                builder.OpenElement(1, "div");
+                builder.AddAttribute(2, "class", "audio-player-wrapper");
+                builder.OpenElement(3, "audio");
+                builder.AddAttribute(4, "src", url);
+                builder.AddAttribute(5, "controls", true);
+                builder.AddAttribute(6, "class", "message-audio");
+                builder.CloseElement();
+                builder.CloseElement();
+                if (!string.IsNullOrWhiteSpace(after)) builder.AddContent(7, after);
+                return;
+            }
+        }
+
+        if (content.StartsWith("IMPORTANT: "))
+        {
+            builder.OpenElement(0, "span");
+            builder.AddAttribute(1, "style", "color: #e01e5a; font-weight: bold;");
+            builder.AddContent(2, content);
+            builder.CloseElement();
+        }
+        else
+        {
+            builder.AddContent(0, content);
+        }
+    };
+
+    private async Task ShowContextMenu(MouseEventArgs e)
+    {
+        await OnContextMenu.InvokeAsync(e);
+    }
+}

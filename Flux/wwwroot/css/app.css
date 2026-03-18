@@ -31,12 +31,13 @@ body {
     color: var(--flux-main-text);
 }
 
-.main-container { height: 100vh; width: 100vw; display: flex; }
-.slack-layout { display: flex; flex: 1; width: 100%; overflow: hidden; background: transparent; }
+.main-container { height: 100vh; width: 100vw; display: flex; overflow: hidden; }
+.slack-layout { display: flex; flex: 1; width: 100%; overflow: hidden; background: transparent; min-width: 0; }
 
 /* --- 1. Activity Bar (Redesigned) --- */
 .activity-bar {
     width: 72px;
+    min-width: 72px;
     background-color: rgba(10, 11, 15, 0.95);
     backdrop-filter: blur(20px);
     border-right: 1px solid var(--flux-border);

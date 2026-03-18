@@ -5,469 +5,66 @@
 @using Flux.Infrastructure.Client
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
-@using Microsoft.AspNetCore.SignalR.Client
-@using Flux.Features.Messages.SendMessage
-@using Flux.Features.Messages.GetMessages
 @inject WorkspaceStateService StateService
 @inject FluxClientService FluxService
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
-@inject IJSRuntime JS
-@implements IAsyncDisposable
 
 <PageTitle>Direct Messages</PageTitle>
 
-<div class="flex h-full w-full bg-[#1A1D21] text-gray-200" style="overflow: hidden; height: 100vh;">
-    <!-- DMs Sidebar -->
-    <div class="w-[260px] flex flex-col bg-[#19171D] border-r border-gray-700 h-full">
-        <!-- Header -->
-        <div class="h-[60px] min-h-[60px] flex items-center px-4 border-b border-gray-700">
-            <h2 class="text-white font-bold text-lg">Direct Messages</h2>
+<div class="flex items-center justify-center h-full bg-[#1A1D21] text-gray-200">
+    <div class="text-center max-w-md p-6">
+        <div class="animate-pulse flex flex-col items-center">
+            <svg class="w-24 h-24 mb-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+            <h3 class="text-2xl font-bold text-white mb-2">Connecting your conversation...</h3>
+            <p class="text-gray-400">We're opening your 1-1 chat.</p>
         </div>
-        <!-- Member List -->
-        <div class="flex-1 overflow-y-auto py-2 custom-scrollbar">
-            @if (StateService.Members != null && StateService.Members.Any())
-            {
-                @foreach (var member in StateService.Members.OrderByDescending(m => m.Id == CurrentUserId).ThenByDescending(m => m.Status == "Online").ThenBy(m => m.Username))
-                {
-                    <div @onclick="() => SelectUser(member.Id)" class="flex items-center px-4 py-2 cursor-pointer transition-colors duration-150 @(TargetUserId == member.Id ? "bg-[#1164A3] text-white" : "hover:bg-[#2C2D30] text-gray-300")">
-                        <div class="relative flex-shrink-0">
-                            @if (!string.IsNullOrEmpty(member.AvatarUrl)) {
-                                <img src="@member.AvatarUrl" class="w-8 h-8 rounded-md object-cover" />
-                            } else {
-                                <div class="w-8 h-8 rounded-md bg-indigo-600 flex items-center justify-center text-white font-bold text-sm">@GetInitials(member.Username)</div>
-                            }
-                            @if (member.Status == "Online")
-                            {
-                                <div class="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-[#19171D] bg-green-500"></div>
-                            }
-                            else if (member.Status == "Idle")
-                            {
-                                <div class="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-[#19171D] bg-[#19171D] flex items-center justify-center text-[10px] leading-none">🌙</div>
-                            }
-                            else
-                            {
-                                <div class="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-[#19171D] bg-black"></div>
-                            }
-                        </div>
-                        <div class="ml-3 flex-1 overflow-hidden flex items-center">
-                            <div class="text-[15px] font-medium truncate">@member.Username</div>
-                            @if (member.Id == CurrentUserId)
-                            {
-                                <span class="ml-2 text-[10px] bg-[#1164A3] border border-[#1164A3] text-white px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider opacity-90">You</span>
-                            }
-                        </div>
-                    </div>
-                }
-            }
-            else
-            {
-                <div class="px-4 py-6 text-center text-gray-500 text-sm">
-                    No members in this workspace yet.
-                </div>
-            }
-        </div>
-    </div>
-
-    <!-- Chat Pane -->
-    <div class="flex-1 flex flex-col bg-[#1A1D21] relative min-w-0 h-full">
-        @if (TargetUserId == null || TargetUserId == Guid.Empty)
-        {
-            <div class="flex-1 flex items-center justify-center">
-                <div class="text-center max-w-md p-6">
-                    <svg class="w-24 h-24 mx-auto mb-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
-                    <h3 class="text-2xl font-bold text-white mb-2">Your Direct Messages</h3>
-                    <p class="text-gray-400">Select a colleague from the sidebar to start a conversation, share files, and collaborate one-on-one.</p>
-                </div>
-            </div>
-        }
-        else if (_isLoading)
-        {
-            <div class="flex-1 flex items-center justify-center">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
-            </div>
-        }
-        else
-        {
-            <!-- Header -->
-            <div class="h-[60px] min-h-[60px] flex items-center px-6 border-b border-gray-700 bg-[#1A1D21]">
-                <div class="flex items-center">
-                    @if (!string.IsNullOrEmpty(_targetUser?.AvatarUrl)) {
-                        <img src="@_targetUser.AvatarUrl" class="w-8 h-8 rounded-md mr-3 object-cover" />
-                    } else {
-                        <div class="w-8 h-8 rounded-md bg-indigo-600 flex items-center justify-center text-white font-bold text-sm mr-3">@GetInitials(_targetUser?.Username)</div>
-                    }
-                    <div>
-                        <div class="flex items-center">
-                            <h2 class="text-white font-bold text-[15px] leading-tight">@_targetUser?.Username</h2>
-                            @if (_targetUser?.Id == CurrentUserId)
-                            {
-                                <span class="ml-2 text-[10px] bg-[#1164A3] border border-[#1164A3] text-white px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider opacity-90">You</span>
-                            }
-                        </div>
-                        <div class="text-[12px] text-gray-400 flex items-center mt-0.5">
-                            @if (_targetUser?.Status == "Online")
-                            {
-                                <span class="w-2 h-2 rounded-full mr-1.5 inline-block bg-green-500"></span>
-                            }
-                            else if (_targetUser?.Status == "Idle")
-                            {
-                                <span class="mr-1.5 inline-block text-[10px] leading-none">🌙</span>
-                            }
-                            else
-                            {
-                                <span class="w-2 h-2 rounded-full mr-1.5 inline-block bg-black border border-gray-600"></span>
-                            }
-                            @(_targetUser?.Status ?? "Offline")
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Messages List -->
-            <div class="flex-1 overflow-y-auto" @ref="_messagesViewport">
-                @if (!_messages.Any())
-                {
-                    <div class="flex flex-col justify-end min-h-full pb-10 px-8">
-                        <div class="mb-4">
-                            @if (!string.IsNullOrEmpty(_targetUser?.AvatarUrl)) {
-                                <img src="@_targetUser.AvatarUrl" class="w-20 h-20 rounded-xl object-cover" />
-                            } else {
-                                <div class="w-20 h-20 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-3xl">@GetInitials(_targetUser?.Username)</div>
-                            }
-                        </div>
-                        <h1 class="text-3xl font-bold text-white mb-2">@_targetUser?.Username</h1>
-                        @if (_targetUser?.Id == CurrentUserId)
-                        {
-                            <p class="text-white/60 text-[15px] max-w-2xl">This is your space. Draft messages, list your to-dos, or keep links and files handy.</p>
-                        }
-                        else
-                        {
-                            <p class="text-white/60 text-[15px]">This is the very beginning of your direct message history with <span class="font-semibold text-white">@_targetUser?.Username</span>.</p>
-                        }
-                    </div>
-                }
-                else
-                {
-                    <div class="message-list py-6">
-                        @for (int i = 0; i < _messages.Count; i++)
-                        {
-                            var msg = _messages[i];
-                            var prevMsg = i > 0 ? _messages[i - 1] : null;
-                            
-                            bool showDate = prevMsg == null || msg.CreatedAt.Date != prevMsg.CreatedAt.Date;
-                            bool isCompact = !showDate && prevMsg != null && prevMsg.UserId == msg.UserId && (msg.CreatedAt - prevMsg.CreatedAt).TotalMinutes < 5;
-                            bool isSelf = msg.UserId == CurrentUserId;
-
-                            if (showDate)
-                            {
-                                var dateLabel = msg.CreatedAt.Date == DateTime.Today ? "Today" : 
-                                                msg.CreatedAt.Date == DateTime.Today.AddDays(-1) ? "Yesterday" : 
-                                                msg.CreatedAt.ToString("dddd, MMMM d");
-                                                
-                                <div class="date-divider">
-                                    <hr />
-                                    <span>@dateLabel</span>
-                                </div>
-                            }
-
-                            <div class="message-group @(isSelf ? "self" : "") @(isCompact ? "compact" : "")">
-                                @if (!isCompact)
-                                {
-                                    <div class="avatar-wrapper flex-shrink-0">
-                                        @if (!string.IsNullOrEmpty(msg.AvatarUrl))
-                                        {
-                                            <img src="@msg.AvatarUrl" class="w-9 h-9 rounded-lg object-cover" alt="@msg.Username" />
-                                        }
-                                        else
-                                        {
-                                            <div class="w-9 h-9 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">
-                                                @GetInitials(msg.Username)
-                                            </div>
-                                        }
-                                    </div>
-                                }
-                                else
-                                {
-                                    <div class="compact-time">@msg.CreatedAt.ToString("hh:mm")</div>
-                                }
-                                
-                                <div class="message-content">
-                                    @if (!isCompact)
-                                    {
-                                        <div class="message-meta">
-                                            <span class="username">@msg.Username</span>
-                                            <span class="timestamp">@msg.CreatedAt.ToLocalTime().ToString("h:mm tt")</span>
-                                        </div>
-                                    }
-                                    <div class="message-bubble-wrapper">
-                                        <div class="message-bubble">@msg.Content</div>
-                                    </div>
-                                </div>
-                            </div>
-                        }
-                    </div>
-                }
-            </div>
-
-            <!-- Chat Input Area -->
-            <div class="chat-input-container">
-                <div class="chat-input-box">
-                    <div class="flex items-end bg-transparent gap-2 p-1">
-                        <textarea @ref="_textAreaRef"
-                                  @bind="_newMessageContent"
-                                  @bind:event="oninput"
-                                  @onkeydown="HandleKeyDown"
-                                  placeholder="@(_targetUser?.Id == CurrentUserId ? "Jot something down" : $"Message {_targetUser?.Username}")"
-                                  title="Press Enter to send. Press Shift+Enter for a new line."
-                                  class="flex-1 bg-transparent border-none focus:ring-0 text-white p-3 min-h-[44px] max-h-[200px] resize-none overflow-y-auto"
-                                  rows="1"></textarea>
-                        
-                        <button class="w-10 h-10 flex items-center justify-center rounded-lg @(string.IsNullOrWhiteSpace(_newMessageContent) ? "text-white/20" : "text-white bg-green-600 hover:bg-green-700") transition-all shrink-0 mb-1.5 mr-1"
-                                @onclick="SendMessage"
-                                disabled="@(string.IsNullOrWhiteSpace(_newMessageContent))"
-                                title="Send message (Enter)">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
-                        </button>
-                    </div>
-
-                    <div class="bottom-toolbar flex justify-between items-center px-2 py-1 border-t border-white/5">
-                        <div class="toolbar-left flex items-center gap-1">
-                             <button class="p-1.5 text-white/40 hover:text-white transition-colors" title="Add emoji">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            </button>
-                            <button class="p-1.5 text-white/40 hover:text-white transition-colors" title="Mention">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.206" /></svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        }
     </div>
 </div>
-
-<style>
-    /* Custom Scrollbar for Tailwind styling consistency */
-    .custom-scrollbar::-webkit-scrollbar {
-        width: 6px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-track {
-        background: transparent;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-        background-color: rgba(255,255,255,0.2); 
-        border-radius: 10px;
-    }
-    .custom-scrollbar:hover::-webkit-scrollbar-thumb {
-        background-color: rgba(255,255,255,0.3);
-    }
-    
-    /* Remove outline from textarea */
-    textarea {
-        outline: none !important;
-    }
-</style>
 
 @code {
     [Parameter] public Guid WorkspaceId { get; set; }
     [Parameter] public Guid? TargetUserId { get; set; }
 
-    private Guid CurrentUserId;
-    private MemberDto? _targetUser;
-    private Guid? _currentChannelId;
-    
-    private List<MessageDto> _messages = new();
-    private string _newMessageContent = "";
-    private bool _isLoading = false;
-    private ElementReference _messagesViewport;
-    private ElementReference _textAreaRef;
-    
-    private HubConnection? _hubConnection;
-
-    private void OnStateChangedHandler()
-    {
-        InvokeAsync(StateHasChanged);
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-        if (user.Identity is { IsAuthenticated: true })
-        {
-            var idClaim = user.FindFirst(ClaimTypes.NameIdentifier) ?? user.FindFirst("sub");
-            if (idClaim != null && Guid.TryParse(idClaim.Value, out var id))
-            {
-                CurrentUserId = id;
-            }
-        }
-
-        StateService.OnStateChanged += OnStateChangedHandler;
-        
-        // Setup SignalR
-        _hubConnection = new HubConnectionBuilder()
-            .WithUrl(Navigation.ToAbsoluteUri("/chatHub"), options =>
-            {
-                options.AccessTokenProvider = async () =>
-                {
-                    try {
-                        var token = await JS.InvokeAsync<string>("sessionStorage.getItem", "authToken");
-                        return string.IsNullOrWhiteSpace(token) ? await JS.InvokeAsync<string>("localStorage.getItem", "authToken") : token;
-                    } catch { return null; }
-                };
-            })
-            .WithAutomaticReconnect()
-            .Build();
-
-        _hubConnection.On<SendMessageResponse>("ReceiveMessage", async (response) =>
-        {
-            if (response.ChannelId == _currentChannelId)
-            {
-                if (!_messages.Any(m => m.Id == response.Id))
-                {
-                    _messages.Add(new MessageDto(
-                        response.Id, response.Content, response.UserId, response.Username, 
-                        response.CreatedAt, null, response.AvatarUrl, response.ParentMessageId, 0));
-                    
-                    await InvokeAsync(StateHasChanged);
-                    await ScrollToBottom();
-                }
-            }
-        });
-
-        _hubConnection.On<string, string>("UserPresenceChanged", async (userId, status) =>
-        {
-            if (Guid.TryParse(userId, out var uid))
-            {
-                StateService.UpdateMemberPresence(uid, status);
-                if (_targetUser?.Id == uid)
-                {
-                    _targetUser = _targetUser with { Status = status };
-                }
-                await InvokeAsync(StateHasChanged);
-            }
-        });
-
-        await _hubConnection.StartAsync();
-    }
-
     protected override async Task OnParametersSetAsync()
     {
-        if (TargetUserId.HasValue && TargetUserId.Value != Guid.Empty)
+        if (TargetUserId.HasValue)
         {
-            await LoadDirectMessageChannel(TargetUserId.Value);
-        }
-    }
-
-    private void SelectUser(Guid targetId)
-    {
-        if (TargetUserId != targetId)
-        {
-            Navigation.NavigateTo($"/workspace/{WorkspaceId}/dms/{targetId}");
-        }
-    }
-
-    private async Task LoadDirectMessageChannel(Guid targetUserId)
-    {
-        _isLoading = true;
-        _messages.Clear();
-        _targetUser = StateService.Members.FirstOrDefault(m => m.Id == targetUserId);
-        
-        try
-        {
-            var channelResult = await FluxService.GetOrCreateDirectChannelAsync(WorkspaceId, CurrentUserId, targetUserId);
-            if (channelResult.IsSuccess && channelResult.Value != null)
-            {
-                if (_currentChannelId.HasValue && _hubConnection?.State == HubConnectionState.Connected)
-                {
-                    await _hubConnection.InvokeAsync("LeaveChannel", _currentChannelId.Value.ToString());
-                }
-
-                _currentChannelId = channelResult.Value.Id;
-
-                if (_hubConnection?.State == HubConnectionState.Connected)
-                {
-                    await _hubConnection.InvokeAsync("JoinChannel", _currentChannelId.Value.ToString());
-                }
-
-                var msgsResult = await FluxService.GetMessagesAsync(_currentChannelId.Value);
-                if (msgsResult.IsSuccess && msgsResult.Value != null)
-                {
-                    _messages = msgsResult.Value;
-                }
-                
-                await InvokeAsync(StateHasChanged);
-                await Task.Delay(100); 
-                await ScrollToBottom();
-            }
-            else
-            {
-                 await JS.InvokeVoidAsync("alert", $"Failed to load conversation: {channelResult.Error}");
-            }
-        }
-        finally
-        {
-            _isLoading = false;
-        }
-    }
-
-    private async Task HandleKeyDown(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter" && !e.ShiftKey)
-        {
-            await SendMessage();
-        }
-    }
-
-    private async Task SendMessage()
-    {
-        if (string.IsNullOrWhiteSpace(_newMessageContent) || !_currentChannelId.HasValue) return;
-
-        var content = _newMessageContent.Trim();
-        _newMessageContent = string.Empty;
-
-        var command = new SendMessageCommand(content, _currentChannelId.Value, CurrentUserId);
-        var result = await FluxService.SendMessageAsync(command);
-
-        if (!result.IsSuccess)
-        {
-            _newMessageContent = content; 
-             await JS.InvokeVoidAsync("alert", $"Failed to send: {result.Error}");
+            await RedirectToDirectChannel(TargetUserId.Value);
         }
         else
         {
-            await ScrollToBottom();
-        }
-    }
-
-    private async Task ScrollToBottom()
-    {
-        try
-        {
-            await JS.InvokeVoidAsync("scrollToBottom", _messagesViewport);
-        }
-        catch { /* ignore JS errors */ }
-    }
-
-    private string GetInitials(string? name)
-    {
-        if (string.IsNullOrWhiteSpace(name)) return "?";
-        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length == 1) return parts[0].Substring(0, Math.Min(2, parts[0].Length)).ToUpper();
-        return (parts[0][0].ToString() + parts[^1][0].ToString()).ToUpper();
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        StateService.OnStateChanged -= OnStateChangedHandler;
-        if (_hubConnection != null)
-        {
-            if (_currentChannelId.HasValue && _hubConnection.State == HubConnectionState.Connected)
+            // If no target user is specified, try to find the last active DM or first available
+            var firstDirect = StateService.Channels.FirstOrDefault(c => c.Type == ChannelType.Direct);
+            if (firstDirect != null)
             {
-                try { await _hubConnection.InvokeAsync("LeaveChannel", _currentChannelId.Value.ToString()); } catch { }
+                Navigation.NavigateTo($"/workspace/{WorkspaceId}/chat/{firstDirect.Id}");
             }
-            await _hubConnection.DisposeAsync();
+            else if (StateService.Members.Any())
+            {
+                // Fallback to first member if no direct channel exists yet
+                var firstMember = StateService.Members.FirstOrDefault();
+                if (firstMember != null)
+                {
+                    await RedirectToDirectChannel(firstMember.Id);
+                }
+            }
+        }
+    }
+
+    private async Task RedirectToDirectChannel(Guid targetUserId)
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var userIdStr = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value;
+        
+        if (Guid.TryParse(userIdStr, out var currentUserId))
+        {
+            var result = await FluxService.GetOrCreateDirectChannelAsync(WorkspaceId, currentUserId, targetUserId);
+            if (result.IsSuccess && result.Value != null)
+            {
+                Navigation.NavigateTo($"/workspace/{WorkspaceId}/chat/{result.Value.Id}");
+            }
         }
     }
 }
