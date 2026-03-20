@@ -1,13 +1,17 @@
 ﻿using Flux.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace Flux.Infrastructure.Database
 {
     public class FluxDbContext : DbContext
     {
+        private readonly string _encryptionKey;
+
         // constructor 
-        public FluxDbContext(DbContextOptions<FluxDbContext> options) : base(options)
+        public FluxDbContext(DbContextOptions<FluxDbContext> options, IConfiguration configuration) : base(options)
         {
+            _encryptionKey = configuration["Encryption:MessageKey"] ?? "DEFAULT_FALLBACK_KEY_MAKE_IT_32_BYTES_LONG_!";
         }
 
         // DbSets represent the tables in postgreSQL
@@ -22,6 +26,12 @@ namespace Flux.Infrastructure.Database
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            // Apply Encryption to Message.Content
+            var messageConverter = new EncryptedConverter(_encryptionKey);
+            modelBuilder.Entity<Message>()
+                .Property(m => m.Content)
+                .HasConversion(messageConverter);
 
             // Reaction - Message (1-to-Many)
             modelBuilder.Entity<Reaction>()

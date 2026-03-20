@@ -1,5 +1,4 @@
 @page "/workspace/{WorkspaceId:guid}/dms"
-@page "/workspace/{WorkspaceId:guid}/dms/{TargetUserId:guid}"
 @layout Flux.Components.Layout.WorkspaceLayout
 @using Flux.Domain.Entities
 @using Flux.Infrastructure.Client
@@ -12,59 +11,38 @@
 
 <PageTitle>Direct Messages</PageTitle>
 
-<div class="flex items-center justify-center h-full bg-[#1A1D21] text-gray-200">
+<Flux.Components.Layout.DmSidebar />
+
+<div class="flex-1 flex items-center justify-center h-full bg-[#1A1D21] text-gray-200">
     <div class="text-center max-w-md p-6">
-        <div class="animate-pulse flex flex-col items-center">
+        <div class="flex flex-col items-center">
             <svg class="w-24 h-24 mb-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
-            <h3 class="text-2xl font-bold text-white mb-2">Connecting your conversation...</h3>
-            <p class="text-gray-400">We're opening your 1-1 chat.</p>
+            <h3 class="text-2xl font-bold text-white mb-2">Direct Messages</h3>
+            <p class="text-gray-400">Select a person from the sidebar to start a 1-on-1 conversation.</p>
         </div>
     </div>
 </div>
 
 @code {
     [Parameter] public Guid WorkspaceId { get; set; }
-    [Parameter] public Guid? TargetUserId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        StateService.OnStateChanged += StateHasChanged;
+    }
 
     protected override async Task OnParametersSetAsync()
     {
-        if (TargetUserId.HasValue)
+        // Auto-redirect to the first direct channel if available
+        var firstDirect = StateService.Channels.FirstOrDefault(c => c.Type == ChannelType.Direct);
+        if (firstDirect != null)
         {
-            await RedirectToDirectChannel(TargetUserId.Value);
-        }
-        else
-        {
-            // If no target user is specified, try to find the last active DM or first available
-            var firstDirect = StateService.Channels.FirstOrDefault(c => c.Type == ChannelType.Direct);
-            if (firstDirect != null)
-            {
-                Navigation.NavigateTo($"/workspace/{WorkspaceId}/chat/{firstDirect.Id}");
-            }
-            else if (StateService.Members.Any())
-            {
-                // Fallback to first member if no direct channel exists yet
-                var firstMember = StateService.Members.FirstOrDefault();
-                if (firstMember != null)
-                {
-                    await RedirectToDirectChannel(firstMember.Id);
-                }
-            }
+            Navigation.NavigateTo($"/workspace/{WorkspaceId}/dms/{firstDirect.Id}");
         }
     }
-
-    private async Task RedirectToDirectChannel(Guid targetUserId)
+    
+    public void Dispose()
     {
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-        var userIdStr = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value;
-        
-        if (Guid.TryParse(userIdStr, out var currentUserId))
-        {
-            var result = await WorkspaceService.GetOrCreateDirectChannelAsync(WorkspaceId, currentUserId, targetUserId);
-            if (result.IsSuccess && result.Value != null)
-            {
-                Navigation.NavigateTo($"/workspace/{WorkspaceId}/chat/{result.Value.Id}");
-            }
-        }
+        StateService.OnStateChanged -= StateHasChanged;
     }
 }

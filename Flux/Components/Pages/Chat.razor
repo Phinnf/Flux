@@ -1,4 +1,5 @@
 @page "/workspace/{WorkspaceId:guid}/chat/{ChannelId:guid}"
+@page "/workspace/{WorkspaceId:guid}/dms/{ChannelId:guid}"
 @layout Flux.Components.Layout.WorkspaceLayout
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Web.Virtualization
@@ -17,7 +18,7 @@
 }
 else
 {
-    <!-- Placeholder for DM Sidebar (trang dm có side bar riêng) -->
+    <Flux.Components.Layout.DmSidebar />
 }
 
 <div class="chat-main-wrapper flex-1">

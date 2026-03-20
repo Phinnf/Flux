@@ -354,7 +354,7 @@
         if (result.IsSuccess && result.Value != null)
         {
             await WorkspaceState.RefreshChannelsAsync(_currentUserId);
-            Navigation.NavigateTo($"/workspace/{WorkspaceState.CurrentWorkspaceId}/chat/{result.Value.Id}");
+            Navigation.NavigateTo($"/workspace/{WorkspaceState.CurrentWorkspaceId}/dms/{result.Value.Id}");
         }
     }
 

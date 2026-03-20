@@ -1,0 +1,125 @@
+@using Flux.Domain.Entities
+@using Flux.Infrastructure.Client
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@inject WorkspaceStateService WorkspaceState
+@inject NavigationManager Navigation
+@inject WorkspaceClientService WorkspaceService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="workspace-sidebar bg-[#19171D] border-r border-gray-700 flex flex-col h-full w-[280px] flex-shrink-0">
+    <div class="sidebar-header h-[60px] min-h-[60px] flex items-center px-4 border-b border-gray-700">
+        <h2 class="text-white font-bold text-lg">Direct Messages</h2>
+    </div>
+    
+    <div class="p-3 border-b border-gray-700">
+        <div class="relative">
+            <input type="text" @bind="_searchTerm" @bind:event="oninput" placeholder="Find members..." 
+                   class="w-full bg-[#222529] border border-gray-600 rounded-md py-1.5 pl-8 pr-3 text-sm text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors" />
+            <svg class="w-4 h-4 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+        </div>
+    </div>
+    
+    <div class="sidebar-scrollable flex-1 overflow-y-auto py-2 px-2 custom-scrollbar">
+        @if (WorkspaceState.Members == null || !WorkspaceState.Members.Any())
+        {
+            <div class="text-center p-4 text-gray-500 text-sm">No members found.</div>
+        }
+        else
+        {
+            @foreach (var member in FilteredMembers)
+            {
+                <button @onclick="@(() => StartDirectMessage(member.Id))" class="w-full text-left flex items-center gap-3 px-3 py-2 rounded-md transition-colors mb-0.5 @(IsActive(member.Id) ? "bg-[#2C2D30] border border-gray-700" : "hover:bg-[#2C2D30] border border-transparent")">
+                    <div class="relative flex-shrink-0">
+                        @if (!string.IsNullOrEmpty(member.AvatarUrl))
+                        {
+                            <img src="@member.AvatarUrl" class="w-8 h-8 rounded-md object-cover" alt="@member.Username" />
+                        }
+                        else
+                        {
+                            <div class="w-8 h-8 rounded-md bg-indigo-600 flex items-center justify-center text-white font-bold text-xs">
+                                @(string.IsNullOrEmpty(member.Username) ? "U" : member.Username[0].ToString().ToUpper())
+                            </div>
+                        }
+                        <div class="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-[#19171D] bg-gray-500 @(member.Status?.ToLower() == "online" ? "!bg-green-500" : "") @(member.Status?.ToLower() == "working" ? "!bg-yellow-500" : "") @(member.Status?.ToLower() == "idle" ? "!bg-orange-500" : "")"></div>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between">
+                            <span class="text-gray-300 text-[15px] truncate @(member.Id == _currentUserId ? "font-bold" : "")">
+                                @member.Username @(member.Id == _currentUserId ? "(you)" : "")
+                            </span>
+                        </div>
+                        @if (!string.IsNullOrEmpty(member.FullName))
+                        {
+                            <div class="text-[12px] text-gray-500 truncate">@member.FullName</div>
+                        }
+                    </div>
+                </button>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private Guid _currentUserId;
+    private string _searchTerm = "";
+
+    private IEnumerable<MemberDto> FilteredMembers =>
+        string.IsNullOrWhiteSpace(_searchTerm)
+            ? WorkspaceState.Members.OrderByDescending(m => m.Status == "Online").ThenBy(m => m.Username)
+            : WorkspaceState.Members.Where(m => 
+                (m.Username?.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) || 
+                (m.FullName?.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ?? false))
+              .OrderByDescending(m => m.Status == "Online").ThenBy(m => m.Username);
+
+    protected override async Task OnInitializedAsync()
+    {
+        WorkspaceState.OnStateChanged += () => InvokeAsync(StateHasChanged);
+        
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (user.Identity is { IsAuthenticated: true })
+        {
+            var idClaim = user.FindFirst(ClaimTypes.NameIdentifier) ?? user.FindFirst("sub");
+            if (idClaim != null && Guid.TryParse(idClaim.Value, out var id))
+            {
+                _currentUserId = id;
+            }
+        }
+    }
+
+    private bool IsActive(Guid memberId)
+    {
+        var uri = Navigation.Uri;
+        var parts = uri.Split('/');
+        var dmsIndex = Array.IndexOf(parts, "dms");
+        if (dmsIndex != -1 && dmsIndex + 1 < parts.Length && Guid.TryParse(parts[dmsIndex + 1], out Guid channelId))
+        {
+            var activeChannel = WorkspaceState.Channels.FirstOrDefault(c => c.Id == channelId);
+            if (activeChannel != null && activeChannel.Type == ChannelType.Direct)
+            {
+                var member = WorkspaceState.Members.FirstOrDefault(m => m.Id == memberId);
+                if (member != null && activeChannel.Name.Contains(member.Username))
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    private async Task StartDirectMessage(Guid targetUserId)
+    {
+        if (WorkspaceState.CurrentWorkspaceId == null) return;
+        
+        var result = await WorkspaceService.GetOrCreateDirectChannelAsync(WorkspaceState.CurrentWorkspaceId.Value, _currentUserId, targetUserId);
+        if (result.IsSuccess && result.Value != null)
+        {
+            await WorkspaceState.RefreshChannelsAsync(_currentUserId);
+            Navigation.NavigateTo($"/workspace/{WorkspaceState.CurrentWorkspaceId}/dms/{result.Value.Id}");
+        }
+    }
+
+    public void Dispose()
+    {
+        WorkspaceState.OnStateChanged -= StateHasChanged;
+    }
+}

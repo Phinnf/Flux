@@ -1,6 +1,7 @@
 @using Flux.Infrastructure.Client
 @inject WorkspaceStateService WorkspaceState
 @inject NavigationManager Navigation
+@implements IDisposable
 
 <div class="activity-bar">
     <div class="activity-top">
@@ -37,7 +38,7 @@
     <div class="flex-1"></div>
     
     <div class="activity-bottom">
-        <div id="profile-icon" class="profile-avatar-wrapper" title="Profile" @onclick='() => Navigation.NavigateTo("/profile")'>
+        <div id="profile-icon" class="profile-avatar-wrapper @(IsProfile() ? "ring-2 ring-blue-500" : "")" title="Profile" @onclick='() => Navigation.NavigateTo("/profile")'>
             @if (!string.IsNullOrEmpty(AvatarUrl))
             {
                 <img src="@AvatarUrl" alt="Avatar" class="w-full h-full object-cover" />
@@ -56,9 +57,25 @@
     [Parameter] public string Initials { get; set; } = "U";
     [Parameter] public Guid CurrentUserId { get; set; }
 
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += HandleLocationChanged;
+    }
+
+    private void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= HandleLocationChanged;
+    }
+
     private bool IsActive(string href) => Navigation.ToBaseRelativePath(Navigation.Uri).StartsWith(href.TrimStart('/'));
     private bool IsDms() => Navigation.Uri.Contains("/dms");
     private bool IsActivity() => Navigation.Uri.Contains("/activity");
+    private bool IsProfile() => Navigation.Uri.Contains("/profile");
 
     private void NavigateToFirstChannel()
     {
@@ -69,15 +86,6 @@
     private void NavigateToDms()
     {
         if (WorkspaceState.CurrentWorkspaceId == null) return;
-        
-        var firstDirect = WorkspaceState.Channels.FirstOrDefault(c => c.Type == Flux.Domain.Entities.ChannelType.Direct);
-        if (firstDirect != null)
-        {
-            Navigation.NavigateTo($"/workspace/{WorkspaceState.CurrentWorkspaceId}/chat/{firstDirect.Id}");
-        }
-        else
-        {
-            Navigation.NavigateTo($"/workspace/{WorkspaceState.CurrentWorkspaceId}/dms");
-        }
+        Navigation.NavigateTo($"/workspace/{WorkspaceState.CurrentWorkspaceId}/dms");
     }
 }
