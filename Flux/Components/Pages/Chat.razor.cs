@@ -79,6 +79,12 @@ public partial class Chat : ComponentBase, IAsyncDisposable
         _activeProfile = null;
     }
 
+    private async Task StartHuddle()
+    {
+        var url = $"/call-setup/{ChannelId}";
+        await JS.InvokeVoidAsync("window.open", url, "_blank", "width=1200,height=800");
+    }
+
     private void OnThreadInputChanged(string value)
     {
         _newThreadMessageContent = value;

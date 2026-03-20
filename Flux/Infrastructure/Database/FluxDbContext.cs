@@ -21,6 +21,7 @@ namespace Flux.Infrastructure.Database
         public DbSet<Channel> Channels => Set<Channel>();
         public DbSet<Message> Messages => Set<Message>();
         public DbSet<Reaction> Reactions => Set<Reaction>();
+        public DbSet<CallSession> CallSessions => Set<CallSession>();
 
         /// Configure database relationships and constraints here (Fluent API).
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -113,6 +114,20 @@ namespace Flux.Infrastructure.Database
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.Username)
                 .IsUnique();
+
+            // CallSession - Channel
+            modelBuilder.Entity<CallSession>()
+                .HasOne(cs => cs.Channel)
+                .WithMany()
+                .HasForeignKey(cs => cs.ChannelId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // CallSession - ThreadMessage
+            modelBuilder.Entity<CallSession>()
+                .HasOne(cs => cs.ThreadMessage)
+                .WithMany()
+                .HasForeignKey(cs => cs.ThreadMessageId)
+                .OnDelete(DeleteBehavior.SetNull);
         }
     }
 }

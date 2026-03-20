@@ -68,6 +68,24 @@
             return Task.CompletedTask;
         });
 
+        _hubConnection.On<string, string>("CallStarted", (channelId, callId) =>
+        {
+            if (Guid.TryParse(channelId, out var cid))
+            {
+                WorkspaceState.SetCallActive(cid, true);
+            }
+            return Task.CompletedTask;
+        });
+
+        _hubConnection.On<string>("CallEnded", (channelId) =>
+        {
+            if (Guid.TryParse(channelId, out var cid))
+            {
+                WorkspaceState.SetCallActive(cid, false);
+            }
+            return Task.CompletedTask;
+        });
+
         try { await _hubConnection.StartAsync(); } catch { }
     }
 

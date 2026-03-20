@@ -1,0 +1,669 @@
+@page "/call-setup/{ChannelId:guid}"
+@layout Components.Layout.EmptyLayout
+@using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@using Flux.Infrastructure.Database
+@using Flux.Domain.Entities
+@using Microsoft.EntityFrameworkCore
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+@inject IDbContextFactory<FluxDbContext> DbFactory
+@inject AuthenticationStateProvider AuthStateProvider
+@using Flux.Infrastructure.Client
+@inject UserClientService UserService
+@implements IAsyncDisposable
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+    /* Custom scrollbar for thread chat */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+</style>
+
+<div class="h-screen w-screen bg-[#111113] text-gray-200 flex flex-col font-sans overflow-hidden">
+    @if (!IsJoined)
+    {
+        <!-- Setup Screen -->
+        <div class="flex-1 flex items-center justify-center p-6">
+            <div class="max-w-5xl w-full bg-[#1e1e24] rounded-3xl p-8 shadow-2xl border border-white/5 flex flex-col md:flex-row gap-10">
+                
+                <!-- Preview Section -->
+                <div class="flex-1 flex flex-col gap-4">
+                    <div class="relative aspect-video bg-black rounded-2xl overflow-hidden border border-white/10 shadow-inner flex items-center justify-center group">
+                        <video id="preview-video" autoplay muted playsinline class="w-full h-full object-cover @(VideoEnabled ? "" : "hidden")"></video>
+                        
+                        @if (!VideoEnabled)
+                        {
+                            <div class="w-32 h-32 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-5xl font-bold shadow-2xl text-white">
+                                @_localInitials
+                            </div>
+                            <div class="absolute text-gray-500 text-sm bottom-4">Camera is off</div>
+                        }
+
+                        <!-- Controls Overlay -->
+                        <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-4 transition-opacity duration-300 z-20">
+                            <button @onclick="ToggleMic" disabled="@(!_hasAudioHardware)" class="w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-lg @(MicEnabled ? "bg-[#3f3f46] hover:bg-[#52525b] text-white" : "bg-[#ef4444] hover:bg-[#dc2626] text-white") disabled:opacity-50 disabled:cursor-not-allowed">
+                                <i class="fas @(MicEnabled ? "fa-microphone" : "fa-microphone-slash") text-xl"></i>
+                            </button>
+                            <button @onclick="ToggleVideo" disabled="@(!_hasVideoHardware)" class="w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-lg @(VideoEnabled ? "bg-[#3f3f46] hover:bg-[#52525b] text-white" : "bg-[#ef4444] hover:bg-[#dc2626] text-white") disabled:opacity-50 disabled:cursor-not-allowed">
+                                <i class="fas @(VideoEnabled ? "fa-video" : "fa-video-slash") text-xl"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-center gap-6 text-sm text-gray-400 font-medium">
+                        <div class="flex items-center gap-2">
+                            <div class="w-2 h-2 rounded-full @(_hasAudioHardware ? "bg-green-500" : "bg-red-500")"></div>
+                            <span>Mic: @(_hasAudioHardware ? "Detected" : "Missing")</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-2 h-2 rounded-full @(_hasVideoHardware ? "bg-green-500" : "bg-red-500")"></div>
+                            <span>Camera: @(_hasVideoHardware ? "Detected" : "Missing")</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Join Section -->
+                <div class="w-full md:w-80 flex flex-col justify-center">
+                    <div class="mb-8">
+                        <h1 class="text-3xl font-black text-white tracking-tight">Huddle</h1>
+                        <p class="text-gray-400 mt-2 text-sm">
+                            @(ActiveCallSession == null ? "You're about to start a new huddle in this channel. Everyone will be notified." : "A huddle is currently active. Join your team!")
+                        </p>
+                    </div>
+
+                    <div class="space-y-3">
+                        <button @onclick="JoinCall" class="w-full py-4 bg-[#007a5a] hover:bg-[#148567] active:bg-[#006c4f] text-white rounded-xl font-bold text-lg transition-all shadow-lg shadow-green-900/20 flex items-center justify-center gap-2">
+                            <i class="fas fa-headset"></i>
+                            <span>Join now</span>
+                        </button>
+                        <button @onclick="CloseWindow" class="w-full py-4 bg-transparent hover:bg-white/5 text-gray-300 rounded-xl font-medium transition-colors">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Active Call Interface -->
+        <div class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+            
+            <!-- Main Grid Area -->
+            <div class="flex-1 flex flex-col p-4 gap-4 relative z-0 min-w-0">
+                
+                <!-- Video Grid -->
+                <div class="flex-1 grid gap-4 @GetGridColsClass() auto-rows-fr">
+                    
+                    <!-- Local Participant -->
+                    <div class="relative bg-[#1e1e24] rounded-2xl overflow-hidden border @(_localSpeaking ? "border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.2)]" : "border-white/5") flex items-center justify-center group transition-all duration-300">
+                        <video id="local-video" autoplay muted playsinline class="w-full h-full object-cover @(VideoEnabled && !IsScreenSharing ? "" : "hidden")"></video>
+                        <video id="screen-share-video" autoplay muted playsinline class="w-full h-full object-contain bg-black @(IsScreenSharing ? "" : "hidden")"></video>
+                        
+                        @if (!VideoEnabled && !IsScreenSharing)
+                        {
+                            <div class="w-28 h-28 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-4xl font-bold text-white shadow-xl @(_localSpeaking ? "ring-4 ring-green-500 ring-offset-4 ring-offset-[#1e1e24] animate-pulse" : "")">
+                                @_localInitials
+                            </div>
+                        }
+
+                        <div class="absolute bottom-4 left-4 flex items-center gap-2 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 shadow-lg">
+                            @if (!MicEnabled) { <i class="fas fa-microphone-slash text-red-400 text-xs"></i> }
+                            <span class="text-sm font-semibold text-white tracking-wide">You</span>
+                        </div>
+                    </div>
+
+                    <!-- Remote Participants -->
+                    @foreach (var peer in Participants.Values)
+                    {
+                        <div class="relative bg-[#1e1e24] rounded-2xl overflow-hidden border @(peer.IsSpeaking ? "border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.2)]" : "border-white/5") flex items-center justify-center transition-all duration-300 group">
+                            <video id="video-@peer.UserId" autoplay playsinline class="w-full h-full object-cover"></video>
+                            
+                            <div class="absolute inset-0 flex items-center justify-center bg-[#1e1e24] z-0 @(peer.HasVideo ? "hidden" : "")">
+                                @if (!string.IsNullOrEmpty(peer.AvatarUrl))
+                                {
+                                    <img src="@peer.AvatarUrl" class="w-28 h-28 rounded-full object-cover shadow-xl @(peer.IsSpeaking ? "ring-4 ring-green-500 ring-offset-4 ring-offset-[#1e1e24] animate-pulse" : "")" />
+                                }
+                                else
+                                {
+                                    <div class="w-28 h-28 rounded-full bg-gray-700 flex items-center justify-center text-4xl font-bold text-white shadow-xl @(peer.IsSpeaking ? "ring-4 ring-green-500 ring-offset-4 ring-offset-[#1e1e24] animate-pulse" : "")">
+                                        @(string.IsNullOrEmpty(peer.Username) ? "U" : peer.Username[0].ToString().ToUpper())
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="absolute bottom-4 left-4 flex items-center gap-2 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 shadow-lg z-10">
+                                @if (peer.IsMuted) { <i class="fas fa-microphone-slash text-red-400 text-xs"></i> }
+                                <span class="text-sm font-semibold text-white tracking-wide">@peer.Username</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <!-- Control Bar -->
+                <div class="h-20 bg-[#1e1e24]/80 backdrop-blur-xl border border-white/10 rounded-2xl flex items-center justify-center gap-4 px-6 shadow-2xl shrink-0">
+                    <!-- Mic Toggle -->
+                    <div class="relative group flex items-center justify-center">
+                        <button @onclick="ToggleMic" disabled="@(!_hasAudioHardware)" class="w-12 h-12 rounded-full flex items-center justify-center transition-all @(MicEnabled ? "bg-[#3f3f46] hover:bg-[#52525b] text-white" : "bg-[#ef4444] hover:bg-[#dc2626] text-white") disabled:opacity-50">
+                            <i class="fas @(MicEnabled ? "fa-microphone" : "fa-microphone-slash")"></i>
+                        </button>
+                        <div class="absolute -top-10 scale-0 group-hover:scale-100 transition-transform bg-gray-800 text-xs px-2 py-1 rounded shadow text-white whitespace-nowrap">
+                            @(MicEnabled ? "Mute" : "Unmute")
+                        </div>
+                    </div>
+
+                    <!-- Video Toggle -->
+                    <div class="relative group flex items-center justify-center">
+                        <button @onclick="ToggleVideo" disabled="@(!_hasVideoHardware)" class="w-12 h-12 rounded-full flex items-center justify-center transition-all @(VideoEnabled ? "bg-[#3f3f46] hover:bg-[#52525b] text-white" : "bg-[#ef4444] hover:bg-[#dc2626] text-white") disabled:opacity-50">
+                            <i class="fas @(VideoEnabled ? "fa-video" : "fa-video-slash")"></i>
+                        </button>
+                        <div class="absolute -top-10 scale-0 group-hover:scale-100 transition-transform bg-gray-800 text-xs px-2 py-1 rounded shadow text-white whitespace-nowrap">
+                            @(VideoEnabled ? "Turn off camera" : "Turn on camera")
+                        </div>
+                    </div>
+
+                    <!-- Screen Share -->
+                    <div class="relative group flex items-center justify-center">
+                        <button @onclick="ToggleScreenShare" class="w-12 h-12 rounded-full flex items-center justify-center transition-all @(IsScreenSharing ? "bg-green-600 hover:bg-green-500 text-white shadow-[0_0_15px_rgba(22,163,74,0.4)]" : "bg-[#3f3f46] hover:bg-[#52525b] text-white")">
+                            <i class="fas fa-desktop"></i>
+                        </button>
+                        <div class="absolute -top-10 scale-0 group-hover:scale-100 transition-transform bg-gray-800 text-xs px-2 py-1 rounded shadow text-white whitespace-nowrap">
+                            @(IsScreenSharing ? "Stop sharing" : "Share screen")
+                        </div>
+                    </div>
+                    
+                    <div class="w-px h-8 bg-white/10 mx-2"></div>
+
+                    <!-- Chat Toggle (Mobile/Tablet) -->
+                    <div class="relative group flex items-center justify-center md:hidden">
+                        <button @onclick="ToggleSidebar" class="w-12 h-12 rounded-full flex items-center justify-center transition-all @(_showSidebar ? "bg-indigo-600 text-white" : "bg-[#3f3f46] hover:bg-[#52525b] text-white")">
+                            <i class="fas fa-comment-alt"></i>
+                        </button>
+                    </div>
+
+                    <!-- Leave Call -->
+                    <div class="relative group flex items-center justify-center ml-2">
+                        <button @onclick="LeaveCall" class="w-16 h-12 rounded-full bg-[#ef4444] hover:bg-[#dc2626] text-white flex items-center justify-center transition-all shadow-lg shadow-red-900/30">
+                            <i class="fas fa-phone-slash rotate-[135deg]"></i>
+                        </button>
+                        <div class="absolute -top-10 scale-0 group-hover:scale-100 transition-transform bg-gray-800 text-xs px-2 py-1 rounded shadow text-white whitespace-nowrap">
+                            Leave
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Thread Chat Sidebar -->
+            <div class="bg-[#1e1e24] border-l border-white/5 flex flex-col transition-all duration-300 ease-in-out shrink-0
+                        @(_showSidebar ? "w-full md:w-96 absolute inset-y-0 right-0 z-50 md:relative" : "w-0 overflow-hidden border-none")">
+                
+                <div class="h-16 flex items-center justify-between px-6 border-b border-white/5 shrink-0 bg-[#1e1e24] sticky top-0 z-10">
+                    <h2 class="font-bold text-white flex items-center gap-2">
+                        <i class="fas fa-comments text-indigo-400"></i>
+                        In-call Chat
+                    </h2>
+                    <button @onclick="ToggleSidebar" class="text-gray-400 hover:text-white transition-colors w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center md:hidden">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="flex-1 overflow-y-auto p-4 custom-scrollbar bg-[#111113]/50 flex flex-col gap-4">
+                    @if (ActiveCallSession?.ThreadMessageId != null)
+                    {
+                        @if (!_threadMessages.Any())
+                        {
+                            <div class="text-center py-10 my-auto">
+                                <div class="w-16 h-16 rounded-full bg-indigo-500/10 text-indigo-400 flex items-center justify-center mx-auto mb-4">
+                                    <i class="fas fa-comment-dots text-2xl"></i>
+                                </div>
+                                <h3 class="text-white font-medium mb-1">Huddle Chat</h3>
+                                <p class="text-xs text-gray-500 px-4">Start the conversation here.</p>
+                            </div>
+                        }
+                        else
+                        {
+                            @foreach (var msg in _threadMessages)
+                            {
+                                <div class="flex gap-3 animate-fade-in-up">
+                                    @if (!string.IsNullOrEmpty(msg.User?.AvatarUrl))
+                                    {
+                                        <img src="@msg.User.AvatarUrl" class="w-8 h-8 rounded-md object-cover flex-shrink-0" />
+                                    }
+                                    else
+                                    {
+                                        <div class="w-8 h-8 rounded-md bg-indigo-600 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
+                                            @(string.IsNullOrEmpty(msg.User?.Username) ? "U" : msg.User.Username[0].ToString().ToUpper())
+                                        </div>
+                                    }
+                                    <div class="flex flex-col min-w-0">
+                                        <div class="flex items-baseline gap-2">
+                                            <span class="text-sm font-semibold text-gray-200">@(msg.User?.Username ?? "Unknown")</span>
+                                            <span class="text-[10px] text-gray-500">@msg.CreatedAt.ToLocalTime().ToString("HH:mm")</span>
+                                        </div>
+                                        <p class="text-sm text-gray-300 break-words mt-0.5">@msg.Content</p>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    }
+                </div>
+                
+                @if (ActiveCallSession?.ThreadMessageId != null)
+                {
+                    <div class="p-4 bg-[#1e1e24] border-t border-white/5">
+                        <div class="relative flex items-center">
+                            <input @bind="_messageInput" @bind:event="oninput" @onkeydown="HandleMessageKeyDown" type="text" placeholder="Type a message..." class="w-full bg-[#111113] border border-white/10 text-white text-sm rounded-xl px-4 py-3 pr-12 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" />
+                            <button @onclick="SendMessage" disabled="@(string.IsNullOrWhiteSpace(_messageInput))" class="absolute right-2 text-gray-400 hover:text-indigo-400 disabled:opacity-50 transition-colors p-2">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public Guid ChannelId { get; set; }
+    
+    private bool IsJoined = false;
+    private bool MicEnabled = true;
+    private bool VideoEnabled = true;
+    private bool IsScreenSharing = false;
+    
+    private bool _hasVideoHardware = true;
+    private bool _hasAudioHardware = true;
+    
+    private bool _showSidebar = true; // Show chat sidebar by default on desktop
+
+    private CallSession? ActiveCallSession;
+    private HubConnection? HubConnection;
+    private DotNetObjectReference<CallSetup>? ObjRef;
+
+    private string _localInitials = "U";
+    private bool _localSpeaking = false;
+    private Dictionary<string, Participant> Participants = new();
+    private string _messageInput = "";
+    private List<Message> _threadMessages = new();
+
+    public class Participant
+    {
+        public string UserId { get; set; } = "";
+        public string Username { get; set; } = "User";
+        public string? AvatarUrl { get; set; }
+        public bool IsSpeaking { get; set; }
+        public bool IsMuted { get; set; }
+        public bool HasVideo { get; set; } = false; // Add track of remote video status
+    }
+
+    // Helper class for JS response
+    public class StreamStatus
+    {
+        public bool success { get; set; }
+        public bool hasAudio { get; set; }
+        public bool hasVideo { get; set; }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetLocalUserInfo();
+        await LoadActiveCall();
+        await SetupSignalR();
+    }
+
+    private async Task GetLocalUserInfo()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            _localInitials = user.Identity.Name?[0].ToString().ToUpper() ?? "U";
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            ObjRef = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("webrtc.initialize", ObjRef);
+            await StartPreview();
+        }
+    }
+
+    private async Task LoadActiveCall()
+    {
+        using var context = await DbFactory.CreateDbContextAsync();
+        ActiveCallSession = await context.CallSessions
+            .FirstOrDefaultAsync(cs => cs.ChannelId == ChannelId && cs.IsActive);
+            
+        if (ActiveCallSession?.ThreadMessageId != null)
+        {
+            _threadMessages = await context.Messages
+                .Include(m => m.User)
+                .Where(m => m.ParentMessageId == ActiveCallSession.ThreadMessageId)
+                .OrderBy(m => m.CreatedAt)
+                .ToListAsync();
+        }
+    }
+
+    private async Task SetupSignalR()
+    {
+        HubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/chathub"), options =>
+            {
+                options.AccessTokenProvider = async () =>
+                {
+                    try
+                    {
+                        var token = await JSRuntime.InvokeAsync<string>("sessionStorage.getItem", "authToken");
+                        if (string.IsNullOrWhiteSpace(token))
+                        {
+                            token = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "authToken");
+                        }
+                        return token;
+                    }
+                    catch { return null; }
+                };
+            })
+            .WithAutomaticReconnect()
+            .Build();
+
+        HubConnection.On<string>("UserJoinedCall", async (userId) => {
+            if (!Participants.ContainsKey(userId))
+            {
+                var profile = await UserService.GetProfileAsync(Guid.Parse(userId));
+                Participants[userId] = new Participant { 
+                    UserId = userId, 
+                    Username = (profile.IsSuccess && profile.Value != null) ? profile.Value.Username : "User",
+                    AvatarUrl = (profile.IsSuccess && profile.Value != null) ? profile.Value.AvatarUrl : null
+                };
+                await InvokeAsync(StateHasChanged);
+                await JSRuntime.InvokeVoidAsync("webrtc.createPeerConnection", userId, true);
+            }
+        });
+
+        HubConnection.On<string, string>("ReceiveSignal", async (fromUserId, signal) => {
+            if (!Participants.ContainsKey(fromUserId))
+            {
+                var profile = await UserService.GetProfileAsync(Guid.Parse(fromUserId));
+                Participants[fromUserId] = new Participant { 
+                    UserId = fromUserId, 
+                    Username = (profile.IsSuccess && profile.Value != null) ? profile.Value.Username : "User",
+                    AvatarUrl = (profile.IsSuccess && profile.Value != null) ? profile.Value.AvatarUrl : null
+                };
+                await InvokeAsync(StateHasChanged);
+            }
+            await JSRuntime.InvokeVoidAsync("webrtc.handleSignal", fromUserId, signal);
+        });
+
+        HubConnection.On<string, bool>("UserSpeaking", async (userId, isSpeaking) => {
+            if (Participants.TryGetValue(userId, out var p))
+            {
+                p.IsSpeaking = isSpeaking;
+                await InvokeAsync(StateHasChanged);
+            }
+        });
+
+        HubConnection.On<string, bool>("UserMuted", async (userId, isMuted) => {
+            if (Participants.TryGetValue(userId, out var p))
+            {
+                p.IsMuted = isMuted;
+                await InvokeAsync(StateHasChanged);
+            }
+        });
+
+        HubConnection.On<string>("UserLeftCall", async (userId) => {
+            Participants.Remove(userId);
+            JSRuntime.InvokeVoidAsync("webrtc.closePeerConnection", userId);
+            await InvokeAsync(StateHasChanged);        });
+
+        HubConnection.On<string, bool>("UserCameraChanged", async (userId, hasVideo) => {
+            if (Participants.TryGetValue(userId, out var p))
+            {
+                p.HasVideo = hasVideo;
+                await InvokeAsync(StateHasChanged);
+            }
+        });
+
+        HubConnection.On("NewHuddleMessage", async () => {
+            if (ActiveCallSession?.ThreadMessageId != null)
+            {
+                using var context = await DbFactory.CreateDbContextAsync();
+                _threadMessages = await context.Messages
+                    .Include(m => m.User)
+                    .Where(m => m.ParentMessageId == ActiveCallSession.ThreadMessageId)
+                    .OrderBy(m => m.CreatedAt)
+                    .ToListAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+        });
+
+        await HubConnection.StartAsync();
+    }
+
+    private async Task StartPreview()
+    {
+        try
+        {
+            var status = await JSRuntime.InvokeAsync<StreamStatus>("webrtc.getLocalStream", true, true);
+            
+            _hasAudioHardware = status.hasAudio;
+            _hasVideoHardware = status.hasVideo;
+            
+            // Sync UI state with actual hardware capabilities
+            MicEnabled = status.hasAudio;
+            VideoEnabled = status.hasVideo;
+
+            if (status.success)
+            {
+                await JSRuntime.InvokeVoidAsync("webrtc.attachLocalStream", "preview-video");
+                if (MicEnabled)
+                {
+                    await JSRuntime.InvokeVoidAsync("webrtc.startAudioAnalysis");
+                }
+            }
+            await InvokeAsync(StateHasChanged);        }
+        catch
+        {
+            // Hardware error or permission denied
+            _hasAudioHardware = false;
+            _hasVideoHardware = false;
+            MicEnabled = false;
+            VideoEnabled = false;
+            await InvokeAsync(StateHasChanged);        }
+    }
+
+    private async Task JoinCall()
+    {
+        IsJoined = true;
+        await InvokeAsync(StateHasChanged);
+        await Task.Delay(100);
+        await JSRuntime.InvokeVoidAsync("webrtc.attachLocalStream", "local-video");
+
+        if (ActiveCallSession == null)
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier) ?? user.FindFirst("sub");
+            
+            if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                using var context = await DbFactory.CreateDbContextAsync();
+                var msg = new Message { Content = "🎤 Huddle started", ChannelId = ChannelId, UserId = userId };
+                context.Messages.Add(msg);
+                
+                ActiveCallSession = new CallSession { ChannelId = ChannelId, ThreadMessageId = msg.Id };
+                context.CallSessions.Add(ActiveCallSession);
+                await context.SaveChangesAsync();
+                
+                await HubConnection!.InvokeAsync("BroadcastCallStarted", ChannelId.ToString(), ActiveCallSession.Id.ToString());
+            }
+        }
+
+        if (ActiveCallSession != null)
+        {
+            await HubConnection!.InvokeAsync("JoinCall", ActiveCallSession.Id.ToString());
+            await HubConnection!.InvokeAsync("SendMuteState", ActiveCallSession.Id.ToString(), !MicEnabled);
+            await HubConnection!.InvokeAsync("SendCameraState", ActiveCallSession.Id.ToString(), VideoEnabled);
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnLocalVolumeChanged(double volume)
+    {
+        bool isSpeaking = volume > 20; // Threshold
+        if (isSpeaking != _localSpeaking)
+        {
+            _localSpeaking = isSpeaking;
+            if (HubConnection != null && ActiveCallSession != null)
+            {
+                await HubConnection.InvokeAsync("SendSpeakingStateInCall", ActiveCallSession.Id.ToString(), isSpeaking);
+            }
+            await InvokeAsync(StateHasChanged);        }
+    }
+
+    private async Task ToggleMic()
+    {
+        if (!_hasAudioHardware) return;
+        MicEnabled = !MicEnabled;
+        await JSRuntime.InvokeVoidAsync("webrtc.toggleLocalAudio", MicEnabled);
+        if (HubConnection != null && ActiveCallSession != null) 
+            await HubConnection.InvokeAsync("SendMuteState", ActiveCallSession.Id.ToString(), !MicEnabled);
+    }
+
+    private async Task ToggleVideo()
+    {
+        if (!_hasVideoHardware) return;
+        VideoEnabled = !VideoEnabled;
+        await JSRuntime.InvokeVoidAsync("webrtc.toggleLocalVideo", VideoEnabled);
+        if (HubConnection != null && ActiveCallSession != null) 
+            await HubConnection.InvokeAsync("SendCameraState", ActiveCallSession.Id.ToString(), VideoEnabled);
+    }
+
+    private async Task ToggleScreenShare()
+    {
+        if (IsScreenSharing)
+        {
+            await JSRuntime.InvokeVoidAsync("webrtc.stopScreenShare");
+            IsScreenSharing = false;
+        }
+        else
+        {
+            bool success = await JSRuntime.InvokeAsync<bool>("webrtc.startScreenShare");
+            if (success)
+            {
+                IsScreenSharing = true;
+                await JSRuntime.InvokeVoidAsync("webrtc.attachLocalStream", "screen-share-video");
+            }
+        }
+    }
+
+    private void ToggleSidebar()
+    {
+        _showSidebar = !_showSidebar;
+    }
+
+    private async Task LeaveCall()
+    {
+        if (ActiveCallSession != null)
+        {
+            await HubConnection!.InvokeAsync("LeaveCall", ActiveCallSession.Id.ToString());
+        }
+        
+        await JSRuntime.InvokeVoidAsync("webrtc.stopLocalStream");
+        await CloseWindow();
+    }
+
+    private async Task CloseWindow() => await JSRuntime.InvokeVoidAsync("window.close");
+
+    private async Task HandleMessageKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            await SendMessage();
+        }
+    }
+
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(_messageInput) || ActiveCallSession?.ThreadMessageId == null) return;
+        
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var userClaims = authState.User;
+        var userIdClaim = userClaims.FindFirst(ClaimTypes.NameIdentifier) ?? userClaims.FindFirst("sub");
+        
+        if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId))
+        {
+            using var context = await DbFactory.CreateDbContextAsync();
+            var user = await context.Set<User>().FindAsync(userId);
+            
+            var msg = new Message 
+            { 
+                Content = _messageInput, 
+                ChannelId = ChannelId, 
+                UserId = userId,
+                User = user,
+                ParentMessageId = ActiveCallSession.ThreadMessageId,
+                CreatedAt = DateTime.UtcNow
+            };
+            context.Messages.Add(msg);
+            await context.SaveChangesAsync();
+            
+            _threadMessages.Add(msg);
+            
+            if (HubConnection != null && ActiveCallSession != null)
+            {
+                await HubConnection.InvokeAsync("BroadcastHuddleMessage", ActiveCallSession.Id.ToString());
+            }
+            
+            _messageInput = "";
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    [JSInvokable]
+    public async Task SendSignal(string targetUserId, string signal)
+    {
+        await HubConnection!.InvokeAsync("SendSignal", targetUserId, signal);
+    }
+
+    [JSInvokable]
+    public void OnRemoteTrackReceived(string userId, string streamId)
+    {
+        // Track is handled in JS by attaching to video-userId element
+        if (!Participants.ContainsKey(userId))
+        {
+            _ = InvokeAsync(StateHasChanged);
+        }
+        else 
+        {
+            // Can add logic to detect if track is video vs audio to set HasVideo
+            Participants[userId].HasVideo = true; 
+            _ = InvokeAsync(StateHasChanged);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (HubConnection != null) await HubConnection.DisposeAsync();
+        ObjRef?.Dispose();
+    }
+
+    // Responsive grid calculation based on number of participants
+    private string GetGridColsClass()
+    {
+        int count = Participants.Count + 1; // +1 for local user
+        if (count == 1) return "grid-cols-1";
+        if (count == 2) return "grid-cols-1 md:grid-cols-2";
+        if (count <= 4) return "grid-cols-2";
+        if (count <= 6) return "grid-cols-2 md:grid-cols-3";
+        return "grid-cols-3 md:grid-cols-4";
+    }
+}

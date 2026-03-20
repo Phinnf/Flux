@@ -1,10 +1,8 @@
-using FluentValidation;
-using FluentValidation.AspNetCore;
 using Flux.Components;
 using Flux.Infrastructure.Database;
 using Flux.Infrastructure.Identity;
-using Flux.Infrastructure.SignalR;
 using Flux.Infrastructure.Services;
+using Flux.Infrastructure.SignalR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -109,8 +107,14 @@ builder.Services.AddSwaggerGen();
 
 // --- DATABASE CONFIGURATION ---
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<FluxDbContext>(options =>
+
+// Register the factory as Singleton (default)
+builder.Services.AddDbContextFactory<FluxDbContext>(options =>
     options.UseNpgsql(connectionString));
+
+// Register the scoped context for Controllers/API usage, creating it from the factory
+builder.Services.AddScoped(sp =>
+    sp.GetRequiredService<IDbContextFactory<FluxDbContext>>().CreateDbContext());
 // ------------------------------
 
 var app = builder.Build();

@@ -37,6 +37,7 @@ public class UserClientService : BaseClientService
         {
             await SetAuthHeaderAsync();
             var request = new { 
+                UserId = userId,
                 Username = username,
                 FullName = fullName,
                 NickName = nickName,
@@ -46,7 +47,7 @@ public class UserClientService : BaseClientService
                 Status = status,
                 NewPassword = newPassword
             };
-            var response = await HttpClient.PutAsJsonAsync($"/api/users/{userId}/profile", request);
+            var response = await HttpClient.PutAsJsonAsync("/api/users/profile", request);
             
             if (response.IsSuccessStatusCode)
             {

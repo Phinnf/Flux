@@ -48,6 +48,12 @@
                             <span class="text-gray-300 text-[15px] truncate @(member.Id == _currentUserId ? "font-bold" : "")">
                                 @member.Username @(member.Id == _currentUserId ? "(you)" : "")
                             </span>
+                            @if (IsCallActive(member.Id))
+                            {
+                                <div class="huddle-indicator">
+                                    <svg class="w-3.5 h-3.5 text-[#3E9E60] animate-pulse" fill="currentColor" viewBox="0 0 20 20"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"></path></svg>
+                                </div>
+                            }
                         </div>
                         @if (!string.IsNullOrEmpty(member.FullName))
                         {
@@ -104,6 +110,17 @@
             }
         }
         return false;
+    }
+
+    private bool IsCallActive(Guid memberId)
+    {
+        var member = WorkspaceState.Members.FirstOrDefault(m => m.Id == memberId);
+        if (member == null) return false;
+        
+        var directChannel = WorkspaceState.Channels.FirstOrDefault(c => 
+            c.Type == ChannelType.Direct && c.Name.Contains(member.Username));
+        
+        return directChannel != null && WorkspaceState.ActiveCallChannelIds.Contains(directChannel.Id);
     }
 
     private async Task StartDirectMessage(Guid targetUserId)

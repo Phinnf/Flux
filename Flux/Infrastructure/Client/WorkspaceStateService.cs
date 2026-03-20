@@ -19,9 +19,17 @@ public class WorkspaceStateService
     public List<MemberDto> Members { get; private set; } = new();
 
     public List<NotificationDto> Notifications { get; private set; } = new();
+    public HashSet<Guid> ActiveCallChannelIds { get; private set; } = new();
     public int UnreadNotificationCount => Notifications.Count(n => !n.IsRead);
 
     public event Action? OnStateChanged;
+
+    public void SetCallActive(Guid channelId, bool active)
+    {
+        if (active) ActiveCallChannelIds.Add(channelId);
+        else ActiveCallChannelIds.Remove(channelId);
+        NotifyStateChanged();
+    }
 
     /// Loads channels for a workspace and updates the state.
     public async Task LoadWorkspaceAsync(Guid workspaceId, Guid userId)
