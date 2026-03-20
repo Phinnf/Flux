@@ -28,10 +28,6 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.4" />
   </ItemGroup>
 
-  <Target Name="Tailwind" BeforeTargets="Build">
-    <Exec Command="npx tailwindcss -i .\Styles\app.css -o .\wwwroot\css\app.css" ContinueOnError="true" />
-  </Target>
-
   <ItemGroup>
     <Folder Include="Migrations\" />
     <Folder Include="wwwroot\uploads\images\" />

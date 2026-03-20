@@ -1,5 +1,6 @@
 /* Flux Global Styles & Theme Variables - Modern Dark Glass Edition */
 :root {
+    color-scheme: dark;
     /* Primary Brand Colors */
     --flux-primary: #3b82f6; 
     --flux-primary-hover: #2563eb;
@@ -331,6 +332,30 @@ body {
     animation: modalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.auth-input {
+    width: 100%;
+    padding: 14px 20px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    color: white;
+    font-size: 15px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.auth-input:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--flux-primary);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+}
+
+/* Ensure dropdown options are dark */
+.auth-input option {
+    background-color: #1a1c24;
+    color: white;
+}
+
 .context-menu {
     background: #1a1c24;
     border: 1px solid var(--flux-border);
@@ -364,3 +389,24 @@ body {
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.05); border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.1); }
+
+/* Glass Card Utilities */
+.glass-card {
+    background: var(--flux-glass-heavy);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--flux-border);
+    border-radius: 24px;
+}
+
+.glass-input {
+    background: var(--flux-glass-white) !important;
+    border: 1px solid var(--flux-border) !important;
+    color: var(--flux-main-text) !important;
+    border-radius: 12px !important;
+}
+
+.glass-input:focus {
+    border-color: var(--flux-primary) !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+}
