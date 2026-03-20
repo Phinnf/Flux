@@ -8,7 +8,7 @@
 @using Flux.Components.UI
 @inject WorkspaceStateService WorkspaceState
 @inject NavigationManager Navigation
-@inject FluxClientService FluxService
+@inject WorkspaceClientService WorkspaceService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -379,7 +379,7 @@
                 ? null 
                 : int.Parse(_inviteExpirationHoursString);
                 
-            var result = await FluxService.CreateInviteAsync(WorkspaceState.CurrentWorkspaceId.Value, _currentUserId, expiration);
+            var result = await WorkspaceService.CreateInviteAsync(WorkspaceState.CurrentWorkspaceId.Value, _currentUserId, expiration);
             if (result.IsSuccess && result.Value != null)
             {
                 var baseUrl = Navigation.BaseUri.TrimEnd('/');
@@ -416,7 +416,7 @@
         if (string.IsNullOrWhiteSpace(_renameChannelName) || WorkspaceState.CurrentWorkspaceId == null) return;
 
         try {
-            var result = await FluxService.RenameChannelAsync(WorkspaceState.CurrentWorkspaceId.Value, _selectedChannelId, _renameChannelName, _currentUserId);
+            var result = await WorkspaceService.RenameChannelAsync(WorkspaceState.CurrentWorkspaceId.Value, _selectedChannelId, _renameChannelName, _currentUserId);
             if (result.IsSuccess)
             {
                 _hideRenameChannelDialog = true;
@@ -447,7 +447,7 @@
     {
         if (WorkspaceState.CurrentWorkspaceId == null) return;
         
-        var result = await FluxService.GetOrCreateDirectChannelAsync(WorkspaceState.CurrentWorkspaceId.Value, _currentUserId, targetUserId);
+        var result = await WorkspaceService.GetOrCreateDirectChannelAsync(WorkspaceState.CurrentWorkspaceId.Value, _currentUserId, targetUserId);
         if (result.IsSuccess && result.Value != null)
         {
             await WorkspaceState.RefreshChannelsAsync(_currentUserId);
@@ -480,7 +480,7 @@
         try {
             var type = _newChannelTypeString == "Public" ? ChannelType.Public : ChannelType.Private;
             var request = new CreateChannelRequest(_newChannelName, _newChannelDescription, type, _currentUserId);
-            var result = await FluxService.CreateChannelAsync(WorkspaceState.CurrentWorkspaceId.Value, request);
+            var result = await WorkspaceService.CreateChannelAsync(WorkspaceState.CurrentWorkspaceId.Value, request);
             if (result.IsSuccess) {
                 _hideCreateChannelDialog = true;
                 await WorkspaceState.RefreshChannelsAsync(_currentUserId);
@@ -516,7 +516,7 @@
         try {
             bool confirmed = await JS.InvokeAsync<bool>("confirm", $"Are you sure you want to delete #{channelName}?");
             if (confirmed && WorkspaceState.CurrentWorkspaceId != null) {
-                if ((await FluxService.DeleteChannelAsync(WorkspaceState.CurrentWorkspaceId.Value, channelId, _currentUserId)).IsSuccess) {
+                if ((await WorkspaceService.DeleteChannelAsync(WorkspaceState.CurrentWorkspaceId.Value, channelId, _currentUserId)).IsSuccess) {
                     await WorkspaceState.RefreshChannelsAsync(_currentUserId);
                     if (Navigation.Uri.Contains(channelId.ToString())) NavigateToFirstChannel();
                 }

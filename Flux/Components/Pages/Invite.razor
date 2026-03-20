@@ -1,7 +1,7 @@
 @page "/invite/{code}"
 @layout Layout.EmptyLayout
 @using Flux.Infrastructure.Client
-@inject FluxClientService FluxService
+@inject WorkspaceClientService WorkspaceService
 @inject NavigationManager Navigation
 @inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
 
@@ -64,7 +64,7 @@
     private bool _isLoading = true;
     private bool _isJoining = false;
     private string? _errorMessage;
-    private FluxClientService.InviteDetailsDto? _inviteDetails;
+    private InviteDetailsDto? _inviteDetails;
     private bool _isAuthenticated = false;
     private Guid _currentUserId;
 
@@ -82,7 +82,7 @@
             }
         }
 
-        var result = await FluxService.GetInviteDetailsAsync(Code);
+        var result = await WorkspaceService.GetInviteDetailsAsync(Code);
         
         if (result.IsSuccess)
         {
@@ -107,7 +107,7 @@
         _isJoining = true;
         _errorMessage = null;
 
-        var result = await FluxService.JoinWorkspaceViaInviteAsync(Code, _currentUserId);
+        var result = await WorkspaceService.JoinWorkspaceViaInviteAsync(Code, _currentUserId);
         
         if (result.IsSuccess && result.Value != Guid.Empty)
         {

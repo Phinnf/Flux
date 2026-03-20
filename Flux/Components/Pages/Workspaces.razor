@@ -3,7 +3,8 @@
 @using System.Security.Claims
 @using Flux.Infrastructure.Client
 @inject NavigationManager Navigation
-@inject FluxClientService FluxService
+@inject WorkspaceClientService WorkspaceService
+@inject UserClientService UserService
 @inject AuthenticationStateProvider AuthStateProvider
 @layout Flux.Components.Layout.EmptyLayout
 
@@ -311,7 +312,7 @@
 @code {
     private List<WorkspaceSummary>? _workspaces;
     private Guid _currentUserId;
-    private FluxClientService.UserProfileDto? _currentUser;
+    private UserProfileDto? _currentUser;
     private string _searchQuery = "";
 
     private bool _showCreateDialog = false;
@@ -343,7 +344,7 @@
 
     private async Task LoadUserProfile()
     {
-        var result = await FluxService.GetProfileAsync(_currentUserId);
+        var result = await UserService.GetProfileAsync(_currentUserId);
         if (result.IsSuccess)
         {
             _currentUser = result.Value;
@@ -354,7 +355,7 @@
     {
         try 
         {
-            var result = await FluxService.GetWorkspacesAsync(_currentUserId);
+            var result = await WorkspaceService.GetWorkspacesAsync(_currentUserId);
             if (result.IsSuccess)
             {
                 _workspaces = result.Value ?? new();
@@ -372,7 +373,7 @@
 
     private async Task SelectWorkspace(WorkspaceSummary workspace)
     {
-        var channelsResult = await FluxService.GetChannelsAsync(workspace.Id, _currentUserId);
+        var channelsResult = await WorkspaceService.GetChannelsAsync(workspace.Id, _currentUserId);
         
         if (channelsResult.IsSuccess && channelsResult.Value != null && channelsResult.Value.Any())
         {
@@ -387,7 +388,7 @@
 
     private async Task DeleteWorkspace(WorkspaceSummary workspace)
     {
-        var result = await FluxService.DeleteWorkspaceAsync(workspace.Id, _currentUserId);
+        var result = await WorkspaceService.DeleteWorkspaceAsync(workspace.Id, _currentUserId);
         if (result.IsSuccess)
         {
             await LoadWorkspaces();
@@ -398,7 +399,7 @@
     {
         if (string.IsNullOrWhiteSpace(_newWorkspaceName)) return;
         
-        var result = await FluxService.CreateWorkspaceAsync(_currentUserId, _newWorkspaceName, _newWorkspaceDescription);
+        var result = await WorkspaceService.CreateWorkspaceAsync(_currentUserId, _newWorkspaceName, _newWorkspaceDescription);
         
         if (result.IsSuccess && result.Value != null)
         {

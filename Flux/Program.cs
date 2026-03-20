@@ -74,10 +74,9 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddScoped<AuthenticationStateProvider, FluxAuthStateProvider>();
 
-// Register our Flux API client service
-builder.Services.AddHttpClient<Flux.Infrastructure.Client.FluxClientService>((sp, client) =>
+// Register our Flux API client services
+Action<IServiceProvider, HttpClient> configureHttpClient = (sp, client) =>
 {
-    // Point to the local server address
     var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
     var httpContext = httpContextAccessor.HttpContext;
 
@@ -88,13 +87,17 @@ builder.Services.AddHttpClient<Flux.Infrastructure.Client.FluxClientService>((sp
     }
     else
     {
-        // Fallback for cases where HttpContext is not available (common in Blazor Server interactive mode)
-        // You can also get this from appsettings.json
         var config = sp.GetRequiredService<IConfiguration>();
         var baseUrl = config["ApiSettings:BaseUrl"] ?? "https://localhost:7274";
         client.BaseAddress = new Uri(baseUrl);
     }
-});
+};
+
+builder.Services.AddHttpClient<Flux.Infrastructure.Client.AuthClientService>(configureHttpClient);
+builder.Services.AddHttpClient<Flux.Infrastructure.Client.WorkspaceClientService>(configureHttpClient);
+builder.Services.AddHttpClient<Flux.Infrastructure.Client.MessageClientService>(configureHttpClient);
+builder.Services.AddHttpClient<Flux.Infrastructure.Client.UserClientService>(configureHttpClient);
+builder.Services.AddHttpClient<Flux.Infrastructure.Client.UploadClientService>(configureHttpClient);
 
 builder.Services.AddScoped<Flux.Infrastructure.Client.WorkspaceStateService>(); // State management service
 builder.Services.AddScoped<IToastService, ToastService>();

@@ -1,7 +1,8 @@
 @page "/profile"
 @using Flux.Infrastructure.Client
 @using Microsoft.AspNetCore.Components.Authorization
-@inject FluxClientService FluxService
+@inject UserClientService UserService
+@inject UploadClientService UploadService
 @inject WorkspaceStateService WorkspaceState
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
@@ -307,7 +308,7 @@
             return;
         }
 
-        var result = await FluxService.GetProfileAsync(_currentUserId);
+        var result = await UserService.GetProfileAsync(_currentUserId);
         
         if (result.IsSuccess && result.Value != null)
         {
@@ -360,7 +361,7 @@
             validatedPassword = _newPassword;
         }
 
-        var result = await FluxService.UpdateProfileAsync(
+        var result = await UserService.UpdateProfileAsync(
             _currentUserId,
             _model.Username,
             _model.FullName, 
@@ -412,7 +413,7 @@
         if (!confirmed) return;
 
         _isSaving = true;
-        var result = await FluxService.DeleteAccountAsync(_currentUserId);
+        var result = await UserService.DeleteAccountAsync(_currentUserId);
         _isSaving = false;
 
         if (result.IsSuccess)
@@ -447,7 +448,7 @@
             
             content.Add(streamContent, "file", file.Name);
 
-            var result = await FluxService.UploadImageAsync(content);
+            var result = await UploadService.UploadImageAsync(content);
             if (result.IsSuccess)
             {
                 _model.AvatarUrl = result.Value;

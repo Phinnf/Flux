@@ -19,7 +19,8 @@ namespace Flux.Components.Pages;
 
 public partial class Chat : ComponentBase, IAsyncDisposable
 {
-    [Inject] private FluxClientService FluxService { get; set; } = default!;
+    [Inject] private MessageClientService MessageService { get; set; } = default!;
+    [Inject] private UploadClientService UploadService { get; set; } = default!;
     [Inject] private WorkspaceStateService StateService { get; set; } = default!;
     [Inject] private NavigationManager Navigation { get; set; } = default!;
     [Inject] private IJSRuntime JS { get; set; } = default!;
@@ -91,7 +92,7 @@ public partial class Chat : ComponentBase, IAsyncDisposable
         _newThreadMessageContent = string.Empty;
 
         var command = new SendMessageCommand(content, ChannelId, CurrentUserId, _activeThreadParent.Id);
-        var result = await FluxService.SendMessageAsync(command);
+        var result = await MessageService.SendMessageAsync(command);
 
         if (!result.IsSuccess)
         {
@@ -185,7 +186,7 @@ public partial class Chat : ComponentBase, IAsyncDisposable
             streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
             content.Add(streamContent, "file", file.Name);
 
-            var result = await FluxService.UploadImageAsync(content);
+            var result = await UploadService.UploadImageAsync(content);
             if (result.IsSuccess)
             {
                 _newMessageContent += (string.IsNullOrEmpty(_newMessageContent) ? "" : "\n") + $"[image: {result.Value}]";
@@ -269,7 +270,7 @@ public partial class Chat : ComponentBase, IAsyncDisposable
             byteContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/webm");
             content.Add(byteContent, "file", $"voice_{DateTime.UtcNow:yyyyMMddHHmmss}.webm");
 
-            var result = await FluxService.UploadAudioAsync(content);
+            var result = await UploadService.UploadAudioAsync(content);
             if (result.IsSuccess)
             {
                 _newMessageContent += (string.IsNullOrEmpty(_newMessageContent) ? "" : "\n") + $"[audio: {result.Value}]";
@@ -666,7 +667,7 @@ public partial class Chat : ComponentBase, IAsyncDisposable
             var channel = StateService.Channels.FirstOrDefault(c => c.Id == ChannelId);
             _currentChannelName = channel?.Name ?? "general"; 
             
-            var result = await FluxService.GetMessagesAsync(ChannelId);
+            var result = await MessageService.GetMessagesAsync(ChannelId);
             if (result.IsSuccess)
             {
                 _messages = result.Value ?? new();
@@ -688,7 +689,7 @@ public partial class Chat : ComponentBase, IAsyncDisposable
         try
         {
             var oldestMessageTimestamp = _messages.First().CreatedAt;
-            var result = await FluxService.GetMessagesAsync(ChannelId, oldestMessageTimestamp);
+            var result = await MessageService.GetMessagesAsync(ChannelId, oldestMessageTimestamp);
             
             if (result.IsSuccess && result.Value != null && result.Value.Any())
             {
@@ -758,7 +759,7 @@ public partial class Chat : ComponentBase, IAsyncDisposable
         await InvokeAsync(StateHasChanged);
 
         var command = new SendMessageCommand(content, ChannelId, CurrentUserId);
-        var result = await FluxService.SendMessageAsync(command);
+        var result = await MessageService.SendMessageAsync(command);
 
         if (!result.IsSuccess)
         {
@@ -852,7 +853,7 @@ public partial class Chat : ComponentBase, IAsyncDisposable
         if (string.IsNullOrWhiteSpace(_editMessageContent)) return;
         
         var request = new Flux.Features.Messages.EditMessage.EditMessageRequest(_editMessageContent, CurrentUserId);
-        var result = await FluxService.EditMessageAsync(_editingMessageId, request);
+        var result = await MessageService.EditMessageAsync(_editingMessageId, request);
         
         if (result.IsSuccess)
         {
@@ -884,7 +885,7 @@ public partial class Chat : ComponentBase, IAsyncDisposable
 
     private async Task ExecuteDeleteMessage()
     {
-        var result = await FluxService.DeleteMessageAsync(_messageToDeleteId, CurrentUserId);
+        var result = await MessageService.DeleteMessageAsync(_messageToDeleteId, CurrentUserId);
         if (result.IsSuccess)
         {
             _messages.RemoveAll(m => m.Id == _messageToDeleteId);
@@ -973,7 +974,7 @@ public partial class Chat : ComponentBase, IAsyncDisposable
             }
         }
 
-        var result = await FluxService.ToggleReactionAsync(messageId, CurrentUserId, emoji);
+        var result = await MessageService.ToggleReactionAsync(messageId, CurrentUserId, emoji);
         if (!result.IsSuccess)
         {
             ToastService.ShowError("Failed to toggle reaction.");

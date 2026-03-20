@@ -3,7 +3,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using Flux.Infrastructure.Identity
 @inject NavigationManager Navigation
-@inject FluxClientService FluxService
+@inject AuthClientService AuthService
 @inject IJSRuntime JS
 @inject AuthenticationStateProvider AuthStateProvider
 
@@ -387,7 +387,7 @@
         _isLoading = true;
         StateHasChanged();
 
-        var result = await FluxService.LoginAsync(_loginEmail, _loginPassword);
+        var result = await AuthService.LoginAsync(_loginEmail, _loginPassword);
         
         if (result.IsSuccess)
         {
@@ -422,7 +422,7 @@
             return;
         }
 
-        var result = await FluxService.RegisterAsync(_registerUsername, _registerEmail, _registerPassword);
+        var result = await AuthService.RegisterAsync(_registerUsername, _registerEmail, _registerPassword);
         
         if (result.IsSuccess)
         {
@@ -443,7 +443,7 @@
         _isLoading = true;
         StateHasChanged();
 
-        var result = await FluxService.VerifyEmailAsync(_registerEmail, _verifyOtp);
+        var result = await AuthService.VerifyEmailAsync(_registerEmail, _verifyOtp);
 
         if (result.IsSuccess)
         {

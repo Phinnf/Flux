@@ -6,11 +6,11 @@ namespace Flux.Infrastructure.Client;
 /// </summary>
 public class WorkspaceStateService
 {
-    private readonly FluxClientService _fluxService;
+    private readonly WorkspaceClientService _workspaceService;
 
-    public WorkspaceStateService(FluxClientService fluxService)
+    public WorkspaceStateService(WorkspaceClientService workspaceService)
     {
-        _fluxService = fluxService;
+        _workspaceService = workspaceService;
     }
 
     public Guid? CurrentWorkspaceId { get; private set; }
@@ -31,7 +31,7 @@ public class WorkspaceStateService
         CurrentWorkspaceId = workspaceId;
         
         // Load workspace details to get the name
-        var workspacesResult = await _fluxService.GetWorkspacesAsync(userId);
+        var workspacesResult = await _workspaceService.GetWorkspacesAsync(userId);
         if (workspacesResult.IsSuccess && workspacesResult.Value != null)
         {
             var currentWorkspace = workspacesResult.Value.FirstOrDefault(w => w.Id == workspaceId);
@@ -80,7 +80,7 @@ public class WorkspaceStateService
     {
         if (CurrentWorkspaceId == null) return;
         
-        var result = await _fluxService.GetWorkspaceMembersAsync(CurrentWorkspaceId.Value, userId);
+        var result = await _workspaceService.GetWorkspaceMembersAsync(CurrentWorkspaceId.Value, userId);
         if (result.IsSuccess)
         {
             Members = result.Value ?? new();
@@ -97,7 +97,7 @@ public class WorkspaceStateService
     {
         if (CurrentWorkspaceId == null) return;
         
-        var result = await _fluxService.GetChannelsAsync(CurrentWorkspaceId.Value, userId);
+        var result = await _workspaceService.GetChannelsAsync(CurrentWorkspaceId.Value, userId);
         if (result.IsSuccess)
         {
             Channels = result.Value ?? new();

@@ -6,7 +6,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
 @inject WorkspaceStateService StateService
-@inject FluxClientService FluxService
+@inject WorkspaceClientService WorkspaceService
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
 
@@ -60,7 +60,7 @@
         
         if (Guid.TryParse(userIdStr, out var currentUserId))
         {
-            var result = await FluxService.GetOrCreateDirectChannelAsync(WorkspaceId, currentUserId, targetUserId);
+            var result = await WorkspaceService.GetOrCreateDirectChannelAsync(WorkspaceId, currentUserId, targetUserId);
             if (result.IsSuccess && result.Value != null)
             {
                 Navigation.NavigateTo($"/workspace/{WorkspaceId}/chat/{result.Value.Id}");
