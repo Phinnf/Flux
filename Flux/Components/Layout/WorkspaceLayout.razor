@@ -1,307 +1,30 @@
 @inherits LayoutComponentBase
 @layout MainLayout
 @using Flux.Domain.Entities
-@using Flux.Features.Channels.CreateChannel
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
 @using Microsoft.AspNetCore.SignalR.Client
-@using Flux.Components.UI
+@using Flux.Infrastructure.Client
 @inject WorkspaceStateService WorkspaceState
 @inject NavigationManager Navigation
-@inject WorkspaceClientService WorkspaceService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
 <div class="main-container text-white">
     <div class="slack-layout">
-        <!-- 1. Activity Bar -->
-        <div class="activity-bar">
-            <div class="activity-top">
-                <div class="workspace-brand-wrapper" @onclick='() => Navigation.NavigateTo("/workspaces")' title="Go to Workspaces">
-                    <span class="text-xs font-black tracking-tighter">FLUX</span>
-                </div>
+        <!-- Shared Activity Bar -->
+        <ActivityBar AvatarUrl="@_avatarUrl" Initials="@_initials" CurrentUserId="@_currentUserId" />
 
-                <div class="activity-item @(IsActive("/workspace") && !Navigation.Uri.Contains("/dms") && !Navigation.Uri.Contains("/activity") && !IsActive("/threads") ? "active" : "")" 
-                     title="Home" @onclick="NavigateToFirstChannel">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
-                </div>
-
-                <div class="activity-item @(Navigation.Uri.Contains("/dms") ? "active" : "")" 
-                     title="Direct Messages" @onclick="NavigateToDms">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
-                </div>
-
-                <div class="activity-item @(Navigation.Uri.Contains("/activity") ? "active" : "")" 
-                     title="Activity" style="position: relative;" @onclick='() => Navigation.NavigateTo($"/workspace/{WorkspaceState.CurrentWorkspaceId}/activity")'>
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
-                    @if (WorkspaceState.UnreadNotificationCount > 0)
-                    {
-                        <div class="notification-badge">
-                            @WorkspaceState.UnreadNotificationCount
-                        </div>
-                    }
-                </div>
-                
-                <div class="activity-item @(IsActive("/more") ? "active" : "")" title="More">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"></path></svg>
-                </div>
-            </div>
-            <div class="flex-1"></div>
-            <div class="activity-bottom">
-                <div id="profile-icon" class="profile-avatar-wrapper" title="Profile" @onclick='() => Navigation.NavigateTo("/profile")'>
-                    @{
-                        var currentUser = WorkspaceState.Members.FirstOrDefault(m => m.Id == _currentUserId);
-                        var avatarUrl = currentUser?.AvatarUrl;
-                        var initials = string.IsNullOrEmpty(currentUser?.Username) ? "U" : currentUser.Username[0].ToString().ToUpper();
-                    }
-                    @if (!string.IsNullOrEmpty(avatarUrl))
-                    {
-                        <img src="@avatarUrl" alt="Avatar" class="w-full h-full object-cover" />
-                    }
-                    else
-                    {
-                        @initials
-                    }
-                    <div class="status-dot"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 2. Workspace Sidebar -->
-        @if (!Navigation.Uri.Contains("/dms") && !Navigation.Uri.Contains("/activity"))
-        {
-        <div class="workspace-sidebar">
-            <div class="sidebar-header">
-                <div class="flex items-center gap-2 w-full">
-                    <div class="workspace-name-display">
-                        <span class="font-black truncate">@(WorkspaceState.CurrentWorkspaceName ?? "Loading...")</span>
-                    </div>
-                    <button class="invite-btn ml-auto" @onclick="OpenInviteDialog" title="Invite People">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
-                    </button>
-                </div>
-            </div>
-            
-            <div class="sidebar-scrollable">
-                <nav class="w-full px-3">
-                    <div class="space-y-1 mb-6">
-                        <a href="@($"/workspace/{WorkspaceState.CurrentWorkspaceId}/threads")" class="nav-link @(IsActive($"/workspace/{WorkspaceState.CurrentWorkspaceId}/threads") ? "active" : "")">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z"></path></svg>
-                            <span>Threads</span>
-                        </a>
-                        <a href="@($"/workspace/{WorkspaceState.CurrentWorkspaceId}/drafts")" class="nav-link @(IsActive($"/workspace/{WorkspaceState.CurrentWorkspaceId}/drafts") ? "active" : "")">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-                            <span>Drafts</span>
-                        </a>
-                    </div>
-
-                    <div @oncontextmenu="@(e => ShowGroupContextMenu(e))" @oncontextmenu:preventDefault="true">
-                        <div class="section-title">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-width="3"/></svg>
-                            <span>Channels</span>
-                        </div>
-                        <div class="space-y-0.5">
-                            @foreach (var channel in WorkspaceState.Channels.Where(c => c.Type != ChannelType.Direct))
-                            {
-                                <div @oncontextmenu="@(e => ShowContextMenu(e, channel.Id, channel.Name))" 
-                                     @oncontextmenu:preventDefault="true"
-                                     @oncontextmenu:stopPropagation="true">
-                                    <a href="@($"/workspace/{WorkspaceState.CurrentWorkspaceId}/chat/{channel.Id}")" class="nav-link @(IsActive($"/workspace/{WorkspaceState.CurrentWorkspaceId}/chat/{channel.Id}") ? "active" : "")">
-                                        @if (channel.Type == ChannelType.Private)
-                                        {
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                                        }
-                                        else
-                                        {
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"></path></svg>
-                                        }
-                                        <span class="truncate">@channel.Name</span>
-                                    </a>
-                                </div>
-                            }
-                            <button @onclick="OpenCreateDialog" class="add-channel-btn">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                                <span>Add Channels</span>
-                            </button>
-                        </div>
-                        
-                        <div class="section-title mt-6">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-width="3"/></svg>
-                            <span>Direct Messages</span>
-                        </div>
-                        <div class="space-y-0.5">
-                            @foreach (var member in WorkspaceState.Members)
-                            {
-                                if (member.Id == _currentUserId) continue;
-
-                                <button @onclick="@(() => StartDirectMessage(member.Id))" class="nav-link w-full text-left">
-                                    <div class="flex items-center gap-2">
-                                        <div class="status-indicator @(member.Status?.ToLower() ?? "offline")"></div>
-                                        <span class="truncate">@member.Username</span>
-                                    </div>
-                                </button>
-                            }
-                        </div>
-                    </div>
-                </nav>
-            </div>
-        </div>
-        }
-
-        <!-- 3. Main Content -->
-        <div class="main-content flex-1">
-            @Body
-        </div>
+        <!-- Page Specific Content (Sidebar + Main Content) -->
+        @Body
     </div>
 </div>
 
-<!-- Context Menu & Dialogs (Styles moved to app.css for consistency) -->
-@if (_showContextMenu)
-{
-    <div class="fixed inset-0 z-[9998] bg-transparent" @onclick="() => _showContextMenu = false" @oncontextmenu:preventDefault="true" @oncontextmenu="() => _showContextMenu = false"></div>
-    <div class="fixed z-[9999] context-menu" style="left: @(_mouseX)px; top: @(_mouseY)px;">
-        <div class="px-3 py-2 border-b border-white/5 mb-1">
-            <span class="menu-label">@(_isGroupMenu ? "CHANNELS ACTIONS" : $"# {_selectedChannelName}")</span>
-        </div>
-        @if (_isGroupMenu)
-        {
-            <button class="menu-item" @onclick="OpenCreateDialog">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" stroke-width="2"/></svg>
-                Create Channel
-            </button>
-            <button class="menu-item" @onclick="RefreshChannels">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-width="2"/></svg>
-                Refresh
-            </button>
-        }
-        else
-        {
-            <button class="menu-item" @onclick="OpenRenameDialog">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732" stroke-width="2"/></svg>
-                Rename
-            </button>
-            <div class="h-px bg-white/5 my-1"></div>
-            <button class="menu-item text-red-400" @onclick="DeleteFromMenu">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-width="2"/></svg>
-                Delete
-            </button>
-        }
-    </div>
-}
-
-<!-- Dialogs are using the same auth-modal style -->
-@if (!_hideRenameChannelDialog)
-{
-    <div class="modal-overlay" @onclick="() => _hideRenameChannelDialog = true">
-        <div class="modal-content w-96" @onclick:stopPropagation>
-            <h3 class="text-2xl font-bold mb-2">Rename Channel</h3>
-            <p class="text-white/40 text-sm mb-6">Give your channel a fresh identity.</p>
-            <div class="mb-6">
-                <label class="text-xs font-semibold text-white/50 uppercase tracking-widest ml-1">New Name</label>
-                <input class="auth-input mt-2" @bind="_renameChannelName" />
-            </div>
-            <div class="flex justify-end gap-3">
-                <button class="px-4 py-2 text-white/60 hover:text-white" @onclick="() => _hideRenameChannelDialog = true">Cancel</button>
-                <button class="px-6 py-2 bg-blue-600 rounded-xl font-bold" @onclick="RenameChannel">Update</button>
-            </div>
-        </div>
-    </div>
-}
-
-@if (!_hideCreateChannelDialog)
-{
-    <div class="modal-overlay" @onclick="() => _hideCreateChannelDialog = true">
-        <div class="modal-content w-[450px]" @onclick:stopPropagation>
-            <h3 class="text-2xl font-bold mb-2">Create Channel</h3>
-            <p class="text-white/40 text-sm mb-8">Channels are where conversations happen.</p>
-            
-            <div class="space-y-5">
-                <div class="input-group">
-                    <label class="text-xs font-semibold text-white/50 uppercase tracking-widest ml-1">Channel Name</label>
-                    <input class="auth-input mt-2" @bind="_newChannelName" placeholder="# e.g. marketing" />
-                </div>
-                <div class="input-group">
-                    <label class="text-xs font-semibold text-white/50 uppercase tracking-widest ml-1">Description</label>
-                    <textarea class="auth-input mt-2 resize-none" rows="2" @bind="_newChannelDescription"></textarea>
-                </div>
-                <div class="input-group">
-                    <label class="text-xs font-semibold text-white/50 uppercase tracking-widest ml-1">Privacy</label>
-                    <select class="auth-input mt-2" @bind="_newChannelTypeString">
-                        <option value="Public">Public (Anyone in workspace)</option>
-                        <option value="Private">Private (Invite only)</option>
-                    </select>
-                </div>
-            </div>
-            <div class="mt-10 flex justify-end gap-3">
-                <button class="px-4 py-2 text-white/60 hover:text-white" @onclick="() => _hideCreateChannelDialog = true">Cancel</button>
-                <button class="px-8 py-3 bg-blue-600 rounded-xl font-bold shadow-lg shadow-blue-600/20" @onclick="CreateChannel">Create Channel</button>
-            </div>
-        </div>
-    </div>
-}
-
-@if (!_hideInviteDialog)
-{
-    <div class="modal-overlay" @onclick="() => _hideInviteDialog = true">
-        <div class="modal-content w-96" @onclick:stopPropagation>
-            <h3 class="text-2xl font-bold mb-2">Invite Others</h3>
-            <p class="text-white/40 text-sm mb-6">Grow your team by sharing a link.</p>
-            
-            <div class="mb-6">
-                <label class="text-xs font-semibold text-white/50 uppercase tracking-widest ml-1">Expires After</label>
-                <select class="auth-input mt-2" @bind="_inviteExpirationHoursString">
-                    <option value="1">1 hour</option>
-                    <option value="24">1 day</option>
-                    <option value="168">7 days</option>
-                    <option value="">Never</option>
-                </select>
-            </div>
-
-            @if (!string.IsNullOrEmpty(_generatedInviteLink))
-            {
-                <div class="mt-4 p-4 bg-white/[0.03] border border-white/10 rounded-2xl flex items-center justify-between gap-3">
-                    <span class="font-mono text-xs truncate text-blue-400">@_generatedInviteLink</span>
-                    <button class="text-white/40 hover:text-blue-400 transition-colors shrink-0" @onclick="CopyInviteLink" title="Copy Link">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
-                    </button>
-                </div>
-            }
-
-            <div class="mt-8 flex flex-col gap-3">
-                <button class="w-full py-3 bg-blue-600 rounded-xl font-bold shadow-lg shadow-blue-600/20" @onclick="GenerateInviteLink" disabled="@_isGeneratingInvite">
-                    @if (_isGeneratingInvite) { <div class="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin mx-auto"></div> }
-                    else { <span>@(string.IsNullOrEmpty(_generatedInviteLink) ? "Generate Link" : "Regenerate Link")</span> }
-                </button>
-                <button class="w-full py-2 text-white/40 hover:text-white text-sm" @onclick="() => _hideInviteDialog = true">Dismiss</button>
-            </div>
-        </div>
-    </div>
-}
-
 @code {
     private Guid _currentUserId;
-    private bool _hideCreateChannelDialog = true;
-    private string _newChannelName = "";
-    private string _newChannelDescription = "";
-    private string _newChannelTypeString = "Public";
-
-    private bool _hideRenameChannelDialog = true;
-    private string _renameChannelName = "";
-
-    // Invite Dialog State
-    private bool _hideInviteDialog = true;
-    private string _inviteExpirationHoursString = "24"; // Default 1 day
-    private string _generatedInviteLink = "";
-    private bool _isGeneratingInvite = false;
-
-    // Context Menu State
-    private bool _showContextMenu = false;
-    private double _mouseX = 0;
-    private double _mouseY = 0;
-    private bool _isGroupMenu = false;
-    private Guid _selectedChannelId;
-    private string? _selectedChannelName;
+    private string? _avatarUrl;
+    private string _initials = "U";
     private HubConnection? _hubConnection;
 
     protected override async Task OnInitializedAsync()
@@ -318,6 +41,8 @@
                 _currentUserId = id;
             }
         }
+
+        UpdateUserAvatar();
 
         // Setup global notification listener
         _hubConnection = new HubConnectionBuilder()
@@ -346,121 +71,6 @@
         try { await _hubConnection.StartAsync(); } catch { }
     }
 
-    private void OpenCreateDialog()
-    {
-        _showContextMenu = false;
-        _newChannelName = "";
-        _newChannelDescription = "";
-        _hideCreateChannelDialog = false;
-    }
-
-    private async Task RefreshChannels()
-    {
-        _showContextMenu = false;
-        await WorkspaceState.RefreshChannelsAsync(_currentUserId);
-    }
-
-    private void OpenInviteDialog()
-    {
-        _showContextMenu = false;
-        _generatedInviteLink = "";
-        _inviteExpirationHoursString = "24";
-        _hideInviteDialog = false;
-    }
-
-    private async Task GenerateInviteLink()
-    {
-        if (WorkspaceState.CurrentWorkspaceId == null) return;
-
-        _isGeneratingInvite = true;
-        try
-        {
-            int? expiration = string.IsNullOrEmpty(_inviteExpirationHoursString) 
-                ? null 
-                : int.Parse(_inviteExpirationHoursString);
-                
-            var result = await WorkspaceService.CreateInviteAsync(WorkspaceState.CurrentWorkspaceId.Value, _currentUserId, expiration);
-            if (result.IsSuccess && result.Value != null)
-            {
-                var baseUrl = Navigation.BaseUri.TrimEnd('/');
-                _generatedInviteLink = $"{baseUrl}/invite/{result.Value}";
-            }
-        }
-        finally
-        {
-            _isGeneratingInvite = false;
-        }
-    }
-
-    private async Task CopyInviteLink()
-    {
-        if (!string.IsNullOrEmpty(_generatedInviteLink))
-        {
-            try
-            {
-                await JS.InvokeVoidAsync("navigator.clipboard.writeText", _generatedInviteLink);
-            }
-            catch { }
-        }
-    }
-
-    private void OpenRenameDialog()
-    {
-        _showContextMenu = false;
-        _renameChannelName = _selectedChannelName ?? "";
-        _hideRenameChannelDialog = false;
-    }
-
-    private async Task RenameChannel()
-    {
-        if (string.IsNullOrWhiteSpace(_renameChannelName) || WorkspaceState.CurrentWorkspaceId == null) return;
-
-        try {
-            var result = await WorkspaceService.RenameChannelAsync(WorkspaceState.CurrentWorkspaceId.Value, _selectedChannelId, _renameChannelName, _currentUserId);
-            if (result.IsSuccess)
-            {
-                _hideRenameChannelDialog = true;
-                await WorkspaceState.RefreshChannelsAsync(_currentUserId);
-            }
-        } catch { }
-    }
-
-    private void ShowContextMenu(MouseEventArgs e, Guid channelId, string channelName)
-    {
-        _isGroupMenu = false;
-        _selectedChannelId = channelId;
-        _selectedChannelName = channelName;
-        _mouseX = e.ClientX;
-        _mouseY = e.ClientY;
-        _showContextMenu = true;
-    }
-
-    private void ShowGroupContextMenu(MouseEventArgs e)
-    {
-        _isGroupMenu = true;
-        _mouseX = e.ClientX;
-        _mouseY = e.ClientY;
-        _showContextMenu = true;
-    }
-
-    private async Task StartDirectMessage(Guid targetUserId)
-    {
-        if (WorkspaceState.CurrentWorkspaceId == null) return;
-        
-        var result = await WorkspaceService.GetOrCreateDirectChannelAsync(WorkspaceState.CurrentWorkspaceId.Value, _currentUserId, targetUserId);
-        if (result.IsSuccess && result.Value != null)
-        {
-            await WorkspaceState.RefreshChannelsAsync(_currentUserId);
-            Navigation.NavigateTo($"/workspace/{WorkspaceState.CurrentWorkspaceId}/chat/{result.Value.Id}");
-        }
-    }
-
-    private async Task DeleteFromMenu()
-    {
-        _showContextMenu = false;
-        if (_selectedChannelName != null) await ConfirmDeleteChannel(_selectedChannelId, _selectedChannelName);
-    }
-
     protected override async Task OnParametersSetAsync()
     {
         try {
@@ -470,61 +80,20 @@
             if (wsIndex != -1 && wsIndex + 1 < parts.Length && Guid.TryParse(parts[wsIndex + 1], out Guid workspaceId))
             {
                 await WorkspaceState.LoadWorkspaceAsync(workspaceId, _currentUserId);
+                UpdateUserAvatar();
             }
         } catch { }
     }
 
-    private async Task CreateChannel()
+    private void UpdateUserAvatar()
     {
-        if (string.IsNullOrWhiteSpace(_newChannelName) || WorkspaceState.CurrentWorkspaceId == null) return;
-        try {
-            var type = _newChannelTypeString == "Public" ? ChannelType.Public : ChannelType.Private;
-            var request = new CreateChannelRequest(_newChannelName, _newChannelDescription, type, _currentUserId);
-            var result = await WorkspaceService.CreateChannelAsync(WorkspaceState.CurrentWorkspaceId.Value, request);
-            if (result.IsSuccess) {
-                _hideCreateChannelDialog = true;
-                await WorkspaceState.RefreshChannelsAsync(_currentUserId);
-            }
-        } catch { }
-    }
-
-    private void NavigateToDms()
-    {
-        if (WorkspaceState.CurrentWorkspaceId == null) return;
-        
-        // Try to find the first direct channel if any exist
-        var firstDirect = WorkspaceState.Channels.FirstOrDefault(c => c.Type == ChannelType.Direct);
-        if (firstDirect != null)
+        var currentUser = WorkspaceState.Members.FirstOrDefault(m => m.Id == _currentUserId);
+        _avatarUrl = currentUser?.AvatarUrl;
+        if (!string.IsNullOrEmpty(currentUser?.Username))
         {
-            Navigation.NavigateTo($"/workspace/{WorkspaceState.CurrentWorkspaceId}/chat/{firstDirect.Id}");
-        }
-        else
-        {
-            // Fallback to the DMs selector page
-            Navigation.NavigateTo($"/workspace/{WorkspaceState.CurrentWorkspaceId}/dms");
+            _initials = currentUser.Username[0].ToString().ToUpper();
         }
     }
-
-    private void NavigateToFirstChannel()
-    {
-        if (WorkspaceState.CurrentWorkspaceId != null && WorkspaceState.Channels.Any())
-            Navigation.NavigateTo($"/workspace/{WorkspaceState.CurrentWorkspaceId}/chat/{WorkspaceState.Channels.First(c => c.Type != ChannelType.Direct).Id}");
-    }
-
-    private async Task ConfirmDeleteChannel(Guid channelId, string channelName)
-    {
-        try {
-            bool confirmed = await JS.InvokeAsync<bool>("confirm", $"Are you sure you want to delete #{channelName}?");
-            if (confirmed && WorkspaceState.CurrentWorkspaceId != null) {
-                if ((await WorkspaceService.DeleteChannelAsync(WorkspaceState.CurrentWorkspaceId.Value, channelId, _currentUserId)).IsSuccess) {
-                    await WorkspaceState.RefreshChannelsAsync(_currentUserId);
-                    if (Navigation.Uri.Contains(channelId.ToString())) NavigateToFirstChannel();
-                }
-            }
-        } catch { }
-    }
-
-    private bool IsActive(string href) => Navigation.ToBaseRelativePath(Navigation.Uri).StartsWith(href.TrimStart('/'));
 
     public async ValueTask DisposeAsync()
     {
