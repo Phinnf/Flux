@@ -295,29 +295,55 @@ public partial class Chat : ComponentBase, IAsyncDisposable
         
         StateHasChanged();
     }
-
-    private void TriggerMention()
+private void TriggerMention()
+{
+    _showMentionsList = !_showMentionsList;
+    if (_showMentionsList)
     {
-        _newMessageContent += "@";
-        CheckForMentions();
-        _textAreaRef.FocusAsync();
-        StateHasChanged();
-    }
-
-    private void ToggleFormatting()
-    {
-        ToastService.ShowInfo("Rich text formatting coming soon!");
-    }
-
-    private void FlagAsImportant()
-    {
-        if (!_newMessageContent.StartsWith("IMPORTANT: "))
+        if (!_newMessageContent.EndsWith("@") && !_newMessageContent.EndsWith(" ") && !string.IsNullOrEmpty(_newMessageContent))
         {
-            _newMessageContent = "IMPORTANT: " + _newMessageContent;
+            _newMessageContent += " ";
         }
-        ToastService.ShowInfo("Message flagged as important");
-        StateHasChanged();
+        if (!_newMessageContent.EndsWith("@"))
+        {
+            _newMessageContent += "@";
+        }
+        _mentionSearchQuery = "";
+        _filteredMembers = StateService.Members.Take(10).ToList();
     }
+    else
+    {
+        if (_newMessageContent.EndsWith("@"))
+        {
+            _newMessageContent = _newMessageContent.Substring(0, _newMessageContent.Length - 1);
+        }
+    }
+    _textAreaRef.FocusAsync();
+    StateHasChanged();
+}
+
+private bool _showFormattingBar = false;
+
+private void ToggleFormatting()
+{
+    _showFormattingBar = !_showFormattingBar;
+    StateHasChanged();
+}
+
+private async Task ApplyFormat(string prefix, string suffix = "")
+{
+    if (string.IsNullOrEmpty(suffix)) suffix = prefix;
+
+    // Append format characters
+    if (!string.IsNullOrEmpty(_newMessageContent) && !_newMessageContent.EndsWith(" "))
+    {
+        _newMessageContent += " ";
+    }
+    _newMessageContent += $"{prefix}{suffix}";
+
+    StateHasChanged();
+    await _textAreaRef.FocusAsync();
+}
     
     // Video Recorder State
     private bool _showVideoRecorder = false;

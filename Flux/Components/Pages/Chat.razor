@@ -27,12 +27,21 @@ else
         <div class="chat-header">
             <div class="flex items-center gap-3 w-full">
                 <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400">
+                    <div class="w-8 h-8 rounded-xl @(StateService.ActiveCallChannelIds.Contains(ChannelId) ? "bg-[#3E9E60]/20 text-[#3E9E60]" : "bg-blue-500/10 text-blue-400") flex items-center justify-center">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"></path></svg>
                     </div>
                     <div>
-                        <h2 class="text-base font-bold text-white leading-none">@(_currentChannelName ?? "channel-name")</h2>
-                        <p class="text-[10px] text-white/30 uppercase tracking-widest mt-1">Active Channel</p>
+                        <h2 class="text-base font-bold leading-none @(StateService.ActiveCallChannelIds.Contains(ChannelId) ? "text-[#3E9E60]" : "text-white")">@(_currentChannelName ?? "channel-name")</h2>
+                        @if (StateService.ActiveCallChannelIds.Contains(ChannelId))
+                        {
+                            <p class="text-[10px] text-[#3E9E60]/80 uppercase tracking-widest mt-1 flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-[#3E9E60] animate-pulse"></span> Huddle in progress
+                            </p>
+                        }
+                        else
+                        {
+                            <p class="text-[10px] text-white/30 uppercase tracking-widest mt-1">Active Channel</p>
+                        }
                     </div>
                 </div>
                 <div class="flex-1"></div>
@@ -329,13 +338,29 @@ else
             <div class="chat-input-box" style="position: relative;">
                 @if (_isAudioRecording)
                 {
-                    <div class="audio-recording-overlay">
-                        <div class="recording-status">
-                            <div class="recording-dot"></div>
-                            <span>Recording Audio... @_audioDurationString</span>
+                    <div class="audio-recording-overlay !bg-[#1a1a1d] !border !border-red-500/30 !rounded-xl !shadow-[0_0_20px_rgba(220,38,38,0.15)] flex items-center justify-between p-3">
+                        <div class="recording-status flex items-center gap-4">
+                            <div class="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
+                                <i class="fas fa-microphone text-red-500 animate-pulse"></i>
+                            </div>
+                            <div class="audio-visualizer flex items-end gap-1 h-6">
+                                <div class="bar animate-wave-1 bg-red-500 w-1.5 rounded-t-sm"></div>
+                                <div class="bar animate-wave-2 bg-red-500 w-1.5 rounded-t-sm"></div>
+                                <div class="bar animate-wave-3 bg-red-500 w-1.5 rounded-t-sm"></div>
+                                <div class="bar animate-wave-4 bg-red-500 w-1.5 rounded-t-sm"></div>
+                                <div class="bar animate-wave-5 bg-red-500 w-1.5 rounded-t-sm"></div>
+                            </div>
+                            <span class="text-red-400 font-mono font-bold text-lg">@_audioDurationString</span>
                         </div>
-                        <button class="px-3 py-1 text-sm text-white/60 hover:text-white transition-colors mr-2" @onclick="CancelAudioRecording">Cancel</button>
-                        <button class="px-4 py-1.5 text-sm bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors font-bold" @onclick="StopAudioRecording">Stop & Send</button>
+                        <div class="flex items-center gap-2">
+                            <button class="w-10 h-10 rounded-lg text-white/60 hover:text-white hover:bg-white/5 transition-all flex items-center justify-center" @onclick="CancelAudioRecording" title="Cancel">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                            <button class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-all shadow-lg shadow-green-600/20 flex items-center gap-2" @onclick="StopAudioRecording">
+                                <i class="fas fa-paper-plane"></i>
+                                Send
+                            </button>
+                        </div>
                     </div>
                 }
                 <!-- Mentions Dropdown -->
@@ -362,10 +387,22 @@ else
                     </div>
                 }
 
+                @if (_showFormattingBar)
+                {
+                    <div class="formatting-bar flex items-center gap-1 px-3 py-2 border-b border-white/5 bg-white/5 rounded-t-xl">
+                        <button class="w-7 h-7 rounded hover:bg-white/10 text-white/70 hover:text-white flex items-center justify-center transition-colors font-serif font-bold" @onclick='() => ApplyFormat("**")' title="Bold (Ctrl+B)">B</button>
+                        <button class="w-7 h-7 rounded hover:bg-white/10 text-white/70 hover:text-white flex items-center justify-center transition-colors font-serif italic" @onclick='() => ApplyFormat("*")' title="Italic (Ctrl+I)">I</button>
+                        <button class="w-7 h-7 rounded hover:bg-white/10 text-white/70 hover:text-white flex items-center justify-center transition-colors font-serif line-through" @onclick='() => ApplyFormat("~~")' title="Strikethrough">S</button>
+                        <div class="w-px h-4 bg-white/20 mx-1"></div>
+                        <button class="w-7 h-7 rounded hover:bg-white/10 text-white/70 hover:text-white flex items-center justify-center transition-colors font-mono font-bold" @onclick='() => ApplyFormat("`")' title="Code"><i class="fas fa-code"></i></button>
+                        <button class="w-7 h-7 rounded hover:bg-white/10 text-white/70 hover:text-white flex items-center justify-center transition-colors" @onclick='() => ApplyFormat("```\n", "\n```")' title="Code Block"><i class="fas fa-file-code"></i></button>
+                    </div>
+                }
+
                 <div class="flex items-end bg-transparent gap-2 p-1">
                     <textarea @ref="_textAreaRef"
-                              @bind="_newMessageContent"
-                              @bind:event="oninput"
+                              value="@_newMessageContent"
+                              @oninput="@((ChangeEventArgs e) => OnChatInputChanged(e.Value?.ToString() ?? ""))"
                               @onkeydown="HandleKeyDown"
                               placeholder="@($"Message #{(_currentChannelName?.StartsWith("#") == true ? _currentChannelName.Substring(1) : _currentChannelName)}")"
                               title="Press Enter to send. Press Shift+Enter for a new line."
@@ -401,12 +438,8 @@ else
                         <button class="p-1.5 text-white/40 hover:text-white transition-colors" @onclick="TriggerMention" title="Mention someone">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.206" /></svg>
                         </button>
-                        <button class="p-1.5 text-white/40 hover:text-white transition-colors" @onclick="ToggleFormatting" title="Formatting">
+                        <button class="p-1.5 text-white/40 hover:text-white transition-colors @(_showFormattingBar ? "text-white bg-white/10 rounded" : "")" @onclick="ToggleFormatting" title="Formatting">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" /></svg>
-                        </button>
-                        <div class="w-px h-5 bg-white/10 mx-1"></div>
-                        <button class="p-1.5 text-white/40 hover:text-white transition-colors" @onclick="FlagAsImportant" title="Important">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                         </button>
                     </div>
                 </div>
@@ -1347,6 +1380,17 @@ else
         50% { opacity: 0.4; }
         100% { opacity: 1; }
     }
+
+    @@keyframes wave {
+        0%, 100% { height: 4px; }
+        50% { height: 20px; }
+    }
+    
+    .animate-wave-1 { animation: wave 1.2s ease-in-out infinite; }
+    .animate-wave-2 { animation: wave 1.0s ease-in-out infinite 0.2s; }
+    .animate-wave-3 { animation: wave 1.1s ease-in-out infinite 0.4s; }
+    .animate-wave-4 { animation: wave 0.9s ease-in-out infinite 0.1s; }
+    .animate-wave-5 { animation: wave 1.3s ease-in-out infinite 0.3s; }
 
     @@keyframes slide-up {
         from { opacity: 0; transform: translateY(10px); }

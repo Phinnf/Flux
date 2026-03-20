@@ -5,6 +5,7 @@
 
 # dotenv files
 .env
+GEMINI
 
 # User-specific files
 *.rsuser

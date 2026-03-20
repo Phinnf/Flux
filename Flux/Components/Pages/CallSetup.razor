@@ -12,6 +12,8 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @using Flux.Infrastructure.Client
 @inject UserClientService UserService
+@inject MessageClientService MessageService
+@using Flux.Features.Messages.SendMessage
 @implements IAsyncDisposable
 
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
@@ -38,10 +40,16 @@
                         
                         @if (!VideoEnabled)
                         {
-                            <div class="w-32 h-32 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-5xl font-bold shadow-2xl text-white">
-                                @_localInitials
-                            </div>
-                            <div class="absolute text-gray-500 text-sm bottom-4">Camera is off</div>
+                            @if (!string.IsNullOrEmpty(_localAvatarUrl))
+                            {
+                                <img src="@_localAvatarUrl" class="w-32 h-32 rounded-full object-cover shadow-2xl ring-4 ring-white/10" />
+                            }
+                            else
+                            {
+                                <div class="w-32 h-32 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-5xl font-bold shadow-2xl text-white">
+                                    @_localInitials
+                                </div>
+                            }
                         }
 
                         <!-- Controls Overlay -->
@@ -107,9 +115,16 @@
                         
                         @if (!VideoEnabled && !IsScreenSharing)
                         {
-                            <div class="w-28 h-28 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-4xl font-bold text-white shadow-xl @(_localSpeaking ? "ring-4 ring-green-500 ring-offset-4 ring-offset-[#1e1e24] animate-pulse" : "")">
-                                @_localInitials
-                            </div>
+                            @if (!string.IsNullOrEmpty(_localAvatarUrl))
+                            {
+                                <img src="@_localAvatarUrl" class="w-28 h-28 rounded-full object-cover shadow-xl @(_localSpeaking ? "ring-4 ring-green-500 ring-offset-4 ring-offset-[#1e1e24] animate-pulse" : "")" />
+                            }
+                            else
+                            {
+                                <div class="w-28 h-28 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-4xl font-bold text-white shadow-xl @(_localSpeaking ? "ring-4 ring-green-500 ring-offset-4 ring-offset-[#1e1e24] animate-pulse" : "")">
+                                    @_localInitials
+                                </div>
+                            }
                         }
 
                         <div class="absolute bottom-4 left-4 flex items-center gap-2 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 shadow-lg">
@@ -287,6 +302,7 @@
     private DotNetObjectReference<CallSetup>? ObjRef;
 
     private string _localInitials = "U";
+    private string? _localAvatarUrl = null;
     private bool _localSpeaking = false;
     private Dictionary<string, Participant> Participants = new();
     private string _messageInput = "";
@@ -324,6 +340,20 @@
         if (user.Identity?.IsAuthenticated == true)
         {
             _localInitials = user.Identity.Name?[0].ToString().ToUpper() ?? "U";
+            
+            var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier) ?? user.FindFirst("sub");
+            if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                var profile = await UserService.GetProfileAsync(userId);
+                if (profile.IsSuccess && profile.Value != null)
+                {
+                    _localAvatarUrl = profile.Value.AvatarUrl;
+                    if (!string.IsNullOrEmpty(profile.Value.Username))
+                    {
+                        _localInitials = profile.Value.Username[0].ToString().ToUpper();
+                    }
+                }
+            }
         }
     }
 
@@ -495,15 +525,19 @@
             
             if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId))
             {
-                using var context = await DbFactory.CreateDbContextAsync();
-                var msg = new Message { Content = "🎤 Huddle started", ChannelId = ChannelId, UserId = userId };
-                context.Messages.Add(msg);
+                // Send standard message via API so it triggers SignalR ReceiveMessage for everyone
+                var command = new SendMessageCommand("🎤 Huddle started", ChannelId, userId);
+                var sendResult = await MessageService.SendMessageAsync(command);
                 
-                ActiveCallSession = new CallSession { ChannelId = ChannelId, ThreadMessageId = msg.Id };
-                context.CallSessions.Add(ActiveCallSession);
-                await context.SaveChangesAsync();
-                
-                await HubConnection!.InvokeAsync("BroadcastCallStarted", ChannelId.ToString(), ActiveCallSession.Id.ToString());
+                if (sendResult.IsSuccess && sendResult.Value != null)
+                {
+                    using var context = await DbFactory.CreateDbContextAsync();
+                    ActiveCallSession = new CallSession { ChannelId = ChannelId, ThreadMessageId = sendResult.Value.Id };
+                    context.CallSessions.Add(ActiveCallSession);
+                    await context.SaveChangesAsync();
+                    
+                    await HubConnection!.InvokeAsync("BroadcastCallStarted", ChannelId.ToString(), ActiveCallSession.Id.ToString());
+                }
             }
         }
 

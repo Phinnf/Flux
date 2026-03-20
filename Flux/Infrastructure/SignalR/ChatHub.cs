@@ -62,6 +62,22 @@ public class ChatHub : Hub
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         var userId = Context.UserIdentifier;
+        var connectionId = Context.ConnectionId;
+
+        // Handle leaving call if disconnected
+        string? activeCallId = null;
+        lock (_callParticipants)
+        {
+            if (_connectionToCallMap.TryGetValue(connectionId, out activeCallId))
+            {
+                _connectionToCallMap.Remove(connectionId);
+            }
+        }
+        if (activeCallId != null)
+        {
+            await HandleUserLeftCall(activeCallId, connectionId, userId);
+        }
+
         if (userId != null)
         {
             bool isLastConnection = false;
@@ -134,14 +150,87 @@ public class ChatHub : Hub
     public async Task JoinCall(string callId)
     {
         await Groups.AddToGroupAsync(Context.ConnectionId, $"call_{callId}");
+        
+        lock (_callParticipants)
+        {
+            if (!_callParticipants.ContainsKey(callId))
+            {
+                _callParticipants[callId] = new HashSet<string>();
+            }
+            _callParticipants[callId].Add(Context.ConnectionId);
+            _connectionToCallMap[Context.ConnectionId] = callId;
+        }
+
         // Notify others in the call that a new user joined
         await Clients.OthersInGroup($"call_{callId}").SendAsync("UserJoinedCall", Context.UserIdentifier);
     }
 
     public async Task LeaveCall(string callId)
     {
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"call_{callId}");
-        await Clients.OthersInGroup($"call_{callId}").SendAsync("UserLeftCall", Context.UserIdentifier);
+        var connectionId = Context.ConnectionId;
+        lock (_callParticipants)
+        {
+            _connectionToCallMap.Remove(connectionId);
+        }
+        await HandleUserLeftCall(callId, connectionId, Context.UserIdentifier);
+    }
+
+    private async Task HandleUserLeftCall(string callId, string connectionId, string? userId)
+    {
+        await Groups.RemoveFromGroupAsync(connectionId, $"call_{callId}");
+        
+        if (userId != null)
+        {
+            await Clients.OthersInGroup($"call_{callId}").SendAsync("UserLeftCall", userId);
+        }
+
+        bool isCallEmpty = false;
+        lock (_callParticipants)
+        {
+            if (_callParticipants.ContainsKey(callId))
+            {
+                _callParticipants[callId].Remove(connectionId);
+                if (_callParticipants[callId].Count == 0)
+                {
+                    _callParticipants.Remove(callId);
+                    isCallEmpty = true;
+                }
+            }
+        }
+
+        if (isCallEmpty && Guid.TryParse(callId, out var cid))
+        {
+            try
+            {
+                using var scope = _serviceProvider.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<FluxDbContext>();
+                var callSession = await dbContext.CallSessions.FindAsync(cid);
+                
+                if (callSession != null && callSession.IsActive)
+                {
+                    callSession.IsActive = false;
+                    callSession.EndedAt = DateTime.UtcNow;
+
+                    if (callSession.ThreadMessageId != null)
+                    {
+                        var rootMessage = await dbContext.Messages.FindAsync(callSession.ThreadMessageId);
+                        if (rootMessage != null)
+                        {
+                            var duration = callSession.EndedAt.Value - callSession.StartedAt;
+                            string durationStr = duration.TotalHours >= 1 
+                                ? $"{(int)duration.TotalHours}h {duration.Minutes}m" 
+                                : duration.TotalMinutes >= 1 ? $"{duration.Minutes}m {duration.Seconds}s" : $"{duration.Seconds}s";
+
+                            rootMessage.Content = $"🎤 Huddle ended. Duration: {durationStr}";
+                        }
+                    }
+
+                    await dbContext.SaveChangesAsync();
+                    await BroadcastCallEnded(callSession.ChannelId.ToString());
+                }
+            }
+            catch { }
+        }
     }
 
     public async Task SendSignal(string targetUserId, string signal)
