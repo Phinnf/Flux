@@ -218,9 +218,6 @@ else
                             <button class="w-7 h-7 rounded hover:bg-white/10 text-white/70 hover:text-white flex items-center justify-center transition-colors font-bold text-xs" @onclick='() => ApplyFormat("**")' title="Bold">B</button>
                             <button class="w-7 h-7 rounded hover:bg-white/10 text-white/70 hover:text-white flex items-center justify-center transition-colors italic text-xs" @onclick='() => ApplyFormat("*")' title="Italic">I</button>
                             <button class="w-7 h-7 rounded hover:bg-white/10 text-white/70 hover:text-white flex items-center justify-center transition-colors font-serif line-through text-xs" @onclick='() => ApplyFormat("~~")' title="Strikethrough">S</button>
-                            <button class="w-7 h-7 rounded hover:bg-white/10 text-white/70 hover:text-white flex items-center justify-center transition-colors" @onclick='() => ApplyFormat("`")' title="Code">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
-                            </button>
                             <button class="w-7 h-7 rounded hover:bg-white/10 text-white/70 hover:text-white flex items-center justify-center transition-colors" @onclick='() => ApplyFormat("```\n", "\n```")' title="Code Block">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                             </button>
@@ -234,16 +231,15 @@ else
     <!-- Thread Sidebar -->
     @if (_activeThreadParent != null)
     {
-        <ThreadSidebar ParentMessage="_activeThreadParent"
+        <ThreadSidebar @ref="_threadSidebar"
+                       ParentMessage="_activeThreadParent"
                        ThreadMessages="@(_messages.Where(m => m.ParentMessageId == _activeThreadParent.Id).OrderBy(m => m.CreatedAt).ToList())"
                        ChannelName="@_currentChannelName"
                        NewMessageContent="@_newThreadMessageContent"
                        CurrentUserId="CurrentUserId"
                        WorkspaceMembers="StateService.Members"
-                       ViewportRef="_threadViewport"
-                       TextAreaRef="_threadTextAreaRef"
                        OnClose="CloseThread"
-                       OnInputChanged="@((val) => _newThreadMessageContent = val)"
+                       OnInputChanged="OnThreadInputChanged"
                        OnSendMessage="SendThreadMessage"
                        OnKeyDown="HandleThreadKeyDown"
                        OnOpenEmojiPicker="@((args) => OpenEmojiPicker(args.Args, args.MessageId.GetValueOrDefault()))"

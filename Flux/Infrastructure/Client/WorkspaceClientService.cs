@@ -205,11 +205,34 @@ public class WorkspaceClientService : BaseClientService
         }
     }
 
-    public async Task<Result<string>> SendInviteAsync(Guid workspaceId, string email)
+    private DateTime _lastInviteSent = DateTime.MinValue;
+
+    public async Task<Result<string>> SendInviteAsync(Guid workspaceId, string email, Guid userId)
     {
-        // This is a simplified version for the UI refactor, ideally we'd have a specific endpoint for email invites
-        // For now, let's just create a code and assume the backend handles the email if we had that logic
-        return await CreateInviteAsync(workspaceId, Guid.Empty, 24); 
+        if ((DateTime.UtcNow - _lastInviteSent).TotalSeconds < 10)
+        {
+            return Result<string>.CreateFailure("Please wait a few seconds before sending another invite.");
+        }
+
+        try
+        {
+            await SetAuthHeaderAsync();
+            var request = new { Email = email, UserId = userId };
+            var response = await HttpClient.PostAsJsonAsync($"/api/workspaces/{workspaceId}/invites/email", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                _lastInviteSent = DateTime.UtcNow;
+                return Result<string>.CreateSuccess("Invite sent successfully.");
+            }
+            
+            var error = await response.Content.ReadAsStringAsync();
+            return Result<string>.CreateFailure(error);
+        }
+        catch (Exception ex)
+        {
+            return Result<string>.CreateFailure(ex.Message);
+        }
     }
 
     public async Task<Result<InviteDetailsDto>> GetInviteDetailsAsync(string code)

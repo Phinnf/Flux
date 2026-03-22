@@ -1,6 +1,6 @@
 window.chatHelper = {
     autoResizeTextArea: function (element) {
-        if (!element) return;
+        if (!element || !element.style) return;
         element.style.height = 'auto'; // Reset to calculate true scrollHeight
         element.style.height = element.scrollHeight + 'px';
     },
@@ -33,8 +33,7 @@ window.chatHelper = {
         return newText;
     },
     resetTextAreaHeight: function(element) {
-        if (!element) return;
-        element.value = ''; // Force clear the value in the DOM
+        if (!element || !element.style) return;
         element.style.height = 'auto';
     },
     copyToClipboard: async function(text) {

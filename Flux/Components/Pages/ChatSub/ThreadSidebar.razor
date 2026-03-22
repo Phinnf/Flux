@@ -84,8 +84,8 @@
     [Parameter] public Guid CurrentUserId { get; set; }
     [Parameter] public List<MemberDto> WorkspaceMembers { get; set; } = new();
 
-    [Parameter] public ElementReference ViewportRef { get; set; }
-    [Parameter] public ElementReference TextAreaRef { get; set; }
+    public ElementReference ViewportRef { get; set; }
+    public ElementReference TextAreaRef { get; set; }
 
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback<string> OnInputChanged { get; set; }

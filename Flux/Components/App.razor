@@ -46,19 +46,27 @@
             }
         };
 
-        window.registerEnterKeyHandler = (element, dotNetHelper) => {
+        window.registerEnterKeyHandler = (element, dotNetHelper, methodName = 'SendMessageFromJS') => {
             if (!element) return;
             
-            // Try to find textarea in the element or its shadow root
-            const textarea = element.querySelector('textarea') || 
-                           (element.shadowRoot && element.shadowRoot.querySelector('textarea'));
+            let textarea = null;
+            
+            // element might be the textarea itself, or a container
+            if (element.tagName === 'TEXTAREA') {
+                textarea = element;
+            } else if (typeof element.querySelector === 'function') {
+                textarea = element.querySelector('textarea');
+                if (!textarea && element.shadowRoot && typeof element.shadowRoot.querySelector === 'function') {
+                    textarea = element.shadowRoot.querySelector('textarea');
+                }
+            }
             
             if (!textarea) return;
 
             textarea.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && !e.ctrlKey && !e.shiftKey) {
                     e.preventDefault();
-                    dotNetHelper.invokeMethodAsync('SendMessageFromJS');
+                    dotNetHelper.invokeMethodAsync(methodName);
                 }
             });
         };

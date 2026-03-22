@@ -2,6 +2,7 @@ using Flux.Features.Messages.EditMessage;
 using Flux.Features.Messages.GetMessages;
 using Flux.Features.Messages.SendMessage;
 using Flux.Infrastructure.Client;
+using Flux.Components.Pages.ChatSub;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Forms;
@@ -88,8 +89,7 @@ public partial class Chat : ComponentBase
     // Thread specific state
     private MessageDto? _activeThreadParent;
     private string _newThreadMessageContent = "";
-    private ElementReference _threadViewport;
-    private ElementReference _threadTextAreaRef;
+    private ThreadSidebar? _threadSidebar;
 
     // Profile specific state
     private MemberDto? _activeProfile;
@@ -100,9 +100,12 @@ public partial class Chat : ComponentBase
         _activeThreadParent = parent;
         await InvokeAsync(StateHasChanged);
         await Task.Delay(100);
-        await JS.InvokeVoidAsync("scrollToBottom", _threadViewport);
-        // Register enter key for thread textarea
-        await JS.InvokeVoidAsync("window.registerEnterKeyHandler", _threadTextAreaRef, _objRef);
+        if (_threadSidebar != null)
+        {
+            await JS.InvokeVoidAsync("scrollToBottom", _threadSidebar.ViewportRef);
+            // Register enter key for thread textarea
+            await JS.InvokeVoidAsync("window.registerEnterKeyHandler", _threadSidebar.TextAreaRef, _objRef, "SendThreadMessageFromJS");
+        }
     }
 
     private void CloseThread()
@@ -131,7 +134,10 @@ public partial class Chat : ComponentBase
     private async Task OnThreadInputChanged(string value)
     {
         _newThreadMessageContent = value;
-        await JS.InvokeVoidAsync("chatHelper.autoResizeTextArea", _threadTextAreaRef);
+        if (_threadSidebar != null)
+        {
+            await JS.InvokeVoidAsync("chatHelper.autoResizeTextArea", _threadSidebar.TextAreaRef);
+        }
     }
 
     private async Task SendThreadMessage()
@@ -141,7 +147,10 @@ public partial class Chat : ComponentBase
         var content = _newThreadMessageContent.Trim();
         _newThreadMessageContent = string.Empty;
 
-        await JS.InvokeVoidAsync("chatHelper.resetTextAreaHeight", _threadTextAreaRef);
+        if (_threadSidebar != null)
+        {
+            await JS.InvokeVoidAsync("chatHelper.resetTextAreaHeight", _threadSidebar.TextAreaRef);
+        }
         await InvokeAsync(StateHasChanged);
 
         var command = new SendMessageCommand(content, ChannelId, CurrentUserId, _activeThreadParent.Id);
@@ -150,13 +159,19 @@ public partial class Chat : ComponentBase
         if (!result.IsSuccess)
         {
             _newThreadMessageContent = content;
-            await JS.InvokeVoidAsync("chatHelper.autoResizeTextArea", _threadTextAreaRef);
+            if (_threadSidebar != null)
+            {
+                await JS.InvokeVoidAsync("chatHelper.autoResizeTextArea", _threadSidebar.TextAreaRef);
+            }
             ToastService.ShowError($"Failed to send reply: {result.Error}");
         }
         else
         {
             // The message will be added via SignalR
-            await JS.InvokeVoidAsync("scrollToBottom", _threadViewport);
+            if (_threadSidebar != null)
+            {
+                await JS.InvokeVoidAsync("scrollToBottom", _threadSidebar.ViewportRef);
+            }
         }
     }
 
@@ -668,6 +683,7 @@ public partial class Chat : ComponentBase
     private async Task ScrollToBottom() => await JS.InvokeVoidAsync("scrollToBottom", _messagesViewport);
 
     [JSInvokable] public async Task SendMessageFromJS() => await SendMessage();
+    [JSInvokable] public async Task SendThreadMessageFromJS() => await SendThreadMessage();
 
     private async Task HandleKeyDown(KeyboardEventArgs e) { if (e.Key == "Enter" && !e.ShiftKey) await SendMessage(); }
     private async Task HandleThreadKeyDown(KeyboardEventArgs e) { if (e.Key == "Enter" && !e.ShiftKey) await SendThreadMessage(); }

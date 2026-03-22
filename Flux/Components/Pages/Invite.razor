@@ -87,6 +87,11 @@
         if (result.IsSuccess)
         {
             _inviteDetails = result.Value;
+            // Auto-join if authenticated and coming back from login
+            if (_isAuthenticated && _currentUserId != Guid.Empty)
+            {
+                await JoinWorkspace();
+            }
         }
         else
         {

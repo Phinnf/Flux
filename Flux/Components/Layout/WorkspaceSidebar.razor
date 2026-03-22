@@ -370,14 +370,22 @@
         }
     }
 
+    [Inject] private Flux.Infrastructure.Services.IToastService ToastService { get; set; } = default!;
+
     private async Task SendInvite()
     {
         if (string.IsNullOrWhiteSpace(_inviteEmail) || !WorkspaceState.CurrentWorkspaceId.HasValue) return;
 
-        var result = await WorkspaceService.SendInviteAsync(WorkspaceState.CurrentWorkspaceId.Value, _inviteEmail);
+        var result = await WorkspaceService.SendInviteAsync(WorkspaceState.CurrentWorkspaceId.Value, _inviteEmail, _currentUserId);
         if (result.IsSuccess)
         {
+            ToastService.ShowSuccess("Invite sent successfully!");
+            _inviteEmail = "";
             _showInviteDialog = false;
+        }
+        else
+        {
+            ToastService.ShowError(result.Error);
         }
     }
 

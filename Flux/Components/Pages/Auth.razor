@@ -462,6 +462,9 @@
         StateHasChanged();
     }
 
+    [SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
+
     private async Task SaveTokenAndRedirect(string token)
     {
         await JS.InvokeVoidAsync("localStorage.setItem", "authToken", token);
@@ -471,7 +474,14 @@
             fluxAuthProvider.NotifyUserAuthentication(token);
         }
         
-        Navigation.NavigateTo("/workspaces");
+        if (!string.IsNullOrEmpty(ReturnUrl))
+        {
+            Navigation.NavigateTo(ReturnUrl);
+        }
+        else
+        {
+            Navigation.NavigateTo("/workspaces");
+        }
     }
 
     private bool IsValidEmail(string email) => 
