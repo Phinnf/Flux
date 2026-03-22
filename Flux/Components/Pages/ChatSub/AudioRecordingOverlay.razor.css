@@ -1,0 +1,53 @@
+.audio-recording-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--flux-glass-heavy);
+    backdrop-filter: blur(15px);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    z-index: 200;
+    border-radius: 12px;
+    animation: slide-up 0.2s ease-out;
+}
+
+.recording-status {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #ff0055;
+    font-weight: bold;
+    flex: 1;
+}
+
+@keyframes slide-up {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.audio-visualizer {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    height: 20px;
+}
+
+.bar {
+    width: 3px;
+    background: #ff0055;
+    border-radius: 2px;
+}
+
+.animate-wave-1 { animation: wave 1s ease-in-out infinite; }
+.animate-wave-2 { animation: wave 1.2s ease-in-out infinite; }
+.animate-wave-3 { animation: wave 0.8s ease-in-out infinite; }
+.animate-wave-4 { animation: wave 1.1s ease-in-out infinite; }
+.animate-wave-5 { animation: wave 0.9s ease-in-out infinite; }
+
+@keyframes wave {
+    0%, 100% { height: 4px; }
+    50% { height: 16px; }
+}

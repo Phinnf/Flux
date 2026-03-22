@@ -29,7 +29,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        WorkspaceState.OnStateChanged += () => InvokeAsync(StateHasChanged);
+        WorkspaceState.OnStateChanged += HandleStateChanged;
         
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
@@ -39,6 +39,11 @@
             if (idClaim != null && Guid.TryParse(idClaim.Value, out var id))
             {
                 _currentUserId = id;
+                // Reload workspace if it was already set via Parameters but failed due to missing userId
+                if (WorkspaceState.CurrentWorkspaceId.HasValue && WorkspaceState.Channels.Count == 0)
+                {
+                    await WorkspaceState.LoadWorkspaceAsync(WorkspaceState.CurrentWorkspaceId.Value, _currentUserId);
+                }
             }
         }
 
@@ -89,6 +94,8 @@
         try { await _hubConnection.StartAsync(); } catch { }
     }
 
+    private void HandleStateChanged() => InvokeAsync(StateHasChanged);
+
     protected override async Task OnParametersSetAsync()
     {
         try {
@@ -97,8 +104,12 @@
             int wsIndex = Array.IndexOf(parts, "workspace");
             if (wsIndex != -1 && wsIndex + 1 < parts.Length && Guid.TryParse(parts[wsIndex + 1], out Guid workspaceId))
             {
-                await WorkspaceState.LoadWorkspaceAsync(workspaceId, _currentUserId);
-                UpdateUserAvatar();
+                // Ensure we have a user ID or at least wait for auth state before loading
+                if (_currentUserId != Guid.Empty || (await AuthStateProvider.GetAuthenticationStateAsync()).User.Identity?.IsAuthenticated == true)
+                {
+                    await WorkspaceState.LoadWorkspaceAsync(workspaceId, _currentUserId);
+                    UpdateUserAvatar();
+                }
             }
         } catch { }
     }
@@ -115,7 +126,7 @@
 
     public async ValueTask DisposeAsync()
     {
-        WorkspaceState.OnStateChanged -= StateHasChanged;
+        WorkspaceState.OnStateChanged -= HandleStateChanged;
         if (_hubConnection != null)
         {
             await _hubConnection.DisposeAsync();

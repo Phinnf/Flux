@@ -29,14 +29,25 @@ namespace Flux.Features.Workspaces.CreateWorkspace
                 Description = request.Description
             };
 
+            // Create a default 'general' channel
+            var generalChannel = new Channel
+            {
+                Name = "general",
+                Description = "This is the very beginning of the general channel.",
+                Type = ChannelType.Public,
+                Workspace = workspace
+            };
+
             // Save to database
             _dbContext.Workspaces.Add(workspace);
+            _dbContext.Channels.Add(generalChannel);
             
-            // In a real app, we'd add the user as a member here too
+            // Add the user as a member to both workspace and general channel
             var user = await _dbContext.Users.FindAsync(new object[] { userId }, cancellationToken);
             if (user != null)
             {
                 workspace.Members.Add(user);
+                generalChannel.Members.Add(user);
             }
 
             await _dbContext.SaveChangesAsync(cancellationToken);

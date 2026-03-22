@@ -5,12 +5,12 @@
 
 <div class="activity-bar">
     <div class="activity-top">
-        <div class="workspace-brand-wrapper" @onclick='() => Navigation.NavigateTo("/workspaces")' title="Go to Workspaces">
+        <div class="workspace-brand-wrapper" @onclick="NavigateToWorkspaceHome" title="Go to Workspace Home">
             <span class="text-xs font-black tracking-tighter">FLUX</span>
         </div>
 
         <div class="activity-item @(IsActive("/workspace") && !IsDms() && !IsActivity() ? "active" : "")" 
-                title="Home" @onclick="NavigateToFirstChannel">
+                title="Home" @onclick="NavigateToWorkspaceHome">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 v4a1 1 0 001 1m-6 0h6"></path></svg>
         </div>
 
@@ -77,15 +77,61 @@
     private bool IsActivity() => Navigation.Uri.Contains("/activity");
     private bool IsProfile() => Navigation.Uri.Contains("/profile");
 
-    private void NavigateToFirstChannel()
+    private void NavigateToWorkspaceHome()
     {
-        if (WorkspaceState.CurrentWorkspaceId != null && WorkspaceState.Channels.Any())
-            Navigation.NavigateTo($"/workspace/{WorkspaceState.CurrentWorkspaceId}/chat/{WorkspaceState.Channels.First(c => c.Type != ChannelType.Direct).Id}");
+        var workspaceId = WorkspaceState.CurrentWorkspaceId;
+        
+        // Try to get workspaceId from URL if state is not loaded
+        if (workspaceId == null)
+        {
+            var uri = Navigation.Uri;
+            var parts = uri.Split('/');
+            int wsIndex = Array.IndexOf(parts, "workspace");
+            if (wsIndex != -1 && wsIndex + 1 < parts.Length && Guid.TryParse(parts[wsIndex + 1], out Guid id))
+            {
+                workspaceId = id;
+            }
+        }
+
+        if (workspaceId != null)
+        {
+            // If we have channels, go to the first one, otherwise go to the workspace home
+            var firstChannel = WorkspaceState.Channels.FirstOrDefault(c => c.Type != ChannelType.Direct);
+            if (firstChannel != null)
+            {
+                Navigation.NavigateTo($"/workspace/{workspaceId}/chat/{firstChannel.Id}");
+            }
+            else
+            {
+                Navigation.NavigateTo($"/workspace/{workspaceId}");
+            }
+        }
+        else
+        {
+            Navigation.NavigateTo("/workspaces");
+        }
     }
 
     private void NavigateToDms()
     {
-        if (WorkspaceState.CurrentWorkspaceId == null) return;
-        Navigation.NavigateTo($"/workspace/{WorkspaceState.CurrentWorkspaceId}/dms");
+        var workspaceId = WorkspaceState.CurrentWorkspaceId;
+        
+        if (workspaceId == null)
+        {
+            var uri = Navigation.Uri;
+            var parts = uri.Split('/');
+            int wsIndex = Array.IndexOf(parts, "workspace");
+            if (wsIndex != -1 && wsIndex + 1 < parts.Length && Guid.TryParse(parts[wsIndex + 1], out Guid id))
+            {
+                workspaceId = id;
+            }
+        }
+
+        if (workspaceId == null) 
+        {
+            Navigation.NavigateTo("/workspaces");
+            return;
+        }
+        Navigation.NavigateTo($"/workspace/{workspaceId}/dms");
     }
 }

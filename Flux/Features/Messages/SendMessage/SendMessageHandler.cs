@@ -105,8 +105,10 @@ public class SendMessageHandler(
                         .ToListAsync(cancellationToken);
 
                     var mentionedUsers = workspaceUsers
-                        .Where(u => u.Id != request.UserId && message.Content.Contains($"@{u.Username}"))
+                        .Where(u => u.Id != request.UserId && 
+                               System.Text.RegularExpressions.Regex.IsMatch(message.Content, $@"@{System.Text.RegularExpressions.Regex.Escape(u.Username)}(\b|$)"))
                         .Select(u => u.Id)
+                        .Distinct()
                         .ToList();
 
                     foreach (var targetId in mentionedUsers)

@@ -1,0 +1,30 @@
+<div class="audio-recording-overlay !bg-[#1a1a1d] !border !border-red-500/30 !rounded-xl !shadow-[0_0_20px_rgba(220,38,38,0.15)] flex items-center justify-between p-3">
+    <div class="recording-status flex items-center gap-4">
+        <div class="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
+            <i class="fas fa-microphone text-red-500 animate-pulse"></i>
+        </div>
+        <div class="audio-visualizer flex items-end gap-1 h-6">
+            <div class="bar animate-wave-1 bg-red-500 w-1.5 rounded-t-sm"></div>
+            <div class="bar animate-wave-2 bg-red-500 w-1.5 rounded-t-sm"></div>
+            <div class="bar animate-wave-3 bg-red-500 w-1.5 rounded-t-sm"></div>
+            <div class="bar animate-wave-4 bg-red-500 w-1.5 rounded-t-sm"></div>
+            <div class="bar animate-wave-5 bg-red-500 w-1.5 rounded-t-sm"></div>
+        </div>
+        <span class="text-red-400 font-mono font-bold text-lg">@DurationString</span>
+    </div>
+    <div class="flex items-center gap-2">
+        <button class="w-10 h-10 rounded-lg text-white/60 hover:text-white hover:bg-white/5 transition-all flex items-center justify-center" @onclick="OnCancel" title="Cancel">
+            <i class="fas fa-trash-alt"></i>
+        </button>
+        <button class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-all shadow-lg shadow-green-600/20 flex items-center gap-2" @onclick="OnStop">
+            <i class="fas fa-paper-plane"></i>
+            Send
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string DurationString { get; set; } = "00:00";
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback OnStop { get; set; }
+}

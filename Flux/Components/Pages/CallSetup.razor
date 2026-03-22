@@ -451,7 +451,7 @@
 
         HubConnection.On<string>("UserLeftCall", async (userId) => {
             Participants.Remove(userId);
-            JSRuntime.InvokeVoidAsync("webrtc.closePeerConnection", userId);
+            await JSRuntime.InvokeVoidAsync("webrtc.closePeerConnection", userId);
             await InvokeAsync(StateHasChanged);        });
 
         HubConnection.On<string, bool>("UserCameraChanged", async (userId, hasVideo) => {

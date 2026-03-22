@@ -1,0 +1,110 @@
+@using Flux.Features.Messages.GetMessages
+@using Flux.Infrastructure.Client
+
+<div class="thread-sidebar">
+    <div class="thread-header">
+        <div style="display: flex; flex-direction: column;">
+            <h3 style="margin: 0; color: var(--flux-main-text); font-size: 1.1rem; font-weight: 700;">Thread</h3>
+            <span style="font-size: 0.8rem; color: rgba(204, 220, 219, 0.6);">#@ChannelName</span>
+        </div>
+        <button class="p-2 text-white/40 hover:text-white transition-colors" @onclick="OnClose">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+    </div>
+
+    <div class="thread-viewport" @ref="ViewportRef">
+        <!-- Parent Message -->
+        <div class="thread-parent-message">
+            <MessageItem Message="ParentMessage" 
+                         IsActiveThread="true" 
+                         IsSelf="@(ParentMessage.UserId == CurrentUserId)"
+                         CurrentUserId="CurrentUserId"
+                         Initials="@GetInitials(ParentMessage.Username)"
+                         WorkspaceMembers="WorkspaceMembers"
+                         OnProfileClick="@(() => OnProfileClick.InvokeAsync(ParentMessage.UserId))"
+                         OnMemberMentionClick="OnProfileClick" />
+        </div>
+        
+        <div class="thread-divider">
+            <span>@ThreadMessages.Count replies</span>
+        </div>
+
+        <!-- Child Messages -->
+        @foreach (var msg in ThreadMessages)
+        {
+            <MessageItem Message="msg" 
+                         IsSelf="@(msg.UserId == CurrentUserId)"
+                         CurrentUserId="CurrentUserId"
+                         Initials="@GetInitials(msg.Username)"
+                         WorkspaceMembers="WorkspaceMembers"
+                         OnProfileClick="@(() => OnProfileClick.InvokeAsync(msg.UserId))"
+                         OnMemberMentionClick="OnProfileClick"
+                         OnEdit="@(() => OnEdit.InvokeAsync(msg))"
+                         OnDelete="@(() => OnDelete.InvokeAsync(msg.Id))"
+                         OnReaction="@((e) => OnReaction.InvokeAsync((e, msg.Id)))"
+                         OnToggleReaction="@((emoji) => OnToggleReaction.InvokeAsync((msg.Id, emoji)))" />
+        }
+    </div>
+
+    <!-- Thread Input -->
+    <div class="thread-input-container p-4">
+        <div class="chat-input-box bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+            <div class="flex items-end bg-transparent gap-2 p-1">
+                <textarea @ref="TextAreaRef"
+                          value="@NewMessageContent"
+                          @oninput="@((ChangeEventArgs e) => OnInputChanged.InvokeAsync(e.Value?.ToString() ?? ""))"
+                          placeholder="Reply..."
+                          class="flex-1 bg-transparent border-none focus:ring-0 text-white p-3 min-h-[44px] max-h-[120px] resize-none overflow-y-auto"
+                          rows="1"></textarea>
+                
+                <button class="w-9 h-9 flex items-center justify-center rounded-lg @(string.IsNullOrWhiteSpace(NewMessageContent) ? "text-white/20" : "text-white bg-green-600 hover:bg-green-700") transition-all shrink-0 mb-1.5 mr-1"
+                        @onclick="OnSendMessage"
+                        disabled="@(string.IsNullOrWhiteSpace(NewMessageContent))"
+                        title="Send message (Enter)">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                </button>
+            </div>
+
+            <div class="bottom-toolbar flex justify-between items-center px-2 py-1 border-t border-white/5">
+                <div class="toolbar-left flex items-center gap-1">
+                    <button class="p-1.5 text-white/40 hover:text-white transition-colors" @onclick="@((e) => OnReaction.InvokeAsync((e, null)))">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public MessageDto ParentMessage { get; set; } = default!;
+    [Parameter] public List<MessageDto> ThreadMessages { get; set; } = new();
+    [Parameter] public string ChannelName { get; set; } = "";
+    [Parameter] public string NewMessageContent { get; set; } = "";
+    [Parameter] public Guid CurrentUserId { get; set; }
+    [Parameter] public List<MemberDto> WorkspaceMembers { get; set; } = new();
+
+    [Parameter] public ElementReference ViewportRef { get; set; }
+    [Parameter] public ElementReference TextAreaRef { get; set; }
+
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<string> OnInputChanged { get; set; }
+    [Parameter] public EventCallback OnSendMessage { get; set; }
+    [Parameter] public EventCallback<KeyboardEventArgs> OnKeyDown { get; set; }
+    [Parameter] public EventCallback<(Guid? MessageId, MouseEventArgs Args)> OnOpenEmojiPicker { get; set; }
+    [Parameter] public EventCallback<Guid> OnProfileClick { get; set; }
+    
+    [Parameter] public EventCallback<MessageDto> OnEdit { get; set; }
+    [Parameter] public EventCallback<Guid> OnDelete { get; set; }
+    [Parameter] public EventCallback<(MouseEventArgs Args, Guid? MessageId)> OnReaction { get; set; }
+    [Parameter] public EventCallback<(Guid MessageId, string Emoji)> OnToggleReaction { get; set; }
+
+    private string GetInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0) return "?";
+        if (parts.Length == 1) return parts[0][0].ToString().ToUpper();
+        return (parts[0][0].ToString() + parts[^1][0].ToString()).ToUpper();
+    }
+}

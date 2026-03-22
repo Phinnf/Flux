@@ -1,0 +1,55 @@
+@using Flux.Infrastructure.Client
+
+<div class="profile-sidebar">
+    <div class="profile-header">
+        <div style="display: flex; flex-direction: column;">
+            <h3 style="margin: 0; color: var(--flux-main-text); font-size: 1.1rem; font-weight: 700;">Profile</h3>
+        </div>
+        <button class="p-2 text-white/40 hover:text-white transition-colors" @onclick="OnClose">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+    </div>
+
+    <div class="profile-body">
+        <div class="profile-avatar-container">
+            @if (!string.IsNullOrEmpty(Profile.AvatarUrl))
+            {
+                <img src="@Profile.AvatarUrl" class="profile-avatar-large" alt="@Profile.Username" />
+            }
+            else
+            {
+                <div class="profile-avatar-large profile-avatar-placeholder">
+                    @GetInitials(Profile.Username)
+                </div>
+            }
+        </div>
+        
+        <div class="profile-info-section">
+            <h2 class="profile-name">@(Profile.FullName ?? Profile.Username)</h2>
+            <p class="profile-username">@Profile.Username</p>
+            
+            @if (Profile.Id != CurrentUserId)
+            {
+                <div class="profile-actions">
+                    <button class="w-full py-2 bg-transparent border border-white/20 hover:bg-white/5 text-white rounded-md transition-colors" @onclick="OnMessageClick">Message</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public MemberDto Profile { get; set; } = default!;
+    [Parameter] public Guid CurrentUserId { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnMessageClick { get; set; }
+
+    private string GetInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0) return "?";
+        if (parts.Length == 1) return parts[0][0].ToString().ToUpper();
+        return (parts[0][0].ToString() + parts[^1][0].ToString()).ToUpper();
+    }
+}

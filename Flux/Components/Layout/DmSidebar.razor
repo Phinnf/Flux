@@ -6,6 +6,7 @@
 @inject NavigationManager Navigation
 @inject WorkspaceClientService WorkspaceService
 @inject AuthenticationStateProvider AuthStateProvider
+@implements IDisposable
 
 <div class="workspace-sidebar bg-[#19171D] border-r border-gray-700 flex flex-col h-full w-[280px] flex-shrink-0">
     <div class="sidebar-header h-[60px] min-h-[60px] flex items-center px-4 border-b border-gray-700">
@@ -80,7 +81,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        WorkspaceState.OnStateChanged += () => InvokeAsync(StateHasChanged);
+        WorkspaceState.OnStateChanged += HandleStateChanged;
         
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
@@ -93,6 +94,8 @@
             }
         }
     }
+
+    private void HandleStateChanged() => InvokeAsync(StateHasChanged);
 
     private bool IsActive(Guid memberId)
     {
@@ -137,6 +140,6 @@
 
     public void Dispose()
     {
-        WorkspaceState.OnStateChanged -= StateHasChanged;
+        WorkspaceState.OnStateChanged -= HandleStateChanged;
     }
 }
