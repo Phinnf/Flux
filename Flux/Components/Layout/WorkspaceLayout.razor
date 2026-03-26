@@ -16,15 +16,6 @@
         <!-- Shared Activity Bar -->
         <ActivityBar AvatarUrl="@_avatarUrl" Initials="@_initials" CurrentUserId="@_currentUserId" />
 
-        @if (Navigation.Uri.Contains("/dms/"))
-        {
-            <Flux.Components.Layout.DmSidebar />
-        }
-        else if (Navigation.Uri.Contains("/workspace/"))
-        {
-            <Flux.Components.Layout.WorkspaceSidebar />
-        }
-
         <!-- Page Specific Content -->
         @Body
     </div>

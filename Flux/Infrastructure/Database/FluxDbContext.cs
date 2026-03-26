@@ -22,43 +22,11 @@ namespace Flux.Infrastructure.Database
         public DbSet<Message> Messages => Set<Message>();
         public DbSet<Reaction> Reactions => Set<Reaction>();
         public DbSet<CallSession> CallSessions => Set<CallSession>();
-        public DbSet<KanbanBoard> KanbanBoards => Set<KanbanBoard>();
-        public DbSet<KanbanColumn> KanbanColumns => Set<KanbanColumn>();
-        public DbSet<KanbanTask> KanbanTasks => Set<KanbanTask>();
-        public DbSet<KanbanSubtask> KanbanSubtasks => Set<KanbanSubtask>();
 
         /// Configure database relationships and constraints here (Fluent API).
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-
-            // KanbanBoard - Workspace (Many-to-1)
-            modelBuilder.Entity<KanbanBoard>()
-                .HasOne(kb => kb.Workspace)
-                .WithMany()
-                .HasForeignKey(kb => kb.WorkspaceId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            // KanbanColumn - KanbanBoard (Many-to-1)
-            modelBuilder.Entity<KanbanColumn>()
-                .HasOne(kc => kc.Board)
-                .WithMany(kb => kb.Columns)
-                .HasForeignKey(kc => kc.BoardId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            // KanbanTask - KanbanColumn (Many-to-1)
-            modelBuilder.Entity<KanbanTask>()
-                .HasOne(kt => kt.Column)
-                .WithMany(kc => kc.Tasks)
-                .HasForeignKey(kt => kt.ColumnId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            // KanbanSubtask - KanbanTask (Many-to-1)
-            modelBuilder.Entity<KanbanSubtask>()
-                .HasOne(ks => ks.Task)
-                .WithMany(kt => kt.Subtasks)
-                .HasForeignKey(ks => ks.TaskId)
-                .OnDelete(DeleteBehavior.Cascade);
 
             // Apply Encryption to Message.Content
             var messageConverter = new EncryptedConverter(_encryptionKey);

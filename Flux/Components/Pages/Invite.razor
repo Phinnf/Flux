@@ -1,61 +1,224 @@
 @page "/invite/{code}"
-@layout Layout.EmptyLayout
+@layout Flux.Components.Layout.EmptyLayout
 @using Flux.Infrastructure.Client
 @inject WorkspaceClientService WorkspaceService
 @inject NavigationManager Navigation
 @inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
 
-<div class="flex justify-center items-center h-screen bg-gray-900 text-white">
-    <div class="w-96 p-10 bg-gray-800 rounded-lg shadow-lg text-center">
-        <div class="flex items-center justify-center gap-2 mb-8">
-            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
-            <h1 class="text-2xl font-extrabold text-white m-0">Flux</h1>
+<PageTitle>Workspace Invite | Flux</PageTitle>
+
+<div class="flux-auth min-h-screen flex items-center justify-center p-6">
+    <!-- Glow Effects -->
+    <div class="glow-orb orb-1"></div>
+    <div class="glow-orb orb-2"></div>
+
+    <div class="auth-card glass-card animate-in max-w-[500px]">
+        <div class="auth-content">
+            <div class="auth-header text-center">
+                <div class="flux-logo justify-center" @onclick='() => Navigation.NavigateTo("/")'>
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M13 10V3L4 14h7v7l9-11h-7z" fill="currentColor"/>
+                        </svg>
+                    </div>
+                    <span>Flux</span>
+                </div>
+                
+                @if (_isLoading)
+                {
+                    <div class="loader-container">
+                        <div class="flux-loader"></div>
+                        <p>Loading invitation details...</p>
+                    </div>
+                }
+                else if (_errorMessage != null)
+                {
+                    <div class="message-box error">
+                        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <span>@_errorMessage</span>
+                    </div>
+                    <button class="flux-btn-secondary full-width" @onclick='() => Navigation.NavigateTo("/")'>Return to Home</button>
+                }
+                else if (_inviteDetails != null)
+                {
+                    <h1>You've been <span class="text-gradient">invited!</span></h1>
+                    <p class="invite-msg">
+                        Join <strong class="text-white">@_inviteDetails.WorkspaceName</strong> on Flux.
+                        @if (!string.IsNullOrEmpty(_inviteDetails.WorkspaceDescription))
+                        {
+                            <br />
+                            <span class="text-xs opacity-60">@_inviteDetails.WorkspaceDescription</span>
+                        }
+                    </p>
+
+                    <div class="actions-stack mt-8">
+                        <button class="flux-btn-primary full-width" @onclick="JoinWorkspace" disabled="@_isJoining">
+                            @if (_isJoining)
+                            {
+                                <div class="loader-small mr-2"></div>
+                            }
+                            Accept Invitation
+                        </button>
+
+                        @if (!_isAuthenticated)
+                        {
+                            <p class="toggle-auth">
+                                You need to be logged in to join. 
+                                <button class="toggle-btn" @onclick='() => Navigation.NavigateTo($"/auth?returnUrl=/invite/{Code}")'>Log in here</button>
+                            </p>
+                        }
+                    </div>
+                }
+            </div>
         </div>
-
-        @if (_isLoading)
-        {
-            <div class="flex flex-col items-center">
-                <div class="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                <p class="mt-4 text-gray-400">Loading invitation details...</p>
-            </div>
-        }
-        else if (_errorMessage != null)
-        {
-            <div class="bg-red-900/30 text-red-400 p-4 rounded mb-5">
-                @_errorMessage
-            </div>
-            <button class="w-full px-4 py-2 border border-gray-500 rounded hover:bg-gray-700 transition-colors" @onclick='() => Navigation.NavigateTo("/")'>Return to Home</button>
-        }
-        else if (_inviteDetails != null)
-        {
-            <h2 class="text-xl mb-2 text-white">You've been invited!</h2>
-            <p class="text-gray-400 mb-6">
-                Join <strong>@_inviteDetails.WorkspaceName</strong> on Flux.
-                @if (!string.IsNullOrEmpty(_inviteDetails.WorkspaceDescription))
-                {
-                    <br />
-                    <span class="text-sm opacity-80">@_inviteDetails.WorkspaceDescription</span>
-                }
-            </p>
-
-            <button class="w-full h-10 mb-4 px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors flex items-center justify-center gap-2" @onclick="JoinWorkspace" disabled="@_isJoining">
-                @if (_isJoining)
-                {
-                    <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                }
-                Accept Invitation
-            </button>
-
-            @if (!_isAuthenticated)
-            {
-                <p class="text-xs text-gray-400">
-                    You need to be logged in to join. 
-                    <a href="/auth?returnUrl=/invite/@Code" class="text-purple-400 font-bold hover:underline">Log in here</a>.
-                </p>
-            }
-        }
     </div>
 </div>
+
+<style>
+    .flux-auth {
+        background-color: var(--flux-main-bg);
+        color: var(--flux-main-text);
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Glow Orbs */
+    .glow-orb {
+        position: absolute;
+        width: 500px;
+        height: 500px;
+        border-radius: 50%;
+        filter: blur(80px);
+        opacity: 0.15;
+        z-index: 0;
+        pointer-events: none;
+    }
+    .orb-1 { top: -200px; right: -200px; background: var(--flux-primary); }
+    .orb-2 { bottom: -200px; left: -200px; background: var(--flux-secondary); }
+
+    .auth-card {
+        width: 100%;
+        max-width: 500px;
+        overflow: hidden;
+        border-radius: 32px;
+        z-index: 10;
+    }
+
+    .auth-content { padding: 48px; display: flex; flex-direction: column; justify-content: center; }
+
+    .auth-header { margin-bottom: 0; }
+    .flux-logo { 
+        display: flex; 
+        align-items: center; 
+        gap: 12px; 
+        font-weight: 800; 
+        font-size: 1.5rem; 
+        margin-bottom: 32px;
+        cursor: pointer;
+    }
+    .logo-icon {
+        width: 32px;
+        height: 32px;
+        background: var(--flux-primary);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+    }
+    .auth-header h1 { font-size: 2.25rem; font-weight: 800; margin-bottom: 16px; color: white; }
+    .invite-msg { color: rgba(255,255,255,0.5); font-size: 1rem; line-height: 1.6; }
+
+    .message-box { 
+        padding: 12px 16px; 
+        border-radius: 12px; 
+        font-size: 0.875rem; 
+        display: flex; 
+        align-items: center; 
+        gap: 12px; 
+        margin-bottom: 24px;
+        text-align: left;
+    }
+    .message-box.error { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #ef4444; }
+
+    .actions-stack { display: flex; flex-direction: column; gap: 20px; }
+
+    .toggle-auth { text-align: center; font-size: 0.875rem; color: rgba(255,255,255,0.5); }
+    .toggle-btn { background: none; border: none; color: var(--flux-primary); font-weight: 700; cursor: pointer; margin-left: 4px; }
+    .toggle-btn:hover { text-decoration: underline; }
+
+    .text-gradient {
+        background: linear-gradient(135deg, var(--flux-primary) 0%, var(--flux-secondary) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .flux-btn-primary {
+        background: var(--flux-primary);
+        color: white;
+        padding: 14px 24px;
+        border-radius: 12px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: all 0.2s;
+        border: none;
+        cursor: pointer;
+    }
+    .flux-btn-primary:hover:not(:disabled) { 
+        background: var(--flux-primary-hover);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px -4px rgba(59, 130, 246, 0.4);
+    }
+    .flux-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    
+    .flux-btn-secondary {
+        background: rgba(255, 255, 255, 0.05);
+        color: white;
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-weight: 600;
+        border: 1px solid var(--flux-border);
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+    .flux-btn-secondary:hover { background: rgba(255, 255, 255, 0.1); }
+    
+    .full-width { width: 100%; }
+
+    /* Loader */
+    .loader-container { padding: 40px 0; text-align: center; }
+    .flux-loader {
+        width: 32px;
+        height: 32px;
+        border: 2px solid rgba(255,255,255,0.05);
+        border-top-color: var(--flux-primary);
+        border-radius: 50%;
+        margin: 0 auto 16px;
+        animation: spin 1s linear infinite;
+    }
+    .loader-small {
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255,255,255,0.2);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+    @@keyframes spin { to { transform: rotate(360deg); } }
+
+    .animate-in { animation: fadeInScale 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+    @@keyframes fadeInScale {
+        from { opacity: 0; transform: scale(0.95) translateY(20px); }
+        to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    @@media (max-width: 640px) {
+        .auth-content { padding: 32px; }
+    }
+</style>
 
 @code {
     [Parameter]

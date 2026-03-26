@@ -9,101 +9,124 @@
 
 <PageTitle>@( _isRegister ? "Join Flux" : "Welcome Back" )</PageTitle>
 
-<div class="auth-wrapper min-h-screen w-full flex items-center justify-center p-4">
-    <!-- Animated background elements -->
-    <div class="bg-glow"></div>
-    <div class="bg-glow-2"></div>
+<div class="flux-auth min-h-screen flex items-center justify-center p-6">
+    <!-- Glow Effects -->
+    <div class="glow-orb orb-1"></div>
+    <div class="glow-orb orb-2"></div>
 
-    <div class="auth-container relative w-full max-w-[1100px] flex rounded-3xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.3)] border border-white/10">
-        
-        <!-- Left Section: Form -->
-        <div class="auth-form-side w-full lg:w-[50%] p-8 md:p-12 lg:p-16 flex flex-col justify-center relative overflow-hidden bg-[#1a1c24]">
-            @if (_isLoading)
-            {
-                <div class="loading-overlay absolute inset-0 z-50 flex items-center justify-center">
-                    <div class="loader"></div>
-                </div>
-            }
-
-            @if (!_isVerifyingEmail)
-            {
-                <div class="form-content @(_isRegister ? "slide-up" : "fade-in")">
-                    <!-- Brand Logo: Icon removed as requested -->
-                    <div class="flex items-center mb-8">
-                        <span class="text-3xl font-black text-white tracking-tighter">FLUX</span>
+    <div class="auth-card glass-card animate-in">
+        <div class="auth-grid">
+            <!-- Left Side: Content -->
+            <div class="auth-content">
+                <div class="auth-header">
+                    <div class="flux-logo" @onclick='() => Navigation.NavigateTo("/")'>
+                        <div class="logo-icon">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M13 10V3L4 14h7v7l9-11h-7z" fill="currentColor"/>
+                            </svg>
+                        </div>
+                        <span>Flux</span>
                     </div>
+                    <h1>@(_isRegister ? "Create Account" : "Welcome Back")</h1>
+                    <p>@(_isRegister ? "Start your journey with us today." : "Please enter your details to sign in.")</p>
+                </div>
 
-                    <h1 class="text-4xl font-extrabold text-white mb-2">@(_isRegister ? "Create Account" : "Welcome Back")</h1>
-                    <p class="text-white/60 mb-10">@(_isRegister ? "Start your journey with us today." : "Please enter your details to sign in.")</p>
+                @if (_isVerifyingEmail)
+                {
+                    <div class="verify-form fade-in">
+                        <div class="verify-icon">
+                            <svg class="w-10 h-10 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <h2>Verify your email</h2>
+                        <p>We've sent a code to <span class="text-gradient">@_registerEmail</span></p>
 
-                    <form @onsubmit="HandleSubmit" class="space-y-5">
+                        <form @onsubmit="HandleVerifyEmail" class="space-y-6">
+                            <div class="input-group">
+                                <input type="text" @bind="_verifyOtp" placeholder="••••••" maxlength="6"
+                                       class="glass-input otp-input" />
+                            </div>
+
+                            @if (!string.IsNullOrEmpty(_verifyError))
+                            {
+                                <div class="error-msg">@_verifyError</div>
+                            }
+
+                            <button type="submit" class="flux-btn-primary full-width" disabled="@_isLoading">
+                                @(_isLoading ? "Verifying..." : "Verify Account")
+                            </button>
+                        </form>
+
+                        <button @onclick="() => _isVerifyingEmail = false" class="back-link">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                            Back to registration
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <form @onsubmit="HandleSubmit" class="auth-form">
                         @if (_isRegister)
                         {
                             <div class="input-group">
-                                <label class="text-xs font-semibold text-white/50 uppercase tracking-wider ml-1">Username</label>
-                                <div class="relative mt-1">
-                                    <input type="text" @bind="_registerUsername" placeholder="Enter your username" required 
-                                           class="auth-input" />
+                                <label>Username</label>
+                                <div class="input-group-icon icon-left">
+                                    <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                    <input type="text" @bind="_registerUsername" placeholder="Enter your username" required class="glass-input" />
                                 </div>
                             </div>
 
                             <div class="input-group">
-                                <label class="text-xs font-semibold text-white/50 uppercase tracking-wider ml-1">Email Address</label>
-                                <div class="relative mt-1">
-                                    <input type="email" @bind="_registerEmail" placeholder="name@example.com" required 
-                                           class="auth-input" />
+                                <label>Email Address</label>
+                                <div class="input-group-icon icon-left">
+                                    <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                    <input type="email" @bind="_registerEmail" placeholder="name@example.com" required class="glass-input" />
                                 </div>
                             </div>
 
                             <div class="input-group">
-                                <div class="flex justify-between items-center px-1">
-                                    <label class="text-xs font-semibold text-white/50 uppercase tracking-wider">Password</label>
-                                </div>
-                                <div class="relative mt-1">
-                                    <input type="@(_showPassword ? "text" : "password")" @bind="_registerPassword" placeholder="••••••••" required 
-                                           class="auth-input pr-12" />
-                                    <button type="button" class="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors" @onclick="() => _showPassword = !_showPassword">
+                                <label>Password</label>
+                                <div class="input-group-icon icon-right">
+                                    <input type="@(_showPassword ? "text" : "password")" @bind="_registerPassword" placeholder="••••••••" required class="glass-input" />
+                                    <button type="button" class="toggle-password" @onclick="() => _showPassword = !_showPassword">
                                         @if (_showPassword)
                                         {
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543 7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268-2.943-9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543 7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268-2.943-9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
                                         }
                                         else
                                         {
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268-2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                                         }
                                     </button>
                                 </div>
-                                <p class="mt-2 text-[10px] text-white/40 leading-relaxed px-1">
-                                    8+ characters, uppercase, lowercase, number & symbol.
-                                </p>
                             </div>
                         }
                         else
                         {
                             <div class="input-group">
-                                <label class="text-xs font-semibold text-white/50 uppercase tracking-wider ml-1">Email Address</label>
-                                <div class="relative mt-1">
-                                    <input type="email" @bind="_loginEmail" placeholder="name@example.com" required 
-                                           class="auth-input" />
+                                <label>Email Address</label>
+                                <div class="input-group-icon icon-left">
+                                    <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                    <input type="email" @bind="_loginEmail" placeholder="name@example.com" required class="glass-input" />
                                 </div>
                             </div>
 
                             <div class="input-group">
-                                <div class="flex justify-between items-center px-1">
-                                    <label class="text-xs font-semibold text-white/50 uppercase tracking-wider">Password</label>
-                                    <a href="/forgot-password" class="text-xs font-semibold text-blue-400 hover:text-blue-300 transition-colors">Forgot?</a>
+                                <div class="label-row">
+                                    <label>Password</label>
+                                    <a href="/forgot-password" class="forgot-link">Forgot?</a>
                                 </div>
-                                <div class="relative mt-1">
-                                    <input type="@(_showPassword ? "text" : "password")" @bind="_loginPassword" placeholder="••••••••" required 
-                                           class="auth-input pr-12" />
-                                    <button type="button" class="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors" @onclick="() => _showPassword = !_showPassword">
+                                <div class="input-group-icon icon-right">
+                                    <input type="@(_showPassword ? "text" : "password")" @bind="_loginPassword" placeholder="••••••••" required class="glass-input" />
+                                    <button type="button" class="toggle-password" @onclick="() => _showPassword = !_showPassword">
                                         @if (_showPassword)
                                         {
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543 7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268-2.943-9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543 7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268-2.943-9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
                                         }
                                         else
                                         {
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268-2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                                         }
                                     </button>
                                 </div>
@@ -112,219 +135,231 @@
 
                         @if (!string.IsNullOrEmpty(_errorMessage))
                         {
-                            <div class="error-box p-3 rounded-xl border border-red-500/50 bg-red-500/10 text-red-400 text-sm flex items-center gap-3 animate-shake">
-                                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                <span>@_errorMessage</span>
-                            </div>
+                            <div class="error-msg">@_errorMessage</div>
                         }
 
-                        <button type="submit" class="w-full mt-6 auth-btn-primary">
-                            <span>@(_isRegister ? "Create Account" : "Sign In")</span>
-                            <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                        <button type="submit" class="flux-btn-primary full-width" disabled="@_isLoading">
+                            @if (_isLoading)
+                            {
+                                <div class="loader-small"></div>
+                            }
+                            else
+                            {
+                                <span>@(_isRegister ? "Create Account" : "Sign In")</span>
+                                <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                            }
                         </button>
                     </form>
 
-                    <div class="relative my-8">
-                        <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-white/10"></div></div>
-                        <div class="relative flex justify-center text-xs uppercase"><span class="bg-[#1a1c24] px-4 text-white/40 tracking-widest">or continue with</span></div>
+                    <div class="divider">
+                        <span>or continue with</span>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4">
-                        <button type="button" @onclick="LoginWithGoogle" class="social-btn">
-                            <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 mr-3" />
+                    <div class="social-grid">
+                        <button type="button" @onclick="LoginWithGoogle" class="social-btn glass-card">
+                            <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" />
                             <span>Google</span>
                         </button>
-                        <button type="button" @onclick="LoginWithGitHub" class="social-btn">
-                            <img src="https://www.svgrepo.com/show/512317/github-142.svg" class="w-5 h-5 mr-3 invert" />
+                        <button type="button" @onclick="LoginWithGitHub" class="social-btn glass-card">
+                            <img src="https://www.svgrepo.com/show/512317/github-142.svg" alt="GitHub" class="invert" />
                             <span>GitHub</span>
                         </button>
                     </div>
 
-                    <p class="text-center mt-10 text-white/60 text-sm">
+                    <p class="toggle-auth">
                         @(_isRegister ? "Already have an account?" : "New to Flux?") 
-                        <button type="button" @onclick="ToggleMode" class="text-blue-400 font-bold hover:text-blue-300 ml-1 underline-offset-4 hover:underline transition-all">
+                        <button type="button" @onclick="ToggleMode" class="toggle-btn">
                             @(_isRegister ? "Sign In" : "Create Account")
                         </button>
                     </p>
+                }
+            </div>
+
+            <!-- Right Side: Visual -->
+            <div class="auth-visual">
+                <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop" alt="Decoration" />
+                <div class="visual-overlay"></div>
+                <div class="visual-content">
+                    <h3>Connect <span class="text-gradient">Globally.</span></h3>
+                    <p>Join thousands of teams collaborating in real-time across the world.</p>
                 </div>
-            }
-            else
-            {
-                <div class="verify-content text-center fade-in">
-                    <div class="w-20 h-20 bg-blue-500/20 rounded-2xl flex items-center justify-center mx-auto mb-8 border border-blue-500/30">
-                        <svg class="w-10 h-10 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
-                    </div>
-                    <h1 class="text-3xl font-bold text-white mb-4">Verify your email</h1>
-                    <p class="text-white/60 mb-8 max-w-sm mx-auto">
-                        We've sent a code to <span class="text-blue-400 font-medium">@_registerEmail</span>. Please enter it below.
-                    </p>
-
-                    <form @onsubmit="HandleVerifyEmail" class="space-y-6">
-                        <div class="otp-container flex justify-center gap-2">
-                             <input type="text" @bind="_verifyOtp" placeholder="••••••" maxlength="6"
-                                   class="auth-input text-center text-3xl font-bold tracking-[0.5em] w-full max-w-[240px]" />
-                        </div>
-
-                        @if (!string.IsNullOrEmpty(_verifyError))
-                        {
-                            <div class="error-box p-3 rounded-xl border border-red-500/50 bg-red-500/10 text-red-400 text-sm flex items-center gap-3">
-                                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                <span>@_verifyError</span>
-                            </div>
-                        }
-
-                        <button type="submit" class="w-full auth-btn-primary py-4">
-                            Verify Account
-                        </button>
-                    </form>
-
-                    <button @onclick="() => _isVerifyingEmail = false" class="mt-8 text-white/40 hover:text-white transition-colors text-sm flex items-center justify-center mx-auto">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                        Back to registration
-                    </button>
-                </div>
-            }
-        </div>
-
-        <!-- Right Section: Pure Image -->
-        <div class="hidden lg:block w-[50%] relative overflow-hidden">
-            <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop" 
-                 alt="Auth Decoration" 
-                 class="absolute inset-0 w-full h-full object-cover" />
-            <div class="absolute inset-0 bg-gradient-to-t from-[#0b0c10]/80 via-transparent to-transparent"></div>
-            
-            <div class="absolute bottom-12 left-12 right-12">
-                <h3 class="text-3xl font-bold text-white mb-2">Connect globally.</h3>
-                <p class="text-white/70 text-sm max-w-xs">Join thousands of teams collaborating in real-time across the world.</p>
             </div>
         </div>
     </div>
 </div>
 
 <style>
-    :root {
-        --auth-bg: #0b0c10;
-        --card-bg: #1a1c24;
-        --input-bg: rgba(255, 255, 255, 0.03);
-        --accent: #3b82f6;
-    }
-
-    .auth-wrapper {
-        background: var(--auth-bg);
-        overflow: hidden;
+    .flux-auth {
+        background-color: var(--flux-main-bg);
+        color: var(--flux-main-text);
         position: relative;
+        overflow: hidden;
     }
 
-    .bg-glow {
+    /* Glow Orbs */
+    .glow-orb {
         position: absolute;
-        top: -10%;
-        left: -10%;
-        width: 50%;
-        height: 50%;
-        background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+        width: 500px;
+        height: 500px;
+        border-radius: 50%;
         filter: blur(80px);
+        opacity: 0.15;
         z-index: 0;
+        pointer-events: none;
     }
+    .orb-1 { top: -200px; right: -200px; background: var(--flux-primary); }
+    .orb-2 { bottom: -200px; left: -200px; background: var(--flux-secondary); }
 
-    .bg-glow-2 {
-        position: absolute;
-        bottom: -10%;
-        right: -10%;
-        width: 60%;
-        height: 60%;
-        background: radial-gradient(circle, rgba(147, 51, 234, 0.1) 0%, transparent 70%);
-        filter: blur(80px);
-        z-index: 0;
-    }
-
-    .auth-container {
-        background: var(--card-bg);
+    .auth-card {
+        width: 100%;
+        max-width: 1000px;
+        overflow: hidden;
+        border-radius: 32px;
         z-index: 10;
     }
 
-    .auth-btn-primary {
-        background: var(--accent);
+    .auth-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; min-height: 700px; }
+
+    .auth-content { padding: 64px; display: flex; flex-direction: column; justify-content: center; }
+
+    .auth-header { margin-bottom: 40px; }
+    .flux-logo { 
+        display: flex; 
+        align-items: center; 
+        gap: 12px; 
+        font-weight: 800; 
+        font-size: 1.5rem; 
+        margin-bottom: 32px;
+        cursor: pointer;
+    }
+    .logo-icon {
+        width: 32px;
+        height: 32px;
+        background: var(--flux-primary);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         color: white;
-        padding: 14px;
-        border-radius: 16px;
+    }
+    .auth-header h1 { font-size: 2.5rem; font-weight: 800; margin-bottom: 12px; color: white; }
+    .auth-header p { color: rgba(255,255,255,0.5); }
+
+    .auth-form { display: flex; flex-direction: column; gap: 20px; }
+    .input-group { display: flex; flex-direction: column; gap: 8px; }
+    .input-group label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.4); margin-left: 4px; }
+    
+    .label-row { display: flex; justify-content: space-between; align-items: center; }
+    .forgot-link { font-size: 0.75rem; font-weight: 700; color: var(--flux-primary); text-decoration: none; }
+    .forgot-link:hover { text-decoration: underline; }
+
+    .toggle-password { color: rgba(255,255,255,0.2); background: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10; height: 100%; }
+    .toggle-password:hover { color: white; }
+    .toggle-password svg { width: 20px; height: 20px; transition: all 0.3s ease; }
+
+    .error-msg { 
+        padding: 12px; 
+        background: rgba(239, 68, 68, 0.1); 
+        border: 1px solid rgba(239, 68, 68, 0.2); 
+        border-radius: 12px; 
+        color: #ef4444; 
+        font-size: 0.875rem; 
+        text-align: center;
+    }
+
+    .divider { position: relative; text-align: center; margin: 32px 0; }
+    .divider::before { content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: var(--flux-border); }
+    .divider span { position: relative; background: #16181d; padding: 0 16px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.3); }
+
+    .social-grid { display: grid; grid-template-cols: 1fr 1fr; gap: 16px; }
+    .social-btn { 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        gap: 12px; 
+        padding: 12px; 
+        font-size: 0.875rem; 
+        font-weight: 600; 
+        color: white; 
+        cursor: pointer; 
+        transition: all 0.2s;
+    }
+    .social-btn:hover { background: rgba(255,255,255,0.05); transform: translateY(-2px); }
+    .social-btn img { width: 20px; height: 20px; }
+    .invert { filter: invert(1); }
+
+    .toggle-auth { text-align: center; margin-top: 32px; font-size: 0.875rem; color: rgba(255,255,255,0.5); }
+    .toggle-btn { background: none; border: none; color: var(--flux-primary); font-weight: 700; cursor: pointer; margin-left: 4px; }
+    .toggle-btn:hover { text-decoration: underline; }
+
+    /* Verify Section */
+    .verify-form { text-align: center; }
+    .verify-icon { width: 80px; height: 80px; background: rgba(59, 130, 246, 0.1); border-radius: 24px; display: flex; align-items: center; justify-content: center; margin: 0 auto 32px; border: 1px solid rgba(59, 130, 246, 0.2); }
+    .verify-form h2 { font-size: 1.5rem; font-weight: 800; margin-bottom: 8px; }
+    .otp-input { text-align: center; font-size: 1.5rem; letter-spacing: 0.5em; font-weight: 800; }
+    .back-link { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 32px auto 0; background: none; border: none; color: rgba(255,255,255,0.3); cursor: pointer; font-size: 0.875rem; }
+    .back-link:hover { color: white; }
+
+    /* Visual Side */
+    .auth-visual { position: relative; overflow: hidden; }
+    .auth-visual img { width: 100%; height: 100%; object-cover: cover; }
+    .visual-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(11, 12, 16, 0.8) 0%, transparent 60%); }
+    .visual-content { position: absolute; bottom: 48px; left: 48px; right: 48px; }
+    .visual-content h3 { font-size: 2rem; font-weight: 800; margin-bottom: 12px; }
+    .visual-content p { color: rgba(255,255,255,0.7); font-size: 0.95rem; line-height: 1.5; }
+
+    .text-gradient {
+        background: linear-gradient(135deg, var(--flux-primary) 0%, var(--flux-secondary) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .flux-btn-primary {
+        background: var(--flux-primary);
+        color: white;
+        padding: 14px 24px;
+        border-radius: 12px;
         font-weight: 700;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: all 0.3s ease;
-        box-shadow: 0 10px 20px -5px rgba(59, 130, 246, 0.3);
+        gap: 8px;
+        transition: all 0.2s;
+        border: none;
+        cursor: pointer;
     }
-
-    .auth-btn-primary:hover {
-        background: #2563eb;
+    .flux-btn-primary:hover { 
+        background: var(--flux-primary-hover);
         transform: translateY(-2px);
-        box-shadow: 0 15px 30px -10px rgba(59, 130, 246, 0.5);
+        box-shadow: 0 8px 20px -4px rgba(59, 130, 246, 0.4);
     }
+    .full-width { width: 100%; }
 
-    .auth-btn-primary:active {
-        transform: translateY(0);
-    }
-
-    .social-btn {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 12px;
-        background: var(--input-bg);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 16px;
-        color: white;
-        font-size: 14px;
-        font-weight: 600;
-        transition: all 0.2s ease;
-    }
-
-    .social-btn:hover {
-        background: rgba(255, 255, 255, 0.08);
-        border-color: rgba(255, 255, 255, 0.2);
-    }
-
-    .loading-overlay {
-        background: rgba(26, 28, 36, 0.7);
-        backdrop-filter: blur(8px);
-    }
-
-    .loader {
-        width: 40px;
-        height: 40px;
-        border: 3px solid rgba(255, 255, 255, 0.1);
-        border-top-color: var(--accent);
+    .loader-small {
+        width: 20px;
+        height: 20px;
+        border: 2px solid rgba(255,255,255,0.2);
+        border-top-color: white;
         border-radius: 50%;
         animation: spin 0.8s linear infinite;
     }
-
     @@keyframes spin { to { transform: rotate(360deg); } }
 
-    .fade-in { animation: fadeIn 0.5s ease-out; }
-    .slide-up { animation: slideUp 0.5s ease-out; }
-    .animate-shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
-
-    @@keyframes fadeIn {
-        from { opacity: 0; transform: scale(0.98); }
-        to { opacity: 1; transform: scale(1); }
-    }
-
-    @@keyframes slideUp {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-
-    @@keyframes shake {
-        10%, 90% { transform: translateX(-1px); }
-        20%, 80% { transform: translateX(2px); }
-        30%, 50%, 70% { transform: translateX(-4px); }
-        40%, 60% { transform: translateX(4px); }
+    .animate-in { animation: fadeInScale 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+    @@keyframes fadeInScale {
+        from { opacity: 0; transform: scale(0.95) translateY(20px); }
+        to { opacity: 1; transform: scale(1) translateY(0); }
     }
 
     @@media (max-width: 1024px) {
-        .auth-form-side { width: 100%; }
+        .auth-grid { grid-template-columns: 1fr; }
+        .auth-visual { display: none; }
+        .auth-content { padding: 48px; }
+    }
+    @@media (max-width: 640px) {
+        .auth-content { padding: 32px; }
+        .auth-header h1 { font-size: 2rem; }
+        .social-grid { grid-template-columns: 1fr; }
     }
 </style>
 

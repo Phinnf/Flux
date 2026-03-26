@@ -101,12 +101,10 @@ builder.Services.AddHttpClient<Flux.Infrastructure.Client.WorkspaceClientService
 builder.Services.AddHttpClient<Flux.Infrastructure.Client.MessageClientService>(configureHttpClient);
 builder.Services.AddHttpClient<Flux.Infrastructure.Client.UserClientService>(configureHttpClient);
 builder.Services.AddHttpClient<Flux.Infrastructure.Client.UploadClientService>(configureHttpClient);
-builder.Services.AddHttpClient<Flux.Infrastructure.Client.KanbanClientService>(configureHttpClient);
 builder.Services.AddHttpClient<Flux.Infrastructure.Client.WeatherClientService>(configureHttpClient);
 builder.Services.AddHttpClient<Flux.Infrastructure.Client.WikipediaClientService>(configureHttpClient);
 
 builder.Services.AddScoped<Flux.Infrastructure.Client.WorkspaceStateService>(); // State management service
-builder.Services.AddScoped<Flux.Infrastructure.Client.KanbanStateService>();
 builder.Services.AddScoped<IToastService, ToastService>();
 builder.Services.AddHttpContextAccessor(); // Required to get the base address dynamically
 

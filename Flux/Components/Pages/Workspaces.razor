@@ -8,64 +8,71 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @layout Flux.Components.Layout.EmptyLayout
 
-<PageTitle>Workspaces - Flux</PageTitle>
+<PageTitle>Workspaces | Flux</PageTitle>
 
-<div class="ws-page-wrapper min-h-screen flex flex-col">
-    <!-- Background elements -->
-    <div class="bg-glow"></div>
-    <div class="bg-glow-2"></div>
+<div class="flux-workspaces min-h-screen">
+    <!-- Glow Effects -->
+    <div class="glow-orb orb-1"></div>
+    <div class="glow-orb orb-2"></div>
 
-    <nav class="ws-nav flex items-center justify-between px-8 py-6 relative z-20">
-        <div class="flex items-center gap-3 cursor-pointer" @onclick='() => Navigation.NavigateTo("/")'>
-            <span class="text-2xl font-black text-white tracking-tighter">FLUX</span>
-        </div>
-
-        <div class="flex items-center gap-4">
-            <div class="user-profile flex items-center gap-3 px-4 py-2 rounded-2xl bg-white/[0.03] border border-white/10">
-                <div class="text-right hidden sm:block">
-                    <p class="text-sm font-bold text-white leading-tight">@(_currentUser?.Username ?? "User")</p>
-                    <p class="text-[10px] text-white/40 uppercase tracking-widest">Personal Account</p>
+    <!-- Navigation -->
+    <nav class="flux-nav glass-card">
+        <div class="nav-container">
+            <div class="nav-left">
+                <div class="flux-logo" @onclick='() => Navigation.NavigateTo("/")'>
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M13 10V3L4 14h7v7l9-11h-7z" fill="currentColor"/>
+                        </svg>
+                    </div>
+                    <span>Flux</span>
                 </div>
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center text-white font-bold shadow-lg overflow-hidden border border-white/20">
-                    @if (!string.IsNullOrEmpty(_currentUser?.AvatarUrl))
-                    {
-                        <img src="@_currentUser.AvatarUrl" class="w-full h-full object-cover" />
-                    }
-                    else
-                    {
-                        @(_currentUser?.Username?.Length > 0 ? _currentUser.Username[0].ToString().ToUpper() : "U")
-                    }
+            </div>
+            <div class="nav-right">
+                <div class="user-profile glass-card px-4 py-2 flex items-center gap-3">
+                    <div class="text-right hidden sm:block">
+                        <p class="text-sm font-bold text-white leading-tight">@(_currentUser?.Username ?? "User")</p>
+                        <p class="text-[10px] text-white/40 uppercase tracking-widest">Personal Account</p>
+                    </div>
+                    <div class="profile-avatar">
+                        @if (!string.IsNullOrEmpty(_currentUser?.AvatarUrl))
+                        {
+                            <img src="@_currentUser.AvatarUrl" class="w-full h-full object-cover" />
+                        }
+                        else
+                        {
+                            @(_currentUser?.Username?.Length > 0 ? _currentUser.Username[0].ToString().ToUpper() : "U")
+                        }
+                    </div>
                 </div>
             </div>
         </div>
     </nav>
 
-    <main class="ws-content flex-1 container mx-auto max-w-6xl px-6 py-12 relative z-10">
-        <div class="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
-            <div>
-                <h1 class="text-4xl font-extrabold text-white mb-3">Your Workspaces</h1>
-                <p class="text-white/50 max-w-md">Access your collaborative environments or start a new chapter by creating a workspace.</p>
+    <main class="container py-12 relative z-10">
+        <div class="workspace-header">
+            <div class="header-text">
+                <h1>Your <span class="text-gradient">Workspaces</span></h1>
+                <p>Welcome back! Select a workspace to start collaborating or create a new one for your next big project.</p>
             </div>
             
-            <div class="flex items-center gap-4 w-full md:w-auto">
-                <div class="relative flex-1 md:w-72">
-                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-white/30">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                    </span>
-                    <input type="text" @bind="_searchQuery" @bind:event="oninput" placeholder="Find workspace..." 
-                           class="search-input pl-12 pr-4 py-3" />
+            <div class="header-actions">
+                <div class="search-box glass-card">
+                    <svg class="w-5 h-5 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    <input type="text" @bind="_searchQuery" @bind:event="oninput" placeholder="Find workspace..." />
                 </div>
-                <button class="add-ws-btn" @onclick="() => _showCreateDialog = true">
+                <button class="flux-btn-primary create-trigger" @onclick="() => _showCreateDialog = true">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 6v6m0 0v6m0-6h6m-6 0H6" stroke-width="2.5" stroke-linecap="round"/></svg>
+                    <span class="hidden sm:inline">New Workspace</span>
                 </button>
             </div>
         </div>
 
         @if (_workspaces == null)
         {
-            <div class="flex flex-col items-center justify-center py-20">
-                <div class="loader-ring mb-4"></div>
-                <p class="text-white/40 animate-pulse">Syncing with server...</p>
+            <div class="loader-container">
+                <div class="flux-loader"></div>
+                <p>Syncing your workspaces...</p>
             </div>
         }
         else
@@ -74,27 +81,27 @@
                 ? _workspaces 
                 : _workspaces.Where(w => w.Name.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase)).ToList();
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="workspaces-grid">
                 @foreach (var ws in filteredWorkspaces)
                 {
-                    <div class="ws-card group" @onclick="() => SelectWorkspace(ws)">
-                        <div class="p-6">
-                            <div class="flex justify-between items-start mb-6">
-                                <div class="ws-icon-box">
-                                    @(ws.Name?.Length > 0 ? ws.Name[0].ToString().ToUpper() : "W")
-                                </div>
-                                <button class="delete-btn opacity-0 group-hover:opacity-100 transition-all duration-300" 
-                                        @onclick:stopPropagation="true" @onclick="() => DeleteWorkspace(ws)">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-width="2"/></svg>
-                                </button>
+                    <div class="workspace-card glass-card group" @onclick="() => SelectWorkspace(ws)">
+                        <div class="card-top">
+                            <div class="ws-icon text-gradient-bg">
+                                @(ws.Name?.Length > 0 ? ws.Name[0].ToString().ToUpper() : "W")
                             </div>
-                            <h3 class="text-xl font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">@ws.Name</h3>
-                            <p class="text-white/40 text-sm line-clamp-2 min-h-[40px]">@(string.IsNullOrEmpty(ws.Description) ? "Professional collaboration workspace." : ws.Description)</p>
+                            <button class="delete-icon-btn opacity-0 group-hover:opacity-100" 
+                                    @onclick:stopPropagation="true" @onclick="() => DeleteWorkspace(ws)">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-width="2"/></svg>
+                            </button>
                         </div>
-                        <div class="mt-auto px-6 py-4 bg-white/[0.02] border-t border-white/5 flex items-center justify-between">
-                            <span class="text-[10px] uppercase tracking-widest text-white/20 font-bold">Active Member</span>
-                            <div class="flex items-center text-blue-400 text-xs font-bold group-hover:translate-x-1 transition-transform">
-                                Enter Workspace <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 7l5 5m0 0l-5 5m5-5H6" stroke-width="2"/></svg>
+                        <div class="card-body">
+                            <h3>@ws.Name</h3>
+                            <p>@(string.IsNullOrEmpty(ws.Description) ? "Professional collaboration workspace." : ws.Description)</p>
+                        </div>
+                        <div class="card-footer">
+                            <span class="member-badge">Active Member</span>
+                            <div class="enter-link">
+                                Open <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 7l5 5m0 0l-5 5m5-5H6" stroke-width="2"/></svg>
                             </div>
                         </div>
                     </div>
@@ -102,21 +109,21 @@
 
                 @if (!filteredWorkspaces.Any() && !string.IsNullOrWhiteSpace(_searchQuery))
                 {
-                    <div class="col-span-full py-20 text-center rounded-3xl border-2 border-dashed border-white/5 bg-white/[0.01]">
-                        <div class="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <svg class="w-8 h-8 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    <div class="empty-results glass-card col-span-full">
+                        <div class="empty-icon">
+                            <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                         </div>
-                        <h4 class="text-white font-bold">No workspaces found</h4>
-                        <p class="text-white/30 text-sm">We couldn't find anything matching "@_searchQuery"</p>
+                        <h4>No workspaces found</h4>
+                        <p>We couldn't find anything matching "@_searchQuery"</p>
                     </div>
                 }
 
-                <div class="create-ws-card" @onclick="() => _showCreateDialog = true">
-                    <div class="flex flex-col items-center justify-center h-full gap-4 text-white/30 group hover:text-white/60 transition-colors">
-                        <div class="w-14 h-14 rounded-full border-2 border-dashed border-current flex items-center justify-center group-hover:scale-110 transition-transform">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 6v6m0 0v6m0-6h6m-6 0H6" stroke-width="2.5" stroke-linecap="round"/></svg>
+                <div class="create-workspace-card glass-card group" @onclick="() => _showCreateDialog = true">
+                    <div class="create-inner">
+                        <div class="create-icon">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 6v6m0 0v6m0-6h6m-6 0H6" stroke-width="2.5" stroke-linecap="round"/></svg>
                         </div>
-                        <span class="font-bold tracking-tight">Setup New Workspace</span>
+                        <span>Setup New Workspace</span>
                     </div>
                 </div>
             </div>
@@ -126,186 +133,319 @@
 
 @if (_showCreateDialog)
 {
-    <div class="fixed inset-0 z-[100] flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-black/80 backdrop-blur-md" @onclick="() => _showCreateDialog = false"></div>
-        <div class="relative w-full max-w-lg bg-[#1a1c24] border border-white/10 rounded-[32px] p-8 md:p-10 shadow-2xl animate-modal">
-            <h2 class="text-3xl font-bold text-white mb-2">Build a Space</h2>
-            <p class="text-white/40 mb-8">This is where your team's energy finds its flow.</p>
+    <div class="modal-overlay">
+        <div class="modal-backdrop" @onclick="() => _showCreateDialog = false"></div>
+        <div class="modal-content glass-card animate-modal">
+            <h2>Build a <span class="text-gradient">Space</span></h2>
+            <p>This is where your team's energy finds its flow. Name your workspace and give it a purpose.</p>
             
-            <div class="space-y-6">
+            <div class="modal-form">
                 <div class="input-group">
-                    <label class="text-xs font-semibold text-white/50 uppercase tracking-widest ml-1">Workspace Identity</label>
-                    <input type="text" @bind="_newWorkspaceName" placeholder="e.g. Acme Marketing" 
-                           class="auth-input mt-2" />
+                    <label>Workspace Identity</label>
+                    <input type="text" @bind="_newWorkspaceName" placeholder="e.g. Acme Marketing" class="glass-input" />
                 </div>
                 
                 <div class="input-group">
-                    <label class="text-xs font-semibold text-white/50 uppercase tracking-widest ml-1">Mission / Description</label>
-                    <textarea @bind="_newWorkspaceDescription" rows="3" placeholder="What is this workspace about?" 
-                              class="auth-input mt-2 resize-none"></textarea>
+                    <label>Mission / Description</label>
+                    <textarea @bind="_newWorkspaceDescription" rows="3" placeholder="What is this workspace about?" class="glass-input"></textarea>
                 </div>
             </div>
             
-            <div class="flex items-center gap-4 mt-10">
-                <button class="flex-1 px-6 py-4 rounded-2xl text-white/60 font-bold hover:bg-white/5 transition-colors" 
-                        @onclick="() => _showCreateDialog = false">Cancel</button>
-                <button class="flex-[2] px-6 py-4 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-lg shadow-blue-600/20 transition-all disabled:opacity-50" 
-                        @onclick="CreateWorkspace" 
-                        disabled="@string.IsNullOrWhiteSpace(_newWorkspaceName)">Launch Workspace</button>
+            <div class="modal-actions">
+                <button class="flux-btn-secondary" @onclick="() => _showCreateDialog = false">Cancel</button>
+                <button class="flux-btn-primary" @onclick="CreateWorkspace" disabled="@string.IsNullOrWhiteSpace(_newWorkspaceName)">
+                    Launch Workspace
+                </button>
             </div>
         </div>
     </div>
 }
 
 <style>
-    :root {
-        --bg: #0b0c10;
-        --card: #16181d;
-        --input: rgba(255, 255, 255, 0.03);
-        --accent: #3b82f6;
-        --border: rgba(255, 255, 255, 0.08);
-    }
-
-    .ws-page-wrapper {
-        background: var(--bg);
-        color: white;
-        overflow-x: hidden;
+    .flux-workspaces {
+        background-color: var(--flux-main-bg);
+        color: var(--flux-main-text);
         position: relative;
+        overflow-x: hidden;
     }
 
-    .bg-glow {
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 24px;
+    }
+
+    /* Glow Orbs */
+    .glow-orb {
         position: absolute;
-        top: -10%;
-        left: -5%;
-        width: 40%;
-        height: 40%;
-        background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+        width: 400px;
+        height: 400px;
+        border-radius: 50%;
         filter: blur(80px);
+        opacity: 0.1;
         z-index: 0;
+        pointer-events: none;
     }
+    .orb-1 { top: -100px; right: -100px; background: var(--flux-primary); }
+    .orb-2 { bottom: -100px; left: -100px; background: var(--flux-secondary); }
 
-    .bg-glow-2 {
-        position: absolute;
-        bottom: -5%;
-        right: -5%;
-        width: 50%;
-        height: 50%;
-        background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
-        filter: blur(80px);
-        z-index: 0;
+    /* Nav */
+    .flux-nav {
+        margin: 24px auto;
+        max-width: 1100px;
+        z-index: 1000;
+        padding: 8px 24px;
     }
-
-    .search-input {
-        width: 100%;
-        background: var(--input);
-        border: 1px solid var(--border);
-        border-radius: 16px;
-        color: white;
-        font-size: 14px;
-        transition: all 0.3s ease;
+    .nav-container { display: flex; justify-content: space-between; align-items: center; }
+    .nav-left { display: flex; align-items: center; }
+    .flux-logo { 
+        display: flex; 
+        align-items: center; 
+        gap: 12px; 
+        font-weight: 800; 
+        font-size: 1.5rem; 
+        cursor: pointer;
     }
-
-    .search-input:focus {
-        outline: none;
-        border-color: var(--accent);
-        background: rgba(255, 255, 255, 0.05);
-        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
-    }
-
-    .add-ws-btn {
-        width: 48px;
-        height: 48px;
-        background: var(--accent);
-        color: white;
-        border-radius: 16px;
+    .logo-icon {
+        width: 32px;
+        height: 32px;
+        background: var(--flux-primary);
+        border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: all 0.3s ease;
-        box-shadow: 0 8px 16px -4px rgba(59, 130, 246, 0.3);
+        color: white;
+    }
+    .profile-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, var(--flux-primary) 0%, var(--flux-secondary) 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        overflow: hidden;
+        border: 1px solid var(--flux-border);
     }
 
-    .add-ws-btn:hover {
-        background: #2563eb;
-        transform: rotate(90deg) scale(1.05);
+    /* Header */
+    .workspace-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 40px;
+        margin-bottom: 64px;
+    }
+    .header-text h1 { font-size: 3rem; font-weight: 800; margin-bottom: 16px; }
+    .header-text p { max-width: 500px; color: rgba(255,255,255,0.5); }
+    
+    .header-actions { display: flex; gap: 16px; align-items: center; }
+    .search-box {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 16px;
+        width: 300px;
+    }
+    .search-box input {
+        background: transparent;
+        border: none;
+        color: white;
+        padding: 12px 0;
+        width: 100%;
+        outline: none;
+        font-size: 0.95rem;
     }
 
-    .ws-card {
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: 28px;
-        cursor: pointer;
+    /* Grids */
+    .workspaces-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 24px;
+    }
+
+    .workspace-card {
+        padding: 0;
         display: flex;
         flex-direction: column;
-        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
         overflow: hidden;
     }
-
-    .ws-card:hover {
+    .workspace-card:hover {
         transform: translateY(-8px);
-        border-color: var(--accent);
-        background: #1c1f26;
-        box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5), 0 0 20px rgba(59, 130, 246, 0.1);
+        border-color: rgba(59, 130, 246, 0.4);
+        box-shadow: 0 20px 40px -15px rgba(0,0,0,0.5);
     }
 
-    .ws-icon-box {
+    .card-top { padding: 24px 24px 0; display: flex; justify-content: space-between; align-items: flex-start; }
+    .ws-icon {
         width: 56px;
         height: 56px;
-        background: linear-gradient(135deg, var(--accent) 0%, #1d4ed8 100%);
-        border-radius: 18px;
+        border-radius: 16px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 24px;
+        font-size: 1.5rem;
         font-weight: 800;
         color: white;
-        box-shadow: 0 10px 20px -5px rgba(59, 130, 246, 0.4);
+        box-shadow: 0 8px 16px -4px rgba(59, 130, 246, 0.3);
+    }
+    .text-gradient-bg {
+        background: linear-gradient(135deg, var(--flux-primary) 0%, var(--flux-secondary) 100%);
     }
 
-    .delete-btn {
+    .delete-icon-btn {
         padding: 8px;
-        border-radius: 12px;
+        border-radius: 10px;
         color: rgba(239, 68, 68, 0.4);
         background: rgba(239, 68, 68, 0.05);
+        border: none;
+        transition: all 0.2s;
     }
-
-    .delete-btn:hover {
+    .delete-icon-btn:hover {
         color: #ef4444;
         background: rgba(239, 68, 68, 0.1);
         transform: scale(1.1);
     }
 
-    .create-ws-card {
-        border: 2px dashed var(--border);
-        border-radius: 28px;
-        cursor: pointer;
+    .card-body { padding: 24px; flex: 1; }
+    .card-body h3 { font-size: 1.25rem; font-weight: 700; margin-bottom: 8px; transition: color 0.2s; }
+    .workspace-card:hover .card-body h3 { color: var(--flux-primary); }
+    .card-body p { font-size: 0.9rem; color: rgba(255,255,255,0.4); line-height: 1.5; }
+
+    .card-footer {
+        padding: 16px 24px;
+        background: rgba(255,255,255,0.02);
+        border-top: 1px solid var(--flux-border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .member-badge { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.2); }
+    .enter-link { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; font-weight: 700; color: var(--flux-primary); transition: transform 0.2s; }
+    .workspace-card:hover .enter-link { transform: translateX(4px); }
+
+    /* Create Workspace Card */
+    .create-workspace-card {
+        border-style: dashed;
+        border-width: 2px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         min-height: 240px;
-        transition: all 0.3s ease;
+        transition: all 0.3s;
     }
-
-    .create-ws-card:hover {
-        border-color: var(--accent);
-        background: rgba(59, 130, 246, 0.02);
+    .create-workspace-card:hover { border-color: var(--flux-primary); background: rgba(59, 130, 246, 0.03); }
+    .create-inner { display: flex; flex-direction: column; align-items: center; gap: 16px; color: rgba(255,255,255,0.3); transition: color 0.2s; }
+    .create-workspace-card:hover .create-inner { color: white; }
+    .create-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        border: 2px dashed currentColor;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.3s;
     }
+    .create-workspace-card:hover .create-icon { transform: scale(1.1); }
+    .create-inner span { font-weight: 700; }
 
-    .loader-ring {
+    /* Empty Results */
+    .empty-results {
+        padding: 80px 0;
+        text-align: center;
+        border-style: dashed;
+        border-width: 2px;
+    }
+    .empty-icon { color: rgba(255,255,255,0.1); margin-bottom: 24px; }
+    .empty-results h4 { font-size: 1.25rem; font-weight: 700; margin-bottom: 8px; }
+    .empty-results p { color: rgba(255,255,255,0.3); }
+
+    /* Loader */
+    .loader-container { padding: 100px 0; text-align: center; }
+    .flux-loader {
         width: 48px;
         height: 48px;
-        border: 3px solid rgba(255, 255, 255, 0.05);
-        border-top-color: var(--accent);
+        border: 3px solid rgba(255,255,255,0.05);
+        border-top-color: var(--flux-primary);
         border-radius: 50%;
+        margin: 0 auto 24px;
         animation: spin 1s linear infinite;
     }
-
     @@keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Modals */
+    .modal-overlay { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 24px; }
+    .modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); }
+    .modal-content {
+        position: relative;
+        width: 100%;
+        max-width: 560px;
+        padding: 48px;
+        border-radius: 32px;
+    }
+    .modal-content h2 { font-size: 2.5rem; font-weight: 800; margin-bottom: 12px; }
+    .modal-content p { color: rgba(255,255,255,0.5); margin-bottom: 32px; }
     
-    .animate-modal {
-        animation: modalIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    .modal-form { display: flex; flex-direction: column; gap: 24px; }
+    .input-group label { display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.4); margin-bottom: 8px; margin-left: 4px; }
+    
+    .modal-actions { display: flex; gap: 16px; margin-top: 40px; }
+    .modal-actions button { flex: 1; justify-content: center; }
+
+    .text-gradient {
+        background: linear-gradient(135deg, var(--flux-primary) 0%, var(--flux-secondary) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
     }
 
+    .flux-btn-primary {
+        background: var(--flux-primary);
+        color: white;
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s;
+        border: none;
+        cursor: pointer;
+    }
+    .flux-btn-primary:hover { 
+        background: var(--flux-primary-hover);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px -4px rgba(59, 130, 246, 0.4);
+    }
+    .flux-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .flux-btn-secondary {
+        background: rgba(255, 255, 255, 0.05);
+        color: white;
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-weight: 600;
+        border: 1px solid var(--flux-border);
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+    .flux-btn-secondary:hover { background: rgba(255, 255, 255, 0.1); }
+
+    .animate-modal { animation: modalIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
     @@keyframes modalIn {
         from { opacity: 0; transform: scale(0.9) translateY(20px); }
         to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    @@media (max-width: 768px) {
+        .workspace-header { flex-direction: column; align-items: flex-start; gap: 32px; }
+        .header-actions { width: 100%; flex-direction: column; align-items: stretch; }
+        .search-box { width: 100%; }
+        .create-trigger { justify-content: center; }
+        .modal-content { padding: 32px; }
     }
 </style>
 

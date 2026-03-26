@@ -13,6 +13,15 @@
 
 <PageTitle>Chat - @(_currentChannelName ?? "Loading...")</PageTitle>
 
+@if (Navigation.Uri.Contains("/dms/"))
+{
+    <Flux.Components.Layout.DmSidebar />
+}
+else
+{
+    <Flux.Components.Layout.WorkspaceSidebar />
+}
+
 <div class="chat-main-wrapper flex-1">
     <div class="chat-container">
         <!-- Chat Header -->

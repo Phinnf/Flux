@@ -404,9 +404,67 @@ body {
     border: 1px solid var(--flux-border) !important;
     color: var(--flux-main-text) !important;
     border-radius: 12px !important;
+    padding: 12px 16px !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .glass-input:focus {
     border-color: var(--flux-primary) !important;
     background: rgba(255, 255, 255, 0.05) !important;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1) !important;
 }
+
+/* Input with Icons */
+.input-group-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-group-icon .glass-input {
+    width: 100%;
+}
+
+.input-group-icon .input-icon {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+    pointer-events: none;
+    width: 18px;
+    height: 18px;
+}
+
+.input-group-icon.icon-left .input-icon {
+    left: 16px;
+}
+
+.input-group-icon.icon-left .glass-input {
+    padding-left: 44px !important;
+}
+
+.input-group-icon.icon-left .glass-input:focus {
+    padding-left: 48px !important;
+}
+
+.input-group-icon.icon-right .input-icon,
+.input-group-icon.icon-right .toggle-password {
+    right: 16px;
+    position: absolute;
+}
+
+.input-group-icon.icon-right .glass-input {
+    padding-right: 44px !important;
+}
+
+.input-group-icon.icon-right .glass-input:focus {
+    padding-right: 48px !important;
+}
+
+.input-group-icon .glass-input:focus + .input-icon,
+.input-group-icon .glass-input:focus + .toggle-password {
+    color: var(--flux-primary);
+    transform: translateY(-50%) scale(1.1);
+}
+
