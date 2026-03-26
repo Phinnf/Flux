@@ -1,0 +1,394 @@
+@page "/workspace/{WorkspaceId:guid}/weather"
+@using Flux.Infrastructure.Client
+@using Flux.Domain.Common
+@using System.Text.Json
+@layout Layout.WorkspaceLayout
+@inject IJSRuntime JSRuntime
+@inject IHttpClientFactory HttpClientFactory
+@implements IDisposable
+
+<div class="flex flex-col items-center justify-center min-h-full w-full bg-[#1a1c1e] p-4 md:p-8 overflow-y-auto scrollbar-hide">
+    <div class="w-full max-w-md space-y-6">
+        
+        <!-- Search Input -->
+        <div class="relative group">
+            <div class="absolute inset-y-0 left-4 flex items-center pointer-events-none text-zinc-500 group-focus-within:text-blue-500 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            </div>
+            <input type="text" @bind="_city" @onkeyup="HandleKeyUp"
+                   placeholder="Search city (e.g. London, Tokyo)..." 
+                   class="w-full bg-[#1e1f22] text-lg rounded-2xl pl-12 pr-12 py-4 border-2 border-transparent focus:border-blue-500 transition-all outline-none shadow-xl text-white" />
+            <button @onclick="SearchCity" disabled="@_isLoading"
+                    class="absolute inset-y-0 right-4 flex items-center text-blue-500 hover:text-blue-400 font-bold uppercase tracking-widest text-[10px] active:scale-95 transition-all">
+                Search
+            </button>
+        </div>
+
+        @if (_isLoading)
+        {
+            <div class="flex flex-col items-center justify-center py-12 gap-3">
+                <div class="w-10 h-10 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+                <p class="text-sm text-zinc-400 font-medium">Predicting the sky...</p>
+            </div>
+        }
+        else if (!string.IsNullOrEmpty(_error))
+        {
+            <div class="flex flex-col items-center justify-center py-12 gap-4 text-center animate-in fade-in duration-300">
+                <svg class="w-12 h-12 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <p class="text-sm text-zinc-400 px-6">@_error</p>
+                <button @onclick="InitializeWeather" class="text-xs font-black uppercase tracking-widest text-blue-500 hover:underline">Retry Geolocation</button>
+            </div>
+        }
+        else if (_weather != null)
+        {
+            <!-- Main Card -->
+            <div class="relative p-6 rounded-3xl overflow-hidden bg-gradient-to-br @_weather.Color shadow-2xl text-white transition-all duration-500 group animate-in slide-in-from-bottom-4 duration-500">
+                <div class="relative z-10 flex flex-col gap-6">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2 text-xs font-black uppercase tracking-widest opacity-90 bg-white/10 px-3 py-1.5 rounded-full backdrop-blur-md">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                            @_weather.Location
+                        </div>
+                        <div class="text-[10px] font-black uppercase tracking-[0.2em] opacity-70">
+                            @DateTime.Now.ToString("EEEE, MMM d")
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <div class="flex flex-col">
+                            <span class="text-6xl font-black tracking-tighter leading-none">
+                                @_weather.Temp°
+                            </span>
+                            <span class="text-lg font-bold opacity-90 mt-2 tracking-tight">
+                                @_weather.Condition
+                            </span>
+                        </div>
+                        <div class="scale-[2.5] opacity-90 mr-6 drop-shadow-2xl group-hover:scale-[2.8] transition-transform duration-700">
+                            @((MarkupString)_weather.IconSvg)
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-4 mt-2 pt-6 border-t border-white/20">
+                        <div class="flex flex-col items-center gap-1.5">
+                            <span class="text-[9px] uppercase font-black tracking-widest opacity-60">Feels Like</span>
+                            <span class="text-base font-black">@_weather.FeelsLike°</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1.5">
+                            <span class="text-[9px] uppercase font-black tracking-widest opacity-60">Humidity</span>
+                            <span class="text-base font-black">@_weather.Humidity%</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1.5">
+                            <span class="text-[9px] uppercase font-black tracking-widest opacity-60">Precip</span>
+                            <span class="text-base font-black">@_weather.PrecipProb%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Decorative Circles -->
+                <div class="absolute -top-10 -right-10 w-48 h-48 bg-white/10 rounded-full blur-3xl group-hover:scale-125 transition-transform duration-1000"></div>
+                <div class="absolute -bottom-10 -left-10 w-48 h-48 bg-white/10 rounded-full blur-3xl group-hover:scale-125 transition-transform duration-1000"></div>
+            </div>
+
+            <!-- Forecast Controls -->
+            <div class="flex items-center gap-2 p-1.5 bg-[#1e1f22] rounded-2xl shadow-inner border border-gray-800/50">
+                @foreach (var v in new[] { "current", "hourly", "daily" })
+                {
+                    <button @onclick="() => _view = v"
+                            class="flex-1 py-2 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition-all @(_view == v ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20" : "text-zinc-600 hover:text-zinc-300")">
+                        @v
+                    </button>
+                }
+            </div>
+
+            <!-- Forecast Content -->
+            <div class="min-h-[140px] animate-in fade-in duration-500">
+                @if (_view == "hourly")
+                {
+                    <div class="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+                        @foreach (var h in _weather.Hourly)
+                        {
+                            <div class="flex flex-col items-center gap-3 min-w-[60px] p-4 rounded-2xl bg-[#1e1f22] border border-gray-800/50 hover:border-blue-500/30 transition-colors group">
+                                <span class="text-[9px] font-black uppercase tracking-widest text-zinc-500">@h.Time</span>
+                                <div class="text-zinc-300 scale-110 group-hover:scale-125 transition-transform">
+                                    @((MarkupString)GetIconForCondition(h.Condition))
+                                </div>
+                                <span class="text-sm font-black text-white">@h.Temp°</span>
+                            </div>
+                        }
+                    </div>
+                }
+                else if (_view == "daily")
+                {
+                    <div class="flex flex-col gap-3">
+                        @foreach (var d in _weather.Daily)
+                        {
+                            <div class="flex items-center justify-between p-4 rounded-2xl bg-[#1e1f22] border border-gray-800/50 hover:bg-[#2b2d31]/50 hover:border-blue-500/30 transition-all">
+                                <span class="text-xs font-black uppercase tracking-widest w-12 text-zinc-400">@d.Date</span>
+                                <div class="flex items-center gap-3 flex-1 justify-center text-zinc-500">
+                                    <div class="scale-90">@((MarkupString)GetIconForCondition(d.Condition))</div>
+                                    <span class="text-[9px] font-black uppercase tracking-[0.2em]">@d.Condition</span>
+                                </div>
+                                <div class="flex items-center gap-3 w-20 justify-end">
+                                    <span class="text-sm font-black text-white">@d.MaxTemp°</span>
+                                    <span class="text-xs font-bold text-zinc-600">@d.MinTemp°</span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="p-6 rounded-3xl border border-gray-800/50 bg-[#1e1f22] flex items-center justify-between group hover:border-blue-500/30 transition-all shadow-lg">
+                        <div class="flex flex-col gap-2">
+                            <span class="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em]">Sky Intelligence</span>
+                            <p class="text-sm font-bold text-zinc-300 tracking-tight">
+                                @(_weather.PrecipProb > 0 ? $"Strategy alert: Expect {_weather.PrecipProb}% chance of precipitation." : "Skies are clear. No atmospheric resistance expected.")
+                            </p>
+                        </div>
+                        <div class="p-4 bg-blue-500/5 rounded-2xl text-blue-500 group-hover:scale-110 group-hover:bg-blue-500/10 transition-all">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+</style>
+
+@code {
+    [Parameter] public Guid WorkspaceId { get; set; }
+    
+    private WeatherViewData? _weather;
+    private bool _isLoading = true;
+    private string? _error;
+    private string _view = "current";
+    private string _city = "";
+    private bool _isDisposed = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await InitializeWeather();
+        }
+    }
+
+    private async Task InitializeWeather()
+    {
+        if (_isDisposed) return;
+        _isLoading = true;
+        _error = null;
+        StateHasChanged();
+
+        try
+        {
+            // Default location: London
+            await FetchWeather(51.5074, -0.1278);
+        }
+        catch (Exception ex)
+        {
+            if (!_isDisposed)
+            {
+                _error = "Failed to initialize weather system.";
+                _isLoading = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task HandleKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await SearchCity();
+    }
+
+    private async Task SearchCity()
+    {
+        if (string.IsNullOrWhiteSpace(_city)) return;
+        
+        _isLoading = true;
+        _error = null;
+        StateHasChanged();
+
+        try
+        {
+            var client = HttpClientFactory.CreateClient("ExternalApi");
+            var geoUrl = $"https://nominatim.openstreetmap.org/search?q={Uri.EscapeDataString(_city)}&format=json&limit=1";
+            var geoResponse = await client.GetFromJsonAsync<JsonElement>(geoUrl);
+
+            if (geoResponse.ValueKind == JsonValueKind.Array && geoResponse.GetArrayLength() > 0)
+            {
+                var location = geoResponse[0];
+                double lat = double.Parse(location.GetProperty("lat").GetString()!, System.Globalization.CultureInfo.InvariantCulture);
+                double lon = double.Parse(location.GetProperty("lon").GetString()!, System.Globalization.CultureInfo.InvariantCulture);
+                await FetchWeather(lat, lon);
+            }
+            else
+            {
+                _error = "City not found in the global database.";
+                _isLoading = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = "Search protocol failed. Check connectivity.";
+            _isLoading = false;
+        }
+        
+        if (!_isDisposed) StateHasChanged();
+    }
+
+    private async Task FetchWeather(double lat, double lon)
+    {
+        if (_isDisposed) return;
+
+        try
+        {
+            var client = HttpClientFactory.CreateClient("ExternalApi");
+            var weatherUrl = $"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,precipitation&hourly=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto";
+            var locationUrl = $"https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lon}&zoom=10";
+
+            var weatherTask = client.GetAsync(weatherUrl);
+            var locationTask = client.GetAsync(locationUrl);
+
+            await Task.WhenAll(weatherTask, locationTask);
+
+            var weatherResponse = await weatherTask;
+            var locationResponse = await locationTask;
+
+            if (_isDisposed) return;
+
+            if (!weatherResponse.IsSuccessStatusCode || !locationResponse.IsSuccessStatusCode)
+            {
+                _error = "Satellite link interrupted. 403 Forbidden or API Error.";
+                return;
+            }
+
+            var weatherData = await weatherResponse.Content.ReadFromJsonAsync<JsonElement>();
+            var locationData = await locationResponse.Content.ReadFromJsonAsync<JsonElement>();
+
+            string cityName = "Unknown Vector";
+            if (locationData.TryGetProperty("address", out var address))
+            {
+                if (address.TryGetProperty("city", out var city)) cityName = city.GetString()!;
+                else if (address.TryGetProperty("town", out var town)) cityName = town.GetString()!;
+                else if (address.TryGetProperty("village", out var village)) cityName = village.GetString()!;
+                else if (address.TryGetProperty("suburb", out var suburb)) cityName = suburb.GetString()!;
+            }
+
+            var currentCode = weatherData.GetProperty("current").GetProperty("weather_code").GetInt32();
+            var conditionInfo = GetConditionInfo(currentCode);
+
+            var hourly = new List<HourlyForecast>();
+            var hourlyData = weatherData.GetProperty("hourly");
+            var hourlyTimes = hourlyData.GetProperty("time").EnumerateArray().ToList();
+            var hourlyTemps = hourlyData.GetProperty("temperature_2m").EnumerateArray().ToList();
+            var hourlyCodes = hourlyData.GetProperty("weather_code").EnumerateArray().ToList();
+
+            for (int i = 0; i < Math.Min(12, hourlyTimes.Count); i++)
+            {
+                var time = DateTime.Parse(hourlyTimes[i].GetString()!);
+                hourly.Add(new HourlyForecast
+                {
+                    Time = time.ToString("h tt"),
+                    Temp = (int)Math.Round(hourlyTemps[i].GetDouble()),
+                    Condition = GetConditionInfo(hourlyCodes[i].GetInt32()).Condition
+                });
+            }
+
+            var daily = new List<DailyForecast>();
+            var dailyData = weatherData.GetProperty("daily");
+            var dailyTimes = dailyData.GetProperty("time").EnumerateArray().ToList();
+            var dailyMaxTemps = dailyData.GetProperty("temperature_2m_max").EnumerateArray().ToList();
+            var dailyMinTemps = dailyData.GetProperty("temperature_2m_min").EnumerateArray().ToList();
+            var dailyCodes = dailyData.GetProperty("weather_code").EnumerateArray().ToList();
+
+            for (int i = 0; i < Math.Min(5, dailyTimes.Count); i++)
+            {
+                var time = DateTime.Parse(dailyTimes[i].GetString()!);
+                daily.Add(new DailyForecast
+                {
+                    Date = time.ToString("ddd"),
+                    MaxTemp = (int)Math.Round(dailyMaxTemps[i].GetDouble()),
+                    MinTemp = (int)Math.Round(dailyMinTemps[i].GetDouble()),
+                    Condition = GetConditionInfo(dailyCodes[i].GetInt32()).Condition
+                });
+            }
+
+            _weather = new WeatherViewData
+            {
+                Location = cityName,
+                Temp = (int)Math.Round(weatherData.GetProperty("current").GetProperty("temperature_2m").GetDouble()),
+                Condition = conditionInfo.Condition,
+                FeelsLike = (int)Math.Round(weatherData.GetProperty("current").GetProperty("apparent_temperature").GetDouble()),
+                Humidity = weatherData.GetProperty("current").GetProperty("relative_humidity_2m").GetInt32(),
+                PrecipProb = (int)Math.Round(weatherData.GetProperty("current").GetProperty("precipitation").GetDouble()),
+                Color = conditionInfo.Color,
+                IconSvg = conditionInfo.Icon,
+                Hourly = hourly,
+                Daily = daily
+            };
+
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            if (!_isDisposed) _error = "Atmospheric synchronization failed.";
+        }
+        finally
+        {
+            if (!_isDisposed)
+            {
+                _isLoading = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private ConditionInfo GetConditionInfo(int code) => code switch
+    {
+        0 => new ConditionInfo("Clear Sky", "from-blue-400 to-blue-600", ICON_SUN),
+        1 or 2 => new ConditionInfo("Partly Cloudy", "from-blue-300 to-blue-500", ICON_PARTLY_CLOUDY),
+        3 => new ConditionInfo("Overcast", "from-zinc-400 to-zinc-600", ICON_CLOUD),
+        45 or 48 => new ConditionInfo("Fog", "from-zinc-300 to-zinc-500", ICON_WIND),
+        51 or 53 or 55 => new ConditionInfo("Drizzle", "from-blue-200 to-blue-400", ICON_RAIN),
+        61 or 63 or 65 => new ConditionInfo("Rain", "from-blue-500 to-blue-700", ICON_RAIN),
+        80 or 81 or 82 => new ConditionInfo("Showers", "from-blue-600 to-blue-800", ICON_RAIN),
+        95 or 96 or 99 => new ConditionInfo("Thunderstorm", "from-purple-600 to-zinc-800", ICON_BOLT),
+        _ => new ConditionInfo("Cloudy", "from-zinc-400 to-zinc-600", ICON_CLOUD)
+    };
+
+    private string GetIconForCondition(string condition) => condition switch
+    {
+        "Clear Sky" => ICON_SUN,
+        "Partly Cloudy" => ICON_PARTLY_CLOUDY,
+        "Overcast" => ICON_CLOUD,
+        "Fog" => ICON_WIND,
+        "Drizzle" or "Rain" or "Showers" => ICON_RAIN,
+        "Thunderstorm" => ICON_BOLT,
+        _ => ICON_CLOUD
+    };
+
+    private const string ICON_SUN = "<svg class='w-8 h-8 text-yellow-400' fill='currentColor' viewBox='0 0 24 24'><path d='M12 7a5 5 0 100 10 5 5 0 000-10zM2 13h2a1 1 0 100-2H2a1 1 0 100 2zm18 0h2a1 1 0 100-2h-2a1 1 0 100 2zM11 2v2a1 1 0 102 0V2a1 1 0 10-2 0zm0 18v2a1 1 0 102 0v-2a1 1 0 10-2 0zM5.99 4.58a1 1 0 111.41 1.41L6.41 6.99a1 1 0 11-1.41-1.41l.99-.99zm12.02 12.02a1 1 0 111.41 1.41l-.99.99a1 1 0 11-1.41-1.41l.99-.99zM5.99 19.41a1 1 0 11-1.41-1.41l.99-.99a1 1 0 111.41 1.41l-.99.99zm12.02-14.83a1 1 0 11-1.41-1.41l.99.99a1 1 0 111.41 1.41l-.99-.99z'/></svg>";
+    private const string ICON_CLOUD = "<svg class='w-8 h-8 text-zinc-400' fill='currentColor' viewBox='0 0 24 24'><path d='M17.5 19c3.037 0 5.5-2.463 5.5-5.5 0-2.618-1.83-4.81-4.282-5.361C17.923 5.484 15.65 3.5 13 3.5c-2.84 0-5.23 2.146-5.467 4.93C4.945 8.941 3 11.234 3 14c0 3.314 2.686 6 6 6h8.5z'/></svg>";
+    private const string ICON_PARTLY_CLOUDY = "<svg class='w-8 h-8 text-zinc-300' fill='currentColor' viewBox='0 0 24 24'><path d='M12 7a5 5 0 100 10 5 5 0 000-10z'/><path d='M17.5 19c3.037 0 5.5-2.463 5.5-5.5 0-2.618-1.83-4.81-4.282-5.361C17.923 5.484 15.65 3.5 13 3.5c-2.84 0-5.23 2.146-5.467 4.93C4.945 8.941 3 11.234 3 14c0 3.314 2.686 6 6 6h8.5z' opacity='0.5'/></svg>";
+    private const string ICON_RAIN = "<svg class='w-8 h-8 text-blue-400' fill='currentColor' viewBox='0 0 24 24'><path d='M17.5 19c3.037 0 5.5-2.463 5.5-5.5 0-2.618-1.83-4.81-4.282-5.361C17.923 5.484 15.65 3.5 13 3.5c-2.84 0-5.23 2.146-5.467 4.93C4.945 8.941 3 11.234 3 14c0 3.314 2.686 6 6 6h8.5z'/><path d='M9 20v2m3-2v2m3-2v2' stroke='currentColor' stroke-width='2' stroke-linecap='round'/></svg>";
+    private const string ICON_BOLT = "<svg class='w-8 h-8 text-yellow-400' fill='currentColor' viewBox='0 0 24 24'><path d='M13 2L3 14h9l-1 8 10-12h-9l1-8z'/></svg>";
+    private const string ICON_WIND = "<svg class='w-8 h-8 text-zinc-300' fill='none' stroke='currentColor' stroke-width='2' viewBox='0 0 24 24'><path d='M9.59 4.59A2 2 0 1111 8H2m10.59 11.41A2 2 0 1014 16H2m15.73-8.27A2.5 2.5 0 1119.5 12H2'/></svg>";
+
+    public class WeatherViewData { public string Location { get; set; } = ""; public int Temp { get; set; } public string Condition { get; set; } = ""; public int FeelsLike { get; set; } public int Humidity { get; set; } public int PrecipProb { get; set; } public string Color { get; set; } = ""; public string IconSvg { get; set; } = ""; public List<HourlyForecast> Hourly { get; set; } = new(); public List<DailyForecast> Daily { get; set; } = new(); }
+    public class HourlyForecast { public string Time { get; set; } = ""; public int Temp { get; set; } public string Condition { get; set; } = ""; }
+    public class DailyForecast { public string Date { get; set; } = ""; public int MaxTemp { get; set; } public int MinTemp { get; set; } public string Condition { get; set; } = ""; }
+    public record ConditionInfo(string Condition, string Color, string Icon);
+
+    public void Dispose()
+    {
+        _isDisposed = true;
+    }
+}

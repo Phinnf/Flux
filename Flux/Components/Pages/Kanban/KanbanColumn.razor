@@ -1,0 +1,88 @@
+@using Flux.Features.Kanban
+@using Flux.Infrastructure.Client
+@inject KanbanStateService KanbanState
+
+<div class="flex flex-col flex-shrink-0 w-80 h-full bg-[#1e1f22]/50 rounded-3xl border border-gray-800/50 backdrop-blur-sm"
+     ondragover="event.preventDefault();"
+     @ondrop="HandleDrop">
+    
+    <div class="flex items-center justify-between p-5">
+        <div class="flex items-center gap-3">
+            <h3 class="font-black text-[10px] text-zinc-500 uppercase tracking-[0.2em]">@Column.Name</h3>
+            <span class="bg-[#2b2d31] text-[10px] text-white px-2 py-0.5 rounded-full font-black">@FilteredTasks.Count()</span>
+        </div>
+        <button class="p-2 hover:bg-blue-600/10 rounded-xl text-zinc-500 hover:text-blue-500 transition-colors" @onclick="() => _showAddTask = !_showAddTask">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+        </button>
+    </div>
+
+    <div class="flex-1 overflow-y-auto px-4 space-y-4 pb-6 scrollbar-hide">
+        @if (_showAddTask)
+        {
+            <div class="bg-[#2b2d31] p-4 rounded-2xl border-2 border-blue-500 shadow-xl animate-in slide-in-from-top duration-200">
+                <input @bind="_newTaskTitle" placeholder="What needs to be done?" 
+                       class="w-full bg-transparent border-none text-sm text-white focus:ring-0 p-0 mb-3 placeholder:text-zinc-600 font-medium" 
+                       @onkeyup="HandleKeyUp" autoFocus />
+                <div class="flex justify-end gap-3">
+                    <button class="text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-white" @onclick="() => _showAddTask = false">Cancel</button>
+                    <button class="text-[10px] font-black uppercase tracking-widest bg-blue-600 text-white px-4 py-1.5 rounded-lg shadow-lg shadow-blue-600/20" @onclick="AddTask">Add Task</button>
+                </div>
+            </div>
+        }
+
+        @foreach (var task in FilteredTasks)
+        {
+            <KanbanCard Task="task" ColumnId="Column.Id" />
+        }
+        
+        @if (!FilteredTasks.Any() && !_showAddTask)
+        {
+            <div class="flex flex-col items-center justify-center py-12 text-zinc-700">
+                <svg class="w-12 h-12 mb-2 opacity-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                <span class="text-[10px] font-black uppercase tracking-widest opacity-20">Empty Column</span>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public KanbanColumnDto Column { get; set; } = null!;
+    [Parameter] public string SearchQuery { get; set; } = "";
+    [Parameter] public bool ShowArchived { get; set; } = false;
+
+    private bool _showAddTask = false;
+    private string _newTaskTitle = "";
+
+    private IEnumerable<KanbanTaskDto> FilteredTasks => 
+        Column.Tasks
+            .Where(t => t.IsArchived == ShowArchived)
+            .Where(t => string.IsNullOrWhiteSpace(SearchQuery) || t.Title.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(t => t.Order);
+
+    private async Task HandleDrop(DragEventArgs e)
+    {
+        var draggedTask = DragDropService.DraggedTask;
+        if (draggedTask != null && draggedTask.ColumnId != Column.Id)
+        {
+            await KanbanState.MoveTaskAsync(KanbanState.SelectedBoard!.Id, draggedTask.Id, draggedTask.ColumnId, Column.Id, Column.Tasks.Count);
+            DragDropService.DraggedTask = null;
+        }
+    }
+
+    private async Task HandleKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await AddTask();
+        else if (e.Key == "Escape") _showAddTask = false;
+    }
+
+    private async Task AddTask()
+    {
+        if (string.IsNullOrWhiteSpace(_newTaskTitle)) return;
+        var result = await KanbanState.CreateTaskAsync(KanbanState.SelectedBoard!.WorkspaceId, Column.Id, _newTaskTitle);
+        if (result.IsSuccess)
+        {
+            _newTaskTitle = "";
+            _showAddTask = false;
+        }
+    }
+}

@@ -16,7 +16,16 @@
         <!-- Shared Activity Bar -->
         <ActivityBar AvatarUrl="@_avatarUrl" Initials="@_initials" CurrentUserId="@_currentUserId" />
 
-        <!-- Page Specific Content (Sidebar + Main Content) -->
+        @if (Navigation.Uri.Contains("/dms/"))
+        {
+            <Flux.Components.Layout.DmSidebar />
+        }
+        else if (Navigation.Uri.Contains("/workspace/"))
+        {
+            <Flux.Components.Layout.WorkspaceSidebar />
+        }
+
+        <!-- Page Specific Content -->
         @Body
     </div>
 </div>
@@ -39,7 +48,6 @@
             if (idClaim != null && Guid.TryParse(idClaim.Value, out var id))
             {
                 _currentUserId = id;
-                // Reload workspace if it was already set via Parameters but failed due to missing userId
                 if (WorkspaceState.CurrentWorkspaceId.HasValue && WorkspaceState.Channels.Count == 0)
                 {
                     await WorkspaceState.LoadWorkspaceAsync(WorkspaceState.CurrentWorkspaceId.Value, _currentUserId);
@@ -49,7 +57,6 @@
 
         UpdateUserAvatar();
 
-        // Setup global notification listener
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(Navigation.ToAbsoluteUri("/chatHub"), options =>
             {
@@ -104,7 +111,6 @@
             int wsIndex = Array.IndexOf(parts, "workspace");
             if (wsIndex != -1 && wsIndex + 1 < parts.Length && Guid.TryParse(parts[wsIndex + 1], out Guid workspaceId))
             {
-                // Ensure we have a user ID or at least wait for auth state before loading
                 if (_currentUserId != Guid.Empty || (await AuthStateProvider.GetAuthenticationStateAsync()).User.Identity?.IsAuthenticated == true)
                 {
                     await WorkspaceState.LoadWorkspaceAsync(workspaceId, _currentUserId);

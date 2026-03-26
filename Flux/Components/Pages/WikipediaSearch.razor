@@ -1,0 +1,300 @@
+@page "/workspace/{WorkspaceId:guid}/wiki"
+@using Flux.Infrastructure.Client
+@using Flux.Domain.Common
+@using System.Text.Json
+@layout Layout.WorkspaceLayout
+@inject WikipediaClientService WikiService
+@inject IHttpClientFactory HttpClientFactory
+@implements IDisposable
+
+<div class="flex flex-col h-full w-full bg-[#1a1c1e] text-zinc-200">
+    <div class="max-w-4xl mx-auto w-full p-4 md:p-8 space-y-8 overflow-y-auto scrollbar-hide">
+        
+        <!-- Search Header -->
+        <div class="space-y-4">
+            <h1 class="text-3xl font-black text-white flex items-center gap-3">
+                <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-black shadow-lg">W</div>
+                Wikipedia Intelligence
+            </h1>
+            
+            <div class="relative group">
+                <div class="absolute inset-y-0 left-4 flex items-center pointer-events-none text-zinc-500 group-focus-within:text-blue-500 transition-colors">
+                    @if (_isLoading)
+                    {
+                        <div class="w-5 h-5 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+                    }
+                    else
+                    {
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    }
+                </div>
+                <input type="text" @bind="_query" @bind:event="oninput" @onkeyup="HandleKeyUp"
+                       placeholder="Scan the global archive..." 
+                       class="w-full bg-[#1e1f22] text-lg rounded-2xl pl-12 pr-12 py-4 border-2 border-transparent focus:border-blue-500 transition-all outline-none shadow-xl text-white" />
+                @if (!string.IsNullOrEmpty(_query))
+                {
+                    <button @onclick="ClearSearch" class="absolute inset-y-0 right-4 flex items-center text-zinc-500 hover:text-zinc-200">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                }
+
+                <!-- Autocomplete Dropdown -->
+                @if (_results.Any() && string.IsNullOrEmpty(_selectedArticle?.Title))
+                {
+                    <div class="absolute top-full left-0 right-0 mt-2 z-50 bg-[#2b2d31] border border-gray-800 rounded-2xl shadow-2xl overflow-hidden max-h-96 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
+                        @foreach (var r in _results)
+                        {
+                            <button @onclick="() => SelectArticle(r)"
+                                    class="w-full flex items-center gap-4 p-4 hover:bg-[#35373c] transition-colors text-left border-b border-gray-800/50 last:border-none group">
+                                @if (!string.IsNullOrEmpty(r.ThumbnailUrl))
+                                {
+                                    <img src="@r.ThumbnailUrl" class="w-12 h-12 rounded-lg object-cover flex-shrink-0 shadow-sm border border-gray-800 group-hover:border-blue-500/30 transition-all" />
+                                }
+                                else
+                                {
+                                    <div class="w-12 h-12 rounded-lg bg-[#1e1f22] flex items-center justify-center text-zinc-500 flex-shrink-0 border border-gray-800">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                                    </div>
+                                }
+                                <div class="flex flex-col min-w-0">
+                                    <span class="text-sm font-bold text-white truncate group-hover:text-blue-400 transition-colors">@r.Title</span>
+                                    <span class="text-xs text-zinc-500 truncate">@r.Snippet</span>
+                                </div>
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Content Area -->
+        <div class="min-h-[400px]">
+            @if (_selectedArticle != null)
+            {
+                <div class="flex flex-col gap-6 p-6 md:p-8 rounded-3xl bg-[#1e1f22] border border-gray-800 shadow-2xl animate-in fade-in zoom-in duration-300">
+                    <div class="flex items-start justify-between">
+                        <h2 class="text-3xl font-black text-white leading-tight tracking-tight">@_selectedArticle.Title</h2>
+                        <button @onclick="() => _selectedArticle = null" class="p-2 text-zinc-500 hover:text-white bg-[#2b2d31] rounded-xl transition-all active:scale-95">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(_selectedArticle.ThumbnailUrl))
+                    {
+                        <div class="relative group overflow-hidden rounded-3xl shadow-2xl border border-gray-800">
+                            <img src="@_selectedArticle.ThumbnailUrl" class="w-full h-64 md:h-96 object-cover transition-transform duration-1000 group-hover:scale-105" />
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                        </div>
+                    }
+
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-blue-500 bg-blue-500/5 w-fit px-4 py-2 rounded-full border border-blue-500/10">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                            Data Stream
+                        </div>
+                        <p class="text-lg text-zinc-300 leading-relaxed font-medium italic border-l-4 border-blue-600 pl-8 py-2">
+                            @_selectedArticle.Snippet
+                        </p>
+                    </div>
+
+                    <a href="https://en.wikipedia.org/?curid=@_selectedArticle.PageId" target="_blank"
+                       class="flex items-center justify-center gap-3 w-full py-5 text-xs font-black uppercase tracking-[0.2em] bg-blue-600 text-white rounded-2xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/20 active:scale-95">
+                        Expand Intelligence
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                    </a>
+                </div>
+            }
+            else
+            {
+                <div class="space-y-12 animate-in fade-in duration-500">
+                    <!-- Featured Article -->
+                    @if (_featuredArticle != null)
+                    {
+                        <div class="space-y-4">
+                            <div class="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-zinc-600">
+                                <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                                Priority Knowledge
+                            </div>
+                            <button @onclick="() => SelectArticle(_featuredArticle)"
+                                    class="w-full text-left group relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1e1f22] to-[#2b2d31] border border-gray-800 p-10 hover:border-blue-500/30 transition-all shadow-2xl">
+                                <div class="relative z-10 space-y-4">
+                                    <h3 class="text-3xl font-black text-white group-hover:text-blue-400 transition-colors tracking-tight">@_featuredArticle.Title</h3>
+                                    <p class="text-zinc-500 text-base line-clamp-3 leading-relaxed font-medium">@_featuredArticle.Snippet</p>
+                                    <div class="flex items-center gap-3 text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] pt-4">
+                                        Scan Report 
+                                        <svg class="w-4 h-4 transition-transform group-hover:translate-x-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+                                    </div>
+                                </div>
+                                <div class="absolute top-0 right-0 w-80 h-80 bg-blue-600/5 rounded-full blur-[100px] -mr-40 -mt-40 transition-transform duration-1000 group-hover:scale-150"></div>
+                            </button>
+                        </div>
+                    }
+
+                    <!-- Search History -->
+                    @if (_history.Any())
+                    {
+                        <div class="space-y-4">
+                            <div class="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-zinc-600">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                Recently Scanned
+                            </div>
+                            <div class="flex flex-wrap gap-3">
+                                @foreach (var h in _history)
+                                {
+                                    <button @onclick="() => SelectArticle(h)"
+                                            class="px-5 py-2.5 text-[10px] font-black uppercase tracking-widest bg-[#1e1f22] hover:bg-blue-600 hover:text-white rounded-xl transition-all border border-gray-800 hover:border-blue-500/30 shadow-sm active:scale-95">
+                                        @h.Title
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    @if (_featuredArticle == null && !_history.Any() && !_isLoading)
+                    {
+                        <div class="flex flex-col items-center justify-center py-20 text-center space-y-8 opacity-20">
+                            <div class="w-32 h-32 bg-white/5 rounded-[40px] flex items-center justify-center border border-white/5">
+                                <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                            </div>
+                            <p class="text-2xl font-black tracking-tighter">Synchronize with Global Knowledge</p>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+</style>
+
+@code {
+    [Parameter] public Guid WorkspaceId { get; set; }
+    
+    private string _query = "";
+    private List<WikiViewResult> _results = new();
+    private List<WikiViewResult> _history = new();
+    private WikiViewResult? _selectedArticle;
+    private WikiViewResult? _featuredArticle;
+    private bool _isLoading = false;
+    private System.Threading.Timer? _searchTimer;
+    private bool _isDisposed = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await FetchFeaturedArticle();
+    }
+
+    private async Task FetchFeaturedArticle()
+    {
+        try
+        {
+            var client = HttpClientFactory.CreateClient("ExternalApi");
+            var response = await client.GetFromJsonAsync<JsonElement>("https://en.wikipedia.org/api/rest_v1/page/random/summary");
+            if (_isDisposed) return;
+            
+            _featuredArticle = new WikiViewResult
+            {
+                Title = response.GetProperty("title").GetString()!,
+                Snippet = response.GetProperty("extract").GetString()!,
+                PageId = response.GetProperty("pageid").GetInt64().ToString(),
+                ThumbnailUrl = response.TryGetProperty("thumbnail", out var thumb) ? thumb.GetProperty("source").GetString() : null
+            };
+        }
+        catch { /* Silently fail for featured article */ }
+    }
+
+    private void HandleKeyUp(KeyboardEventArgs e)
+    {
+        _searchTimer?.Dispose();
+        _searchTimer = new System.Threading.Timer(async _ => 
+        {
+            if (_isDisposed) return;
+            await InvokeAsync(Search);
+        }, null, 500, System.Threading.Timeout.Infinite);
+    }
+
+    private async Task Search()
+    {
+        if (string.IsNullOrWhiteSpace(_query))
+        {
+            _results.Clear();
+            StateHasChanged();
+            return;
+        }
+
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var client = HttpClientFactory.CreateClient("ExternalApi");
+            var url = $"https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&prop=extracts|pageimages&generator=search&exsentences=3&exintro=1&explaintext=1&gsrsearch={Uri.EscapeDataString(_query)}&gsrlimit=5&piprop=thumbnail&pithumbsize=400";
+            var response = await client.GetFromJsonAsync<JsonElement>(url);
+
+            if (_isDisposed) return;
+
+            _results.Clear();
+            if (response.TryGetProperty("query", out var query) && query.TryGetProperty("pages", out var pages))
+            {
+                foreach (var page in pages.EnumerateObject())
+                {
+                    var p = page.Value;
+                    _results.Add(new WikiViewResult
+                    {
+                        Title = p.GetProperty("title").GetString()!,
+                        Snippet = p.TryGetProperty("extract", out var extract) ? extract.GetString()! : "",
+                        PageId = p.GetProperty("pageid").GetInt32().ToString(),
+                        ThumbnailUrl = p.TryGetProperty("thumbnail", out var thumb) ? thumb.GetProperty("source").GetString() : null
+                    });
+                }
+            }
+        }
+        catch { }
+        finally
+        {
+            if (!_isDisposed)
+            {
+                _isLoading = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private void SelectArticle(WikiViewResult article)
+    {
+        _selectedArticle = article;
+        _query = "";
+        _results.Clear();
+        
+        if (!_history.Any(h => h.PageId == article.PageId))
+        {
+            _history.Insert(0, article);
+            if (_history.Count > 8) _history.RemoveAt(8);
+        }
+    }
+
+    private void ClearSearch()
+    {
+        _query = "";
+        _results.Clear();
+        _selectedArticle = null;
+    }
+
+    public class WikiViewResult
+    {
+        public string Title { get; set; } = "";
+        public string Snippet { get; set; } = "";
+        public string PageId { get; set; } = "";
+        public string? ThumbnailUrl { get; set; }
+    }
+
+    public void Dispose()
+    {
+        _isDisposed = true;
+        _searchTimer?.Dispose();
+    }
+}

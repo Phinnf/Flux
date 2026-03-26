@@ -13,6 +13,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
+builder.Services.AddHttpClient("ExternalApi", client =>
+{
+    client.DefaultRequestHeaders.Add("User-Agent", "FluxApp/1.0 (contact: support@flux.com)");
+});
+builder.Services.AddHttpClient();
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 builder.Services.AddSignalR();
 // builder.Services.AddFluentValidationAutoValidation() // Keep this if user didn't ask to remove validation, but they said "bo cai file @Flux\obj\Debug\net10.0\Flux.GlobalUsings.g.cs layout hay bat ki thu vien ma FE dung" which might imply they want a clean start or just remove the UI stuff.
@@ -96,8 +101,12 @@ builder.Services.AddHttpClient<Flux.Infrastructure.Client.WorkspaceClientService
 builder.Services.AddHttpClient<Flux.Infrastructure.Client.MessageClientService>(configureHttpClient);
 builder.Services.AddHttpClient<Flux.Infrastructure.Client.UserClientService>(configureHttpClient);
 builder.Services.AddHttpClient<Flux.Infrastructure.Client.UploadClientService>(configureHttpClient);
+builder.Services.AddHttpClient<Flux.Infrastructure.Client.KanbanClientService>(configureHttpClient);
+builder.Services.AddHttpClient<Flux.Infrastructure.Client.WeatherClientService>(configureHttpClient);
+builder.Services.AddHttpClient<Flux.Infrastructure.Client.WikipediaClientService>(configureHttpClient);
 
 builder.Services.AddScoped<Flux.Infrastructure.Client.WorkspaceStateService>(); // State management service
+builder.Services.AddScoped<Flux.Infrastructure.Client.KanbanStateService>();
 builder.Services.AddScoped<IToastService, ToastService>();
 builder.Services.AddHttpContextAccessor(); // Required to get the base address dynamically
 

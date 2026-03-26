@@ -13,15 +13,6 @@
 
 <PageTitle>Chat - @(_currentChannelName ?? "Loading...")</PageTitle>
 
-@if (StateService.Channels.FirstOrDefault(c => c.Id == ChannelId)?.Type != Flux.Domain.Entities.ChannelType.Direct)
-{
-    <Flux.Components.Layout.WorkspaceSidebar />
-}
-else
-{
-    <Flux.Components.Layout.DmSidebar />
-}
-
 <div class="chat-main-wrapper flex-1">
     <div class="chat-container">
         <!-- Chat Header -->
