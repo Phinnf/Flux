@@ -1,5 +1,0 @@
-{
-  "name": "Sidekick Sidebar",
-  "description": "A powerful sidebar companion featuring a Kanban board, weather widget, and Wikipedia search.",
-  "requestFramePermissions": ["geolocation"]
-}
