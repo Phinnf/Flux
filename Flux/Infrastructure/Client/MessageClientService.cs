@@ -31,6 +31,20 @@ public class MessageClientService : BaseClientService
         }
     }
 
+    public async Task<Result<List<MessageDto>>> GetThreadsAsync(Guid workspaceId, Guid userId)
+    {
+        try
+        {
+            await SetAuthHeaderAsync();
+            var response = await HttpClient.GetFromJsonAsync<Result<List<MessageDto>>>($"/api/workspaces/{workspaceId}/threads?userId={userId}");
+            return response ?? Result<List<MessageDto>>.CreateFailure("Failed to load threads.");
+        }
+        catch (Exception ex)
+        {
+            return Result<List<MessageDto>>.CreateFailure(ex.Message);
+        }
+    }
+
     public async Task<Result<SendMessageResponse>> SendMessageAsync(SendMessageCommand command)
     {
         try

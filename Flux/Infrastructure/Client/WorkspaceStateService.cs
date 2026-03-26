@@ -53,8 +53,11 @@ public class WorkspaceStateService
 
     public void AddNotification(NotificationDto notification)
     {
-        Notifications.Insert(0, notification);
-        NotifyStateChanged();
+        if (!Notifications.Any(n => n.MessageId == notification.MessageId && n.Type == notification.Type && n.SenderName == notification.SenderName))
+        {
+            Notifications.Insert(0, notification);
+            NotifyStateChanged();
+        }
     }
 
     public void MarkNotificationAsRead(Guid messageId)

@@ -186,6 +186,7 @@ public partial class Chat : ComponentBase
         _newMessageContent = value;
         await JS.InvokeVoidAsync("chatHelper.autoResizeTextArea", _textAreaRef);
         CheckForMentions();
+        StateHasChanged();
     }
 
     private void CheckForMentions()
@@ -206,7 +207,8 @@ public partial class Chat : ComponentBase
                 if (!_mentionSearchQuery.Contains(" ") && !_mentionSearchQuery.Contains("\n"))
                 {
                     _filteredMembers = StateService.Members
-                        .Where(m => m.Username.Contains(_mentionSearchQuery, StringComparison.OrdinalIgnoreCase) || 
+                        .Where(m => string.IsNullOrEmpty(_mentionSearchQuery) || 
+                                    m.Username.Contains(_mentionSearchQuery, StringComparison.OrdinalIgnoreCase) || 
                                    (m.FullName != null && m.FullName.Contains(_mentionSearchQuery, StringComparison.OrdinalIgnoreCase)))
                         .OrderBy(m => m.Username)
                         .Take(8)
@@ -558,7 +560,7 @@ public partial class Chat : ComponentBase
         {
             if (response.ChannelId == ChannelId && !_messages.Any(m => m.Id == response.Id))
             {
-                _messages.Add(new MessageDto(response.Id, response.Content, response.UserId, response.Username, response.CreatedAt, null, response.AvatarUrl, response.ParentMessageId, 0));
+                _messages.Add(new MessageDto(response.Id, response.Content, response.UserId, response.Username, response.CreatedAt, null, response.AvatarUrl, response.ChannelId, response.ParentMessageId, 0));
                 if (response.ParentMessageId != null)
                 {
                     var parentIndex = _messages.FindIndex(m => m.Id == response.ParentMessageId);
@@ -778,8 +780,8 @@ public partial class Chat : ComponentBase
     private async Task OpenEmojiPicker(MouseEventArgs e, Guid messageId = default)
     {
         _emojiTargetMessageId = messageId;
-        _emojiPickerX = e.ClientX;
-        _emojiPickerY = e.ClientY > 450 ? e.ClientY - 380 : e.ClientY + 20;
+        _emojiPickerX = Math.Max(0, e.ClientX - 300);
+        _emojiPickerY = e.ClientY > 400 ? e.ClientY - 350 : e.ClientY + 10;
         _showEmojiPicker = true;
         await Task.Delay(50);
         await JS.InvokeVoidAsync("emojiPicker.init", _objRef, "main-emoji-picker");

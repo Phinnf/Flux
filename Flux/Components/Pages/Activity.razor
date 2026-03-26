@@ -28,7 +28,6 @@
             <button class="@(ActiveTab == "Mentions" ? "text-white border-b-2 border-indigo-500" : "text-gray-400 hover:text-gray-300") pb-2 mr-4 font-medium text-[13px] transition-colors whitespace-nowrap" @onclick='() => ActiveTab = "Mentions"'>@("@ Mentions")</button>
             <button class="@(ActiveTab == "Threads" ? "text-white border-b-2 border-indigo-500" : "text-gray-400 hover:text-gray-300") pb-2 mr-4 font-medium text-[13px] transition-colors whitespace-nowrap" @onclick='() => ActiveTab = "Threads"'>Threads</button>
             <button class="@(ActiveTab == "Reactions" ? "text-white border-b-2 border-indigo-500" : "text-gray-400 hover:text-gray-300") pb-2 mr-4 font-medium text-[13px] transition-colors whitespace-nowrap" @onclick='() => ActiveTab = "Reactions"'>Reactions</button>
-            <button class="@(ActiveTab == "Invitations" ? "text-white border-b-2 border-indigo-500" : "text-gray-400 hover:text-gray-300") pb-2 font-medium text-[13px] transition-colors whitespace-nowrap" @onclick='() => ActiveTab = "Invitations"'>Invitations</button>
         </div>
 
         <!-- Notification List -->
@@ -40,7 +39,6 @@
                     (ActiveTab == "Mentions" && n.Type == "Mention") || 
                     (ActiveTab == "Threads" && n.Type == "Thread") ||
                     (ActiveTab == "Reactions" && n.Type == "Reaction") ||
-                    (ActiveTab == "Invitations" && n.Type == "Invitation") ||
                     (ActiveTab == "All" && n.Type == "DM")) // Display DMs in All
                 ).ToList();
             }

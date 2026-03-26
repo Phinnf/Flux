@@ -9,15 +9,15 @@ public record GetMessagesQuery(
     int Limit = 50) : IRequest<Result<List<MessageDto>>>;
 
 public record MessageDto(
-    Guid Id, 
-    string Content, 
-    Guid UserId, 
-    string Username, 
-    DateTime CreatedAt, 
+    Guid Id,
+    string Content,
+    Guid UserId,
+    string Username,
+    DateTime CreatedAt,
     DateTime? UpdatedAt,
     string? AvatarUrl,
+    Guid ChannelId,
     Guid? ParentMessageId = null,
     int ReplyCount = 0,
     List<ReactionDto>? Reactions = null);
-
 public record ReactionDto(Guid UserId, string Emoji);

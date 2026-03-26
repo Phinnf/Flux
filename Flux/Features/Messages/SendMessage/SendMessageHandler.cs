@@ -123,6 +123,31 @@ public class SendMessageHandler(
                         await hubContext.Clients.User(targetId.ToString())
                             .SendAsync("ReceiveNotification", notification, CancellationToken.None);
                     }
+
+                    // Check for Thread Replies
+                    if (request.ParentMessageId != null)
+                    {
+                        var parentMessage = await context.Messages
+                            .AsNoTracking()
+                            .FirstOrDefaultAsync(m => m.Id == request.ParentMessageId, cancellationToken);
+                            
+                        // Only notify if parent message exists, the replier is NOT the parent author, 
+                        // and the parent author wasn't already notified via a direct @mention in this reply.
+                        if (parentMessage != null && 
+                            parentMessage.UserId != request.UserId && 
+                            !mentionedUsers.Contains(parentMessage.UserId))
+                        {
+                            var threadNotification = new { 
+                                MessageId = message.Id, 
+                                ChannelId = message.ChannelId, 
+                                SenderName = userAndChannelInfo.UserName,
+                                Content = message.Content,
+                                Type = "Thread" 
+                            };
+                            await hubContext.Clients.User(parentMessage.UserId.ToString())
+                                .SendAsync("ReceiveNotification", threadNotification, CancellationToken.None);
+                        }
+                    }
                 }
             }
             catch { /* Ignore notification failures to not block */ }

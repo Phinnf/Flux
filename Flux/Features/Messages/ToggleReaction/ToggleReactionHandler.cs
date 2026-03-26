@@ -57,6 +57,21 @@ public class ToggleReactionHandler(
         await hubContext.Clients.Group(message.ChannelId.ToString())
             .SendAsync("ReactionToggled", response, cancellationToken);
 
+        if (isAdded && message.UserId != request.UserId)
+        {
+            var user = await context.Users.FindAsync(request.UserId);
+            var notification = new
+            {
+                MessageId = message.Id,
+                ChannelId = message.ChannelId,
+                SenderName = user?.Username ?? "Someone",
+                Content = message.Content,
+                Type = "Reaction"
+            };
+            await hubContext.Clients.User(message.UserId.ToString())
+                .SendAsync("ReceiveNotification", notification, cancellationToken);
+        }
+
         return Result<ToggleReactionResponse>.CreateSuccess(response);
     }
 }

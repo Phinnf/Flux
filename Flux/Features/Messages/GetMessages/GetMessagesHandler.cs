@@ -32,6 +32,7 @@ public class GetMessagesHandler(FluxDbContext dbContext)
                 m.CreatedAt,
                 m.UpdatedAt,
                 m.AvatarUrl,
+                m.ChannelId,
                 m.ParentMessageId,
                 m.Replies.Count,
                 m.Reactions.Select(r => new ReactionDto(r.UserId, r.Emoji)).ToList()))

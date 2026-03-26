@@ -42,11 +42,13 @@
 
     protected override void OnInitialized()
     {
-        StateService.OnStateChanged += StateHasChanged;
+        StateService.OnStateChanged += HandleStateChanged;
     }
+
+    private void HandleStateChanged() => InvokeAsync(StateHasChanged);
 
     public void Dispose()
     {
-        StateService.OnStateChanged -= StateHasChanged;
+        StateService.OnStateChanged -= HandleStateChanged;
     }
 }
