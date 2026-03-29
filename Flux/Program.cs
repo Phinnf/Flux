@@ -1,18 +1,37 @@
 using Flux.Components;
 using Flux.Infrastructure.Database;
 using Flux.Infrastructure.Identity;
+using Flux.Infrastructure.Security;
 using Flux.Infrastructure.Services;
 using Flux.Infrastructure.SignalR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
+
+// --- RATE LIMITING ---
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddFixedWindowLimiter("auth-limit", opt =>
+    {
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.PermitLimit = 5;
+        opt.QueueLimit = 0;
+        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+    });
+});
+// --------------------
+
 builder.Services.AddHttpClient("ExternalApi", client =>
 {
     client.DefaultRequestHeaders.Add("User-Agent", "FluxApp/1.0 (contact: support@flux.com)");
@@ -20,8 +39,6 @@ builder.Services.AddHttpClient("ExternalApi", client =>
 builder.Services.AddHttpClient();
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 builder.Services.AddSignalR();
-// builder.Services.AddFluentValidationAutoValidation() // Keep this if user didn't ask to remove validation, but they said "bo cai file @Flux\obj\Debug\net10.0\Flux.GlobalUsings.g.cs layout hay bat ki thu vien ma FE dung" which might imply they want a clean start or just remove the UI stuff.
-// Actually, FluentValidation is for backend/logic. I'll stick to removing UI library.
 
 // --- IDENTITY & JWT SERVICES ---
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
@@ -33,7 +50,12 @@ builder.Services.AddAuthentication(options =>
         options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
         options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
     })
-    .AddCookie("ExternalCookie")
+    .AddCookie("ExternalCookie", options =>
+    {
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+    })
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
@@ -145,6 +167,8 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAntiforgery();
+app.UseRateLimiter();
+app.UseMiddleware<SecurityAuditMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();

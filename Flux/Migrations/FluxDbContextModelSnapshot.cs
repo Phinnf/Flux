@@ -171,6 +171,9 @@ namespace Flux.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int>("AccessFailedCount")
+                        .HasColumnType("integer");
+
                     b.Property<string>("AvatarUrl")
                         .HasColumnType("text");
 
@@ -198,6 +201,9 @@ namespace Flux.Migrations
 
                     b.Property<string>("Gender")
                         .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("LockoutEnd")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("NickName")
                         .HasColumnType("text");

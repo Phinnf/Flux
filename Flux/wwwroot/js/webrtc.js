@@ -122,15 +122,40 @@ window.webrtc = {
             pc = peerConnections[fromUserId];
         }
 
+        // Initialize candidate queue if not exists
+        if (!pc.candidateQueue) {
+            pc.candidateQueue = [];
+        }
+
         if (signal.sdp) {
             await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+            
+            // Process queued ICE candidates now that remote description is set
+            if (pc.candidateQueue && pc.candidateQueue.length > 0) {
+                for (const candidate of pc.candidateQueue) {
+                    try {
+                        await pc.addIceCandidate(candidate);
+                    } catch(e) { console.error("Error adding queued ice candidate", e); }
+                }
+                pc.candidateQueue = [];
+            }
+
             if (pc.remoteDescription.type === 'offer') {
                 const answer = await pc.createAnswer();
                 await pc.setLocalDescription(answer);
                 dotNetHelper.invokeMethodAsync('SendSignal', fromUserId, JSON.stringify({ sdp: pc.localDescription }));
             }
         } else if (signal.candidate) {
-            await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+            const rtcCandidate = new RTCIceCandidate(signal.candidate);
+            if (pc.remoteDescription && pc.remoteDescription.type) {
+                try {
+                    await pc.addIceCandidate(rtcCandidate);
+                } catch(e) { console.error("Error adding ice candidate", e); }
+            } else {
+                // Queue candidate if remote description is not set yet
+                if (!pc.candidateQueue) pc.candidateQueue = [];
+                pc.candidateQueue.push(rtcCandidate);
+            }
         }
     },
 

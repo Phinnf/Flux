@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Flux.Migrations
 {
     [DbContext(typeof(FluxDbContext))]
-    [Migration("20260311130237_AddResetPasswordFields")]
-    partial class AddResetPasswordFields
+    [Migration("20260329025347_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -38,6 +38,36 @@ namespace Flux.Migrations
                     b.HasIndex("MembersId");
 
                     b.ToTable("ChannelUser");
+                });
+
+            modelBuilder.Entity("Flux.Domain.Entities.CallSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ChannelId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("EndedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ThreadMessageId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChannelId");
+
+                    b.HasIndex("ThreadMessageId");
+
+                    b.ToTable("CallSessions");
                 });
 
             modelBuilder.Entity("Flux.Domain.Entities.Channel", b =>
@@ -109,11 +139,43 @@ namespace Flux.Migrations
                     b.ToTable("Messages");
                 });
 
+            modelBuilder.Entity("Flux.Domain.Entities.Reaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Emoji")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("MessageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("MessageId", "UserId", "Emoji")
+                        .IsUnique();
+
+                    b.ToTable("Reactions");
+                });
+
             modelBuilder.Entity("Flux.Domain.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<int>("AccessFailedCount")
+                        .HasColumnType("integer");
 
                     b.Property<string>("AvatarUrl")
                         .HasColumnType("text");
@@ -142,6 +204,9 @@ namespace Flux.Migrations
 
                     b.Property<string>("Gender")
                         .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("LockoutEnd")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("NickName")
                         .HasColumnType("text");
@@ -173,6 +238,12 @@ namespace Flux.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("Username")
+                        .IsUnique();
 
                     b.ToTable("Users");
                 });
@@ -260,6 +331,24 @@ namespace Flux.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Flux.Domain.Entities.CallSession", b =>
+                {
+                    b.HasOne("Flux.Domain.Entities.Channel", "Channel")
+                        .WithMany()
+                        .HasForeignKey("ChannelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Flux.Domain.Entities.Message", "ThreadMessage")
+                        .WithMany()
+                        .HasForeignKey("ThreadMessageId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Channel");
+
+                    b.Navigation("ThreadMessage");
+                });
+
             modelBuilder.Entity("Flux.Domain.Entities.Channel", b =>
                 {
                     b.HasOne("Flux.Domain.Entities.Workspace", "Workspace")
@@ -285,12 +374,31 @@ namespace Flux.Migrations
                     b.HasOne("Flux.Domain.Entities.User", "User")
                         .WithMany("Messages")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Channel");
 
                     b.Navigation("ParentMessage");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Flux.Domain.Entities.Reaction", b =>
+                {
+                    b.HasOne("Flux.Domain.Entities.Message", "Message")
+                        .WithMany("Reactions")
+                        .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Flux.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Message");
 
                     b.Navigation("User");
                 });
@@ -328,6 +436,8 @@ namespace Flux.Migrations
 
             modelBuilder.Entity("Flux.Domain.Entities.Message", b =>
                 {
+                    b.Navigation("Reactions");
+
                     b.Navigation("Replies");
                 });
 

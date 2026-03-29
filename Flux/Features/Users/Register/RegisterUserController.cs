@@ -1,10 +1,12 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Flux.Features.Users.Register;
 
 [ApiController]
 [Route("api/users")]
+[EnableRateLimiting("auth-limit")]
 public class RegisterUserController : ControllerBase
 {
     private readonly IMediator _mediator;

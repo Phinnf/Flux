@@ -8,6 +8,6 @@ public record MemberDto(Guid Id, string Username, string? FullName, string? Avat
 public record InviteDetailsDto(Guid WorkspaceId, string WorkspaceName, string? WorkspaceDescription);
 public record UserProfileDto(Guid Id, string Username, string Email, string? FullName, string? NickName, string? Gender, string? Country, string? AvatarUrl, string? Status);
 
-public class LoginResponse { public string? Token { get; set; } }
+public class LoginResponse { public string? Token { get; set; } public bool RequiresTwoFactor { get; set; } }
 public class RegisterResponse { public string? Message { get; set; } }
 public class ErrorResponse { public string? Error { get; set; } }

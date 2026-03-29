@@ -18,6 +18,8 @@
         public bool TwoFactorEnabled { get; set; } = false;
         public string? TwoFactorCode { get; set; }
         public DateTime? TwoFactorExpiry { get; set; }
+        public int AccessFailedCount { get; set; } = 0;
+        public DateTimeOffset? LockoutEnd { get; set; }
         public string? ResetPasswordCode { get; set; }
         public DateTime? ResetPasswordExpiry { get; set; }
         public DateTime CreatedAt { get; init; } = DateTime.UtcNow;

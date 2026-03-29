@@ -31,7 +31,40 @@
                     <p>@(_isRegister ? "Start your journey with us today." : "Please enter your details to sign in.")</p>
                 </div>
 
-                @if (_isVerifyingEmail)
+                @if (_isMfaRequired)
+                {
+                    <div class="verify-form fade-in">
+                        <div class="verify-icon">
+                            <svg class="w-10 h-10 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                        </div>
+                        <h2>Two-Factor Auth</h2>
+                        <p>Enter the security code sent to <span class="text-gradient">@_loginEmail</span></p>
+
+                        <form @onsubmit="HandleVerifyMfa" class="space-y-6">
+                            <div class="input-group">
+                                <input type="text" @bind="_mfaOtp" placeholder="••••••" maxlength="6"
+                                       class="glass-input otp-input" />
+                            </div>
+
+                            @if (!string.IsNullOrEmpty(_mfaError))
+                            {
+                                <div class="error-msg">@_mfaError</div>
+                            }
+
+                            <button type="submit" class="flux-btn-primary full-width" disabled="@_isLoading">
+                                @(_isLoading ? "Verifying..." : "Verify & Sign In")
+                            </button>
+                        </form>
+
+                        <button @onclick="() => _isMfaRequired = false" class="back-link">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                            Back to login
+                        </button>
+                    </div>
+                }
+                else if (_isVerifyingEmail)
                 {
                     <div class="verify-form fade-in">
                         <div class="verify-icon">
@@ -402,6 +435,10 @@
         }
     }
 
+    private bool _isMfaRequired = false;
+    private string _mfaOtp = "";
+    private string? _mfaError;
+
     private void ToggleMode()
     {
         _isRegister = !_isRegister;
@@ -426,13 +463,42 @@
         
         if (result.IsSuccess)
         {
-            await SaveTokenAndRedirect(result.Value!);
+            if (result.Value!.RequiresTwoFactor)
+            {
+                _isMfaRequired = true;
+                _isLoading = false;
+            }
+            else
+            {
+                await SaveTokenAndRedirect(result.Value.Token!);
+            }
         }
         else
         {
             _errorMessage = result.Error;
             _isLoading = false;
         }
+        StateHasChanged();
+    }
+
+    private async Task HandleVerifyMfa()
+    {
+        _mfaError = null;
+        _isLoading = true;
+        StateHasChanged();
+
+        var result = await AuthService.VerifyMfaAsync(_loginEmail, _mfaOtp);
+
+        if (result.IsSuccess)
+        {
+            await SaveTokenAndRedirect(result.Value!);
+        }
+        else
+        {
+            _mfaError = result.Error;
+        }
+
+        _isLoading = false;
         StateHasChanged();
     }
 
@@ -509,7 +575,7 @@
             fluxAuthProvider.NotifyUserAuthentication(token);
         }
         
-        if (!string.IsNullOrEmpty(ReturnUrl))
+        if (!string.IsNullOrEmpty(ReturnUrl) && IsLocalUrl(ReturnUrl))
         {
             Navigation.NavigateTo(ReturnUrl);
         }
@@ -517,6 +583,12 @@
         {
             Navigation.NavigateTo("/workspaces");
         }
+    }
+
+    private bool IsLocalUrl(string url)
+    {
+        if (string.IsNullOrEmpty(url)) return true;
+        return url.StartsWith("/") && !url.StartsWith("//") && !url.StartsWith("/\\");
     }
 
     private bool IsValidEmail(string email) => 

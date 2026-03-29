@@ -35,6 +35,10 @@ public class SmtpEmailService(ILogger<SmtpEmailService> logger, IConfiguration c
             message.From.Add(new MailboxAddress(fromName, fromEmail));
             message.To.Add(new MailboxAddress("", toEmail));
             message.Subject = subject;
+            
+            // Anti-Phishing Headers
+            message.Headers.Add("X-Sender-Verified", "Flux-System");
+            message.Headers.Add("X-Security-Action", subject.Contains("OTP") || subject.Contains("Password") ? "Sensitive" : "Info");
 
             var bodyBuilder = new BodyBuilder { HtmlBody = body };
             message.Body = bodyBuilder.ToMessageBody();

@@ -8,7 +8,7 @@ public class AuthClientService : BaseClientService
 {
     public AuthClientService(HttpClient httpClient, IJSRuntime jsRuntime) : base(httpClient, jsRuntime) { }
 
-    public async Task<Result<string>> LoginAsync(string email, string password)
+    public async Task<Result<LoginResponse>> LoginAsync(string email, string password)
     {
         try
         {
@@ -18,11 +18,33 @@ public class AuthClientService : BaseClientService
             if (response.IsSuccessStatusCode)
             {
                 var result = await response.Content.ReadFromJsonAsync<LoginResponse>();
+                return result != null ? Result<LoginResponse>.CreateSuccess(result) : Result<LoginResponse>.CreateFailure("Invalid response received.");
+            }
+            
+            var errorResult = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+            return Result<LoginResponse>.CreateFailure(errorResult?.Error ?? "Invalid email or password.");
+        }
+        catch (Exception ex)
+        {
+            return Result<LoginResponse>.CreateFailure(ex.Message);
+        }
+    }
+
+    public async Task<Result<string>> VerifyMfaAsync(string email, string otp)
+    {
+        try
+        {
+            var request = new { Email = email, Otp = otp };
+            var response = await HttpClient.PostAsJsonAsync("/api/users/login/verify-mfa", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<LoginResponse>();
                 return result?.Token != null ? Result<string>.CreateSuccess(result.Token) : Result<string>.CreateFailure("Invalid token received.");
             }
             
             var errorResult = await response.Content.ReadFromJsonAsync<ErrorResponse>();
-            return Result<string>.CreateFailure(errorResult?.Error ?? "Invalid email or password.");
+            return Result<string>.CreateFailure(errorResult?.Error ?? "Verification failed.");
         }
         catch (Exception ex)
         {
