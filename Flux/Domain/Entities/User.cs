@@ -22,6 +22,7 @@
         public DateTimeOffset? LockoutEnd { get; set; }
         public string? ResetPasswordCode { get; set; }
         public DateTime? ResetPasswordExpiry { get; set; }
+        public DateTime? LastEmailSentAt { get; set; }
         public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
 
         // Navigation property: A user can send many messages

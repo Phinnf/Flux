@@ -62,7 +62,23 @@ public class LoginHandler : IRequestHandler<LoginCommand, Result<string>>
 
         if (!user.EmailConfirmed && string.IsNullOrEmpty(user.ExternalProvider))
         {
-            return Result.Failure<string>("Your email is not verified yet. Please register again to receive a new OTP.");
+            // Generate a 6-digit OTP for email verification
+            var otp = new Random().Next(100000, 999999).ToString();
+            user.TwoFactorCode = otp; // Reusing TwoFactorCode field for simplicity or use a dedicated one
+            user.TwoFactorExpiry = DateTime.UtcNow.AddMinutes(15);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            var ip = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.ToString();
+            var body = AntiPhishingEmailHelper.GenerateSecurityEmail(
+                user.Username,
+                "Verify your email",
+                "Your email is not verified yet. We've sent a new verification code to your email address. Please use it to verify your account.",
+                otp,
+                ip);
+
+            await _emailService.SendEmailAsync(user.Email, "Flux - Verify your email", body);
+
+            return Result.Failure<string>("EMAIL_VERIFICATION_REQUIRED");
         }
 
         // Handle MFA

@@ -19,10 +19,18 @@ public class ForgotPasswordHandler(FluxDbContext context, IEmailService emailSer
             return Result.Success();
         }
 
+        // Rate limiting: Only 1 email per 60 seconds
+        if (user.LastEmailSentAt.HasValue && (DateTime.UtcNow - user.LastEmailSentAt.Value).TotalSeconds < 60)
+        {
+            var remaining = 60 - (int)(DateTime.UtcNow - user.LastEmailSentAt.Value).TotalSeconds;
+            return Result.Failure($"Please wait {remaining}s before requesting another email. (Security Rate Limit)");
+        }
+
         // Generate a 6-digit OTP
         var otp = new Random().Next(100000, 999999).ToString();
         user.ResetPasswordCode = otp;
         user.ResetPasswordExpiry = DateTime.UtcNow.AddMinutes(15);
+        user.LastEmailSentAt = DateTime.UtcNow;
 
         await context.SaveChangesAsync(cancellationToken);
 
